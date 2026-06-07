@@ -2,7 +2,7 @@
 -- Modelos: KitchenSettings (singleton por hub) + KitchenOrderLog (auditoría de acciones KDS).
 -- Las órdenes/estaciones viven en el módulo `orders` (kitchen_orders_*); este módulo es la capa
 -- de display/auditoría. Las FKs cruzadas NO se declaran aquí (tablas de otro módulo).
--- Contrato de fila estándar de hub-next (§2.5): hub_id + soft-delete + auditoría.
+-- Contrato de fila estándar de hub (§2.5): hub_id + soft-delete + auditoría.
 
 -- Configuración de display por hub (singleton).
 CREATE TABLE IF NOT EXISTS kitchen_settings (

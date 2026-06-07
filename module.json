@@ -4,9 +4,19 @@
   "version": "2.2.4",
   "agent": {
     "description": "Manages the kitchen display system: configure stations and alerts, and track order status events through the kitchen log.",
-    "keywords": ["kitchen", "display", "orders", "station", "kds", "cooking", "log"]
+    "keywords": [
+      "kitchen",
+      "display",
+      "orders",
+      "station",
+      "kds",
+      "cooking",
+      "log"
+    ]
   },
-  "depends_on": ["orders"],
+  "depends_on": [
+    "orders"
+  ],
   "permissions": [
     "kitchen.view_kitchensettings",
     "kitchen.change_kitchensettings",
@@ -14,7 +24,9 @@
     "kitchen.manage_settings"
   ],
   "role_permissions": {
-    "admin": ["*"],
+    "admin": [
+      "*"
+    ],
     "manager": [
       "kitchen.view_kitchensettings",
       "kitchen.change_kitchensettings",
@@ -42,13 +54,55 @@
     "kitchen.settings.get": {
       "permission": "kitchen.view_kitchensettings",
       "sql": "queries/settings_get.sql",
-      "ai": { "description": "Retrieves the current kitchen display settings." }
+      "ai": {
+        "description": "Retrieves the current kitchen display settings."
+      }
     },
     "kitchen.logs.list": {
       "permission": "kitchen.view_kitchenorderlog",
       "sql": "queries/logs_list.sql",
       "schema": "schemas/logs_list.json",
-      "ai": { "description": "Lists the log of order events processed by the kitchen." }
+      "list": {
+        "sort": [
+          "id",
+          "order_id",
+          "order_item_id",
+          "station_id",
+          "action",
+          "performed_by_id",
+          "notes",
+          "created_at"
+        ],
+        "default_sort": "created_at",
+        "default_dir": "desc",
+        "filters": {
+          "order_id": {
+            "op": "eq"
+          },
+          "order_item_id": {
+            "op": "eq"
+          },
+          "station_id": {
+            "op": "eq"
+          },
+          "action": {
+            "op": "eq"
+          },
+          "performed_by_id": {
+            "op": "eq"
+          },
+          "notes": {
+            "op": "eq"
+          },
+          "created_at": {
+            "op": "range"
+          }
+        },
+        "page_size": 50
+      },
+      "ai": {
+        "description": "Lists the log of order events processed by the kitchen."
+      }
     }
   },
   "commands": {
@@ -59,7 +113,9 @@
         "commands/settings_update.sql"
       ],
       "schema": "schemas/settings_update.json",
-      "ai": { "description": "Updates the kitchen display configuration (stations, alerts, etc.)." }
+      "ai": {
+        "description": "Updates the kitchen display configuration (stations, alerts, etc.)."
+      }
     },
     "kitchen.logs.create": {
       "permission": "kitchen.view_kitchenorderlog",
@@ -68,7 +124,9 @@
         "commands/log_create.sql"
       ],
       "schema": "schemas/log_create.json",
-      "ai": { "description": "Records a new order status event in the kitchen log." }
+      "ai": {
+        "description": "Records a new order status event in the kitchen log."
+      }
     }
   },
   "events": {
