@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "kitchen.orders.create_from_sale",
+  "description": "Payload del evento `sale.completed` (contrato del módulo sales) que materializa una comanda. additionalProperties=true: el evento puede traer claves extra (sender, totales, etc.) y el contrato puede evolucionar sin romper el listener. Idempotente por sale_id (índice único parcial uq_kitchen_order_sale + _event_delivery del runtime).",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["sale_id"],
+  "properties": {
+    "sale_id": { "type": "string", "minLength": 1 },
+    "table_id": { "type": ["string", "null"], "default": null },
+    "customer_id": { "type": ["string", "null"], "default": null },
+    "customer_name": { "type": "string", "default": "" },
+    "channel": { "type": "string", "default": "" },
+    "items": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["quantity"],
+        "properties": {
+          "product_id": { "type": ["string", "null"], "default": null },
+          "product_name": { "type": "string", "default": "" },
+          "quantity": { "type": "number", "minimum": 0 },
+          "unit_price": { "type": "number", "minimum": 0, "default": 0 },
+          "is_service": { "type": "boolean", "default": false },
+          "notes": { "type": "string", "default": "" }
+        }
+      }
+    }
+  }
+}

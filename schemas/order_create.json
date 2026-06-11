@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "kitchen.orders.create",
+  "description": "Alta de comanda. El snapshot de producto (product_name/unit_price y, para enrutado por categoría, category_id) viaja en el payload — patrón sales: el caller (UI/POS) lo resuelve antes de invocar; el handler WASM no tiene lecturas.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["order_type"],
+  "properties": {
+    "order_type": {
+      "type": "string",
+      "enum": ["dine_in", "takeaway", "delivery"],
+      "default": "dine_in"
+    },
+    "table_id": { "type": ["string", "null"], "default": null },
+    "customer_id": { "type": ["string", "null"], "default": null },
+    "waiter_id": { "type": ["string", "null"], "default": null },
+    "priority": {
+      "type": "string",
+      "enum": ["normal", "rush", "vip"],
+      "default": "normal"
+    },
+    "round_number": { "type": "integer", "minimum": 1, "default": 1 },
+    "notes": { "type": "string", "default": "" },
+    "items": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["product_id", "quantity"],
+        "properties": {
+          "product_id": { "type": "string", "minLength": 1 },
+          "product_name": { "type": "string", "default": "" },
+          "unit_price": { "type": "number", "minimum": 0, "default": 0 },
+          "quantity": { "type": "integer", "minimum": 1 },
+          "category_id": { "type": ["string", "null"], "default": null },
+          "station_id": { "type": ["string", "null"], "default": null },
+          "modifiers": { "type": "string", "default": "" },
+          "notes": { "type": "string", "default": "" },
+          "seat_number": { "type": ["integer", "null"], "default": null }
+        }
+      }
+    }
+  }
+}

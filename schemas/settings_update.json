@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "kitchen.settings.update",
-  "description": "Parámetros para actualizar la configuración del KDS (singleton por hub).",
+  "description": "Configuración de cocina (singleton por hub): display (KDS) + comportamiento de comandas (fusión ADR-0014). La UI envía el snapshot completo (upsert).",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -16,7 +16,14 @@
     "sound_on_rush": { "type": "boolean" },
     "auto_bump_enabled": { "type": "boolean" },
     "auto_bump_delay_seconds": { "type": "integer", "minimum": 1, "maximum": 300 },
-    "color_coding_enabled": { "type": "boolean" }
+    "color_coding_enabled": { "type": "boolean" },
+    "auto_print_tickets": { "type": "boolean" },
+    "use_rounds": { "type": "boolean" },
+    "auto_fire_on_round": { "type": "boolean" },
+    "default_order_type": {
+      "type": "string",
+      "enum": ["dine_in", "takeaway", "delivery"]
+    }
   },
   "required": [
     "auto_accept_orders",
@@ -30,6 +37,10 @@
     "sound_on_rush",
     "auto_bump_enabled",
     "auto_bump_delay_seconds",
-    "color_coding_enabled"
+    "color_coding_enabled",
+    "auto_print_tickets",
+    "use_rounds",
+    "auto_fire_on_round",
+    "default_order_type"
   ]
 }
