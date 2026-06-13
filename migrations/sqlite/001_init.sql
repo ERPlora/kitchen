@@ -76,10 +76,10 @@ CREATE TABLE IF NOT EXISTS kitchen_order (
     priority     TEXT NOT NULL DEFAULT 'normal',    -- normal|rush|vip
     round_number INTEGER NOT NULL DEFAULT 1,
     notes        TEXT NOT NULL DEFAULT '',
-    subtotal     NUMERIC NOT NULL DEFAULT 0,
-    tax          NUMERIC NOT NULL DEFAULT 0,
-    discount     NUMERIC NOT NULL DEFAULT 0,
-    total        NUMERIC NOT NULL DEFAULT 0,
+    subtotal     INTEGER NOT NULL DEFAULT 0,  -- céntimos (ADR-0007)
+    tax          INTEGER NOT NULL DEFAULT 0,  -- céntimos
+    discount     INTEGER NOT NULL DEFAULT 0,  -- céntimos
+    total        INTEGER NOT NULL DEFAULT 0,  -- céntimos
     fired_at     TEXT,
     ready_at     TEXT,
     served_at    TEXT,
@@ -119,9 +119,9 @@ CREATE TABLE IF NOT EXISTS kitchen_order_item (
     station_id   TEXT,
     product_id   TEXT,                              -- ref a inventory (otro módulo)
     product_name TEXT NOT NULL,
-    unit_price   NUMERIC NOT NULL DEFAULT 0,
+    unit_price   INTEGER NOT NULL DEFAULT 0,  -- céntimos
     quantity     INTEGER NOT NULL DEFAULT 1,
-    total        NUMERIC NOT NULL DEFAULT 0,
+    total        INTEGER NOT NULL DEFAULT 0,  -- céntimos
     modifiers    TEXT NOT NULL DEFAULT '',
     notes        TEXT NOT NULL DEFAULT '',
     status       TEXT NOT NULL DEFAULT 'pending',   -- pending|preparing|ready|served|cancelled
@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS kitchen_order_modifier (
     hub_id        TEXT NOT NULL,
     order_item_id TEXT NOT NULL,
     name          TEXT NOT NULL,
-    price         NUMERIC NOT NULL DEFAULT 0,
+    price         INTEGER NOT NULL DEFAULT 0,  -- céntimos
     is_deleted    INTEGER NOT NULL DEFAULT 0,
     deleted_at    TEXT,
     created_by    TEXT,

@@ -66,17 +66,30 @@ fn to_fn_result(r: Result<Output, String>) -> FnResult<Json<Output>> {
 
 // ── Helpers (mismo estilo que sales-handler) ───────────────────────────────
 
-/// Redondeo a 2 decimales half-even (igual que Decimal.quantize de Python).
-fn round2(x: f64) -> f64 {
-    let scaled = x * 100.0;
-    let floor = scaled.floor();
-    let diff = scaled - floor;
-    let rounded = if (diff - 0.5).abs() < 1e-9 {
+/// Redondea céntimos fraccionarios a céntimos enteros half-even (ADR-0007). `x` ya en
+/// el espacio de céntimos.
+fn round_cents(x: f64) -> i64 {
+    let floor = x.floor();
+    let diff = x - floor;
+    let r = if (diff - 0.5).abs() < 1e-9 {
         if (floor as i64) % 2 == 0 { floor } else { floor + 1.0 }
     } else {
-        scaled.round()
+        x.round()
     };
-    rounded / 100.0
+    r as i64
+}
+
+/// Lee un importe **en céntimos** (`i64`) del payload: entero, string de entero, o
+/// (robustez) decimal interpretado como céntimos ya escalados. El contrato es céntimos.
+fn cents(v: &Value, d: i64) -> i64 {
+    match v {
+        Value::Number(n) => n.as_i64().or_else(|| n.as_f64().map(round_cents)).unwrap_or(d),
+        Value::String(s) => {
+            let s = s.trim();
+            s.parse::<i64>().ok().or_else(|| s.parse::<f64>().ok().map(round_cents)).unwrap_or(d)
+        }
+        _ => d,
+    }
 }
 
 fn as_f64(v: &Value, d: f64) -> f64 {
@@ -124,9 +137,6 @@ fn opt_str(p: &Value, k: &str) -> Value {
     if s.is_empty() { Value::Null } else { Value::String(s) }
 }
 
-fn num(x: f64) -> Value {
-    json!(round2(x))
-}
 
 fn day_from_now(now: &str) -> String {
     let date = now.split('T').next().unwrap_or("");
@@ -186,7 +196,7 @@ fn build_order_ops(
     header: &Value,
     sale_id: Value,
     items: &[Value],
-) -> (Vec<Operation>, f64) {
+) -> (Vec<Operation>, i64) {
     let mut ops: Vec<Operation> = Vec::new();
 
     let mut bump = Map::new();
@@ -196,11 +206,11 @@ fn build_order_ops(
     let header_idx = ops.len();
     ops.push(Operation::sql("kitchen._insert_order", Map::new())); // placeholder
 
-    let mut subtotal = 0.0;
+    let mut subtotal: i64 = 0; // céntimos
     for (i, item) in items.iter().enumerate() {
         let qty = item.get("quantity").map(|v| as_f64(v, 1.0)).unwrap_or(1.0);
-        let unit_price = item.get("unit_price").map(|v| as_f64(v, 0.0)).unwrap_or(0.0);
-        let line_total = round2(unit_price * qty);
+        let unit_price = cents(item.get("unit_price").unwrap_or(&Value::Null), 0); // céntimos
+        let line_total = round_cents(unit_price as f64 * qty); // céntimos
         subtotal += line_total;
 
         let item_id = ctx.new_ids.get(i + 1).cloned().unwrap_or_default();
@@ -211,9 +221,9 @@ fn build_order_ops(
         p.insert("product_id".into(), opt_str(item, "product_id"));
         p.insert("category_id".into(), opt_str(item, "category_id"));
         p.insert("product_name".into(), json!(str_or(item, "product_name", "")));
-        p.insert("unit_price".into(), num(unit_price));
+        p.insert("unit_price".into(), json!(unit_price)); // céntimos
         p.insert("quantity".into(), json!(as_i64(item.get("quantity").unwrap_or(&Value::Null), 1)));
-        p.insert("total".into(), num(line_total));
+        p.insert("total".into(), json!(line_total)); // céntimos
         p.insert("modifiers".into(), json!(str_or(item, "modifiers", "")));
         p.insert("notes".into(), json!(str_or(item, "notes", "")));
         p.insert("status".into(), json!("pending"));
@@ -221,8 +231,7 @@ fn build_order_ops(
         ops.push(Operation::sql("kitchen._insert_item", p));
     }
 
-    let subtotal = round2(subtotal);
-    let total = subtotal; // tax/discount llegan 0 en el flujo actual (legacy idéntico)
+    let total = subtotal; // céntimos; tax/discount llegan 0 en el flujo actual (legacy idéntico)
 
     let mut h = Map::new();
     h.insert("order_id".into(), json!(order_id));
@@ -236,10 +245,10 @@ fn build_order_ops(
     h.insert("priority".into(), json!(str_or(header, "priority", "normal")));
     h.insert("round_number".into(), json!(header.get("round_number").map(|v| as_i64(v, 1)).unwrap_or(1)));
     h.insert("notes".into(), json!(str_or(header, "notes", "")));
-    h.insert("subtotal".into(), num(subtotal));
-    h.insert("tax".into(), num(0.0));
-    h.insert("discount".into(), num(0.0));
-    h.insert("total".into(), num(total));
+    h.insert("subtotal".into(), json!(subtotal)); // céntimos
+    h.insert("tax".into(), json!(0));
+    h.insert("discount".into(), json!(0));
+    h.insert("total".into(), json!(total)); // céntimos
     ops[header_idx] = Operation::sql("kitchen._insert_order", h);
 
     (ops, total)
@@ -274,7 +283,7 @@ pub fn create_order_pure(input: Value) -> Result<Output, String> {
 
     let mut ev = order_event("kitchen.order.created", &order_id, "received", "", &ctx.user_id);
     if let Value::Object(p) = &mut ev.payload {
-        p.insert("total".into(), num(total));
+        p.insert("total".into(), json!(total)); // céntimos
         p.insert("items_count".into(), json!(items.len()));
         p.insert("order_type".into(), json!(payload.get("order_type").map(as_str).unwrap_or_else(|| "dine_in".into())));
     }
@@ -407,7 +416,7 @@ pub fn create_order_from_sale_pure(input: Value) -> Result<Output, String> {
     let mut ev = order_event("kitchen.order.created", &order_id, "received", "", &ctx.user_id);
     if let Value::Object(p) = &mut ev.payload {
         p.insert("sale_id".into(), json!(sale_id));
-        p.insert("total".into(), num(total));
+        p.insert("total".into(), json!(total)); // céntimos
         p.insert("items_count".into(), json!(items.len()));
         p.insert("order_type".into(), json!(order_type));
     }

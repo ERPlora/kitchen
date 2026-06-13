@@ -4,8 +4,9 @@
 -- Criterio de tipos (paridad SQLite↔Postgres, los commands SQL son COMPARTIDOS):
 --   * flags 0/1 → INTEGER (no BOOLEAN: los commands bindean 0/1 y Postgres no castea
 --     entero→boolean implícitamente en INSERT/UPDATE);
---   * *_at → TIMESTAMPTZ (el runtime bindea :now como string RFC3339, casteable);
---   * importes → NUMERIC; ids/refs → TEXT (UUIDs del runtime como texto).
+--   * *_at → TEXT ISO-8601 (ADR-0007: NO TIMESTAMPTZ — el runtime bindea :now como string ISO;
+--     paridad de comparación lexicográfica con SQLite entre dialectos);
+--   * importes → INTEGER en céntimos (ADR-0007); ids/refs → TEXT (UUIDs del runtime como texto).
 
 -- Configuración de display + comportamiento de comandas por hub (singleton).
 CREATE TABLE IF NOT EXISTS kitchen_settings (
@@ -28,11 +29,11 @@ CREATE TABLE IF NOT EXISTS kitchen_settings (
     auto_fire_on_round      INTEGER NOT NULL DEFAULT 0,
     default_order_type      TEXT NOT NULL DEFAULT 'dine_in',
     is_deleted              INTEGER NOT NULL DEFAULT 0,
-    deleted_at              TIMESTAMPTZ,
+    deleted_at              TEXT       ,
     created_by              TEXT,
     updated_by              TEXT,
-    created_at              TIMESTAMPTZ NOT NULL,
-    updated_at              TIMESTAMPTZ
+    created_at              TEXT        NOT NULL,
+    updated_at              TEXT       
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_kitchen_settings_hub ON kitchen_settings (hub_id);
 CREATE INDEX IF NOT EXISTS idx_kitchen_settings_hub ON kitchen_settings (hub_id, is_deleted);
@@ -50,11 +51,11 @@ CREATE TABLE IF NOT EXISTS kitchen_station (
     sort_order   INTEGER NOT NULL DEFAULT 0,
     is_active    INTEGER NOT NULL DEFAULT 1,
     is_deleted   INTEGER NOT NULL DEFAULT 0,
-    deleted_at   TIMESTAMPTZ,
+    deleted_at   TEXT       ,
     created_by   TEXT,
     updated_by   TEXT,
-    created_at   TIMESTAMPTZ NOT NULL,
-    updated_at   TIMESTAMPTZ
+    created_at   TEXT        NOT NULL,
+    updated_at   TEXT       
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_kitchen_station_hub_name ON kitchen_station (hub_id, name);
 CREATE INDEX        IF NOT EXISTS ix_kitchen_station_hub_active ON kitchen_station (hub_id, is_active);
@@ -74,19 +75,19 @@ CREATE TABLE IF NOT EXISTS kitchen_order (
     priority     TEXT NOT NULL DEFAULT 'normal',
     round_number INTEGER NOT NULL DEFAULT 1,
     notes        TEXT NOT NULL DEFAULT '',
-    subtotal     NUMERIC NOT NULL DEFAULT 0,
-    tax          NUMERIC NOT NULL DEFAULT 0,
-    discount     NUMERIC NOT NULL DEFAULT 0,
-    total        NUMERIC NOT NULL DEFAULT 0,
-    fired_at     TIMESTAMPTZ,
-    ready_at     TIMESTAMPTZ,
-    served_at    TIMESTAMPTZ,
+    subtotal     INTEGER NOT NULL DEFAULT 0,  -- céntimos (ADR-0007)
+    tax          INTEGER NOT NULL DEFAULT 0,  -- céntimos
+    discount     INTEGER NOT NULL DEFAULT 0,  -- céntimos
+    total        INTEGER NOT NULL DEFAULT 0,  -- céntimos
+    fired_at     TEXT       ,
+    ready_at     TEXT       ,
+    served_at    TEXT       ,
     is_deleted   INTEGER NOT NULL DEFAULT 0,
-    deleted_at   TIMESTAMPTZ,
+    deleted_at   TEXT       ,
     created_by   TEXT,
     updated_by   TEXT,
-    created_at   TIMESTAMPTZ NOT NULL,
-    updated_at   TIMESTAMPTZ
+    created_at   TEXT        NOT NULL,
+    updated_at   TEXT       
 );
 CREATE INDEX IF NOT EXISTS ix_kitchen_order_hub_status  ON kitchen_order (hub_id, status);
 CREATE INDEX IF NOT EXISTS ix_kitchen_order_hub_created ON kitchen_order (hub_id, created_at);
@@ -113,22 +114,22 @@ CREATE TABLE IF NOT EXISTS kitchen_order_item (
     station_id   TEXT,
     product_id   TEXT,
     product_name TEXT NOT NULL,
-    unit_price   NUMERIC NOT NULL DEFAULT 0,
+    unit_price   INTEGER NOT NULL DEFAULT 0,  -- céntimos
     quantity     INTEGER NOT NULL DEFAULT 1,
-    total        NUMERIC NOT NULL DEFAULT 0,
+    total        INTEGER NOT NULL DEFAULT 0,  -- céntimos
     modifiers    TEXT NOT NULL DEFAULT '',
     notes        TEXT NOT NULL DEFAULT '',
     status       TEXT NOT NULL DEFAULT 'pending',
     seat_number  INTEGER,
-    fired_at     TIMESTAMPTZ,
-    started_at   TIMESTAMPTZ,
-    completed_at TIMESTAMPTZ,
+    fired_at     TEXT       ,
+    started_at   TEXT       ,
+    completed_at TEXT       ,
     is_deleted   INTEGER NOT NULL DEFAULT 0,
-    deleted_at   TIMESTAMPTZ,
+    deleted_at   TEXT       ,
     created_by   TEXT,
     updated_by   TEXT,
-    created_at   TIMESTAMPTZ NOT NULL,
-    updated_at   TIMESTAMPTZ,
+    created_at   TEXT        NOT NULL,
+    updated_at   TEXT       ,
     FOREIGN KEY (order_id)   REFERENCES kitchen_order (id)   ON DELETE CASCADE,
     FOREIGN KEY (station_id) REFERENCES kitchen_station (id) ON DELETE SET NULL
 );
@@ -143,13 +144,13 @@ CREATE TABLE IF NOT EXISTS kitchen_order_modifier (
     hub_id        TEXT NOT NULL,
     order_item_id TEXT NOT NULL,
     name          TEXT NOT NULL,
-    price         NUMERIC NOT NULL DEFAULT 0,
+    price         INTEGER NOT NULL DEFAULT 0,  -- céntimos
     is_deleted    INTEGER NOT NULL DEFAULT 0,
-    deleted_at    TIMESTAMPTZ,
+    deleted_at    TEXT       ,
     created_by    TEXT,
     updated_by    TEXT,
-    created_at    TIMESTAMPTZ NOT NULL,
-    updated_at    TIMESTAMPTZ,
+    created_at    TEXT        NOT NULL,
+    updated_at    TEXT       ,
     FOREIGN KEY (order_item_id) REFERENCES kitchen_order_item (id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS ix_kitchen_modifier_item ON kitchen_order_modifier (hub_id, order_item_id);
@@ -162,11 +163,11 @@ CREATE TABLE IF NOT EXISTS kitchen_product_station (
     product_id  TEXT NOT NULL,
     station_id  TEXT NOT NULL,
     is_deleted  INTEGER NOT NULL DEFAULT 0,
-    deleted_at  TIMESTAMPTZ,
+    deleted_at  TEXT       ,
     created_by  TEXT,
     updated_by  TEXT,
-    created_at  TIMESTAMPTZ NOT NULL,
-    updated_at  TIMESTAMPTZ,
+    created_at  TEXT        NOT NULL,
+    updated_at  TEXT       ,
     FOREIGN KEY (station_id) REFERENCES kitchen_station (id) ON DELETE CASCADE
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_kitchen_product_station_hub_product ON kitchen_product_station (hub_id, product_id);
@@ -179,11 +180,11 @@ CREATE TABLE IF NOT EXISTS kitchen_category_station (
     category_id TEXT NOT NULL,
     station_id  TEXT NOT NULL,
     is_deleted  INTEGER NOT NULL DEFAULT 0,
-    deleted_at  TIMESTAMPTZ,
+    deleted_at  TEXT       ,
     created_by  TEXT,
     updated_by  TEXT,
-    created_at  TIMESTAMPTZ NOT NULL,
-    updated_at  TIMESTAMPTZ,
+    created_at  TEXT        NOT NULL,
+    updated_at  TEXT       ,
     FOREIGN KEY (station_id) REFERENCES kitchen_station (id) ON DELETE CASCADE
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_kitchen_category_station_hub_category ON kitchen_category_station (hub_id, category_id);
@@ -200,11 +201,11 @@ CREATE TABLE IF NOT EXISTS kitchen_order_log (
     performed_by_id TEXT,
     notes           TEXT NOT NULL DEFAULT '',
     is_deleted      INTEGER NOT NULL DEFAULT 0,
-    deleted_at      TIMESTAMPTZ,
+    deleted_at      TEXT       ,
     created_by      TEXT,
     updated_by      TEXT,
-    created_at      TIMESTAMPTZ NOT NULL,
-    updated_at      TIMESTAMPTZ
+    created_at      TEXT        NOT NULL,
+    updated_at      TEXT       
 );
 CREATE INDEX IF NOT EXISTS idx_kitchen_order_log_hub   ON kitchen_order_log (hub_id, is_deleted);
 CREATE INDEX IF NOT EXISTS idx_kitchen_order_log_order ON kitchen_order_log (hub_id, order_id);
