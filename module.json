@@ -1,7 +1,7 @@
 {
   "id": "kitchen",
   "name": "Kitchen",
-  "version": "2.2.5",
+  "version": "2.2.6",
   "agent": {
     "description": "Single kitchen module: kitchen display system (KDS), production orders (create, track and transition status from firing to serving), stations with product/category routing, and an audit log of kitchen actions.",
     "keywords": [
@@ -93,7 +93,6 @@
     "kitchen.orders.list": {
       "permission": "kitchen.view_order",
       "sql": "queries/orders_list.sql",
-      "schema": "schemas/orders_list.json",
       "list": {
         "search": [
           "order_number",
@@ -204,7 +203,6 @@
     "kitchen.stations.list": {
       "permission": "kitchen.view_order",
       "sql": "queries/stations_list.sql",
-      "schema": "schemas/stations_list.json",
       "list": {
         "search": [
           "name",
@@ -276,7 +274,6 @@
     "kitchen.logs.list": {
       "permission": "kitchen.view_log",
       "sql": "queries/logs_list.sql",
-      "schema": "schemas/logs_list.json",
       "list": {
         "sort": [
           "id",
