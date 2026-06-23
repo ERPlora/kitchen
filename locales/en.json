@@ -1,0 +1,14 @@
+{
+  "name": "Kitchen",
+  "navigation": {
+    "display": {
+      "label": "Display"
+    },
+    "active": {
+      "label": "Commands"
+    },
+    "stations": {
+      "label": "Stations"
+    }
+  }
+}

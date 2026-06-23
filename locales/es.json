@@ -1,0 +1,14 @@
+{
+  "name": "Cocina",
+  "navigation": {
+    "display": {
+      "label": "Pantalla"
+    },
+    "active": {
+      "label": "Comandas"
+    },
+    "stations": {
+      "label": "Estaciones"
+    }
+  }
+}
