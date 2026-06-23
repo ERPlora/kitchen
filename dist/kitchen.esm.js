@@ -9,7 +9,7 @@ var __decorateClass = (decorators, target, key, kind) => {
   return result;
 };
 
-// ../../node_modules/.pnpm/@lit-labs+ssr-dom-shim@1.6.0/node_modules/@lit-labs/ssr-dom-shim/lib/element-internals.js
+// node_modules/@lit-labs/ssr-dom-shim/lib/element-internals.js
 var ElementInternalsShim = class ElementInternals {
   get shadowRoot() {
     return this.__host.__shadowRoot;
@@ -88,7 +88,7 @@ var ElementInternalsShim = class ElementInternals {
   }
 };
 
-// ../../node_modules/.pnpm/@lit-labs+ssr-dom-shim@1.6.0/node_modules/@lit-labs/ssr-dom-shim/lib/events.js
+// node_modules/@lit-labs/ssr-dom-shim/lib/events.js
 var __classPrivateFieldSet = function(receiver, state, value, kind, f3) {
   if (kind === "m") throw new TypeError("Private method is not writable");
   if (kind === "a" && !f3) throw new TypeError("Private accessor was defined without a setter");
@@ -246,7 +246,7 @@ Object.defineProperties(CustomEventShim.prototype, {
 var EventShimWithRealType = EventShim;
 var CustomEventShimWithRealType = CustomEventShim;
 
-// ../../node_modules/.pnpm/@lit-labs+ssr-dom-shim@1.6.0/node_modules/@lit-labs/ssr-dom-shim/lib/css.js
+// node_modules/@lit-labs/ssr-dom-shim/lib/css.js
 var _a2;
 var CSSRuleShim = (_a2 = class CSSRule {
   constructor() {
@@ -277,7 +277,7 @@ var CSSRuleShim = (_a2 = class CSSRule {
   }
 }, _a2.STYLE_RULE = 1, _a2.CHARSET_RULE = 2, _a2.IMPORT_RULE = 3, _a2.MEDIA_RULE = 4, _a2.FONT_FACE_RULE = 5, _a2.PAGE_RULE = 6, _a2.NAMESPACE_RULE = 10, _a2.KEYFRAMES_RULE = 7, _a2.KEYFRAME_RULE = 8, _a2.SUPPORTS_RULE = 12, _a2.COUNTER_STYLE_RULE = 11, _a2.FONT_FEATURE_VALUES_RULE = 14, _a2.MARGIN_RULE = 9, _a2);
 
-// ../../node_modules/.pnpm/@lit-labs+ssr-dom-shim@1.6.0/node_modules/@lit-labs/ssr-dom-shim/index.js
+// node_modules/@lit-labs/ssr-dom-shim/index.js
 globalThis.Event ??= EventShimWithRealType;
 globalThis.CustomEvent ??= CustomEventShimWithRealType;
 var constructionToken = Symbol();
@@ -674,7 +674,7 @@ var CustomElementRegistryShimWithRealType = CustomElementRegistry;
 var customElements2 = new CustomElementRegistryShimWithRealType();
 var windowShim = new WindowShim(constructionToken);
 
-// ../../node_modules/.pnpm/@lit+reactive-element@2.1.2/node_modules/@lit/reactive-element/node/css-tag.js
+// node_modules/@lit/reactive-element/node/css-tag.js
 var t = globalThis;
 var e = t.ShadowRoot && (void 0 === t.ShadyCSS || t.ShadyCSS.nativeShadow) && "adoptedStyleSheets" in Document.prototype && "replace" in CSSStyleSheet.prototype;
 var s = Symbol();
@@ -719,7 +719,7 @@ var c = e || void 0 === t.CSSStyleSheet ? (t5) => t5 : (t5) => t5 instanceof CSS
   return r(e5);
 })(t5) : t5;
 
-// ../../node_modules/.pnpm/@lit+reactive-element@2.1.2/node_modules/@lit/reactive-element/node/reactive-element.js
+// node_modules/@lit/reactive-element/node/reactive-element.js
 var { is: h, defineProperty: r2, getOwnPropertyDescriptor: o2, getOwnPropertyNames: n2, getOwnPropertySymbols: a, getPrototypeOf: c2 } = Object;
 var l = globalThis;
 l.customElements ??= customElements2;
@@ -942,7 +942,7 @@ var g = class extends (globalThis.HTMLElement ?? HTMLElementShimWithRealType) {
 };
 g.elementStyles = [], g.shadowRootOptions = { mode: "open" }, g[f("elementProperties")] = /* @__PURE__ */ new Map(), g[f("finalized")] = /* @__PURE__ */ new Map(), u?.({ ReactiveElement: g }), (l.reactiveElementVersions ??= []).push("2.1.2");
 
-// ../../node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/lit-html.js
+// node_modules/lit-html/lit-html.js
 var t2 = globalThis;
 var i2 = (t5) => t5;
 var s2 = t2.trustedTypes;
@@ -1197,7 +1197,7 @@ var D = (t5, i7, s5) => {
   return h4._$AI(t5), h4;
 };
 
-// ../../node_modules/.pnpm/lit-element@4.2.2/node_modules/lit-element/lit-element.js
+// node_modules/lit-element/lit-element.js
 var s3 = globalThis;
 var i3 = class extends g {
   constructor() {
@@ -1226,7 +1226,7 @@ var o4 = s3.litElementPolyfillSupport;
 o4?.({ LitElement: i3 });
 (s3.litElementVersions ??= []).push("4.2.2");
 
-// ../../node_modules/.pnpm/@lit+reactive-element@2.1.2/node_modules/@lit/reactive-element/node/decorators/property.js
+// node_modules/@lit/reactive-element/node/decorators/property.js
 var o5 = { attribute: true, type: String, converter: b, reflect: false, hasChanged: m };
 var r4 = (t5 = o5, e5, r6) => {
   const { kind: n6, metadata: i7 } = r6;
@@ -1256,19 +1256,19 @@ function n4(t5) {
   })(t5, e5, o7);
 }
 
-// ../../node_modules/.pnpm/@lit+reactive-element@2.1.2/node_modules/@lit/reactive-element/node/decorators/state.js
+// node_modules/@lit/reactive-element/node/decorators/state.js
 function r5(r6) {
   return n4({ ...r6, state: true, attribute: false });
 }
 
-// ../../node_modules/.pnpm/@outfitkit+core@file+..+outfitkit/node_modules/@outfitkit/core/dist/define.js
+// ../outfitkit/dist/define.js
 function define(tag, ctor) {
   if (typeof customElements !== "undefined" && !customElements.get(tag)) {
     customElements.define(tag, ctor);
   }
 }
 
-// ../../node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directive.js
+// node_modules/lit-html/directive.js
 var t3 = { ATTRIBUTE: 1, CHILD: 2, PROPERTY: 3, BOOLEAN_ATTRIBUTE: 4, EVENT: 5, ELEMENT: 6 };
 var e4 = (t5) => (...e5) => ({ _$litDirective$: t5, values: e5 });
 var i4 = class {
@@ -1288,7 +1288,7 @@ var i4 = class {
   }
 };
 
-// ../../node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directive-helpers.js
+// node_modules/lit-html/directive-helpers.js
 var { I: t4 } = j;
 var i5 = (o7) => o7;
 var s4 = () => document.createComment("");
@@ -1321,7 +1321,7 @@ var h3 = (o7) => {
   o7._$AR(), o7._$AA.remove();
 };
 
-// ../../node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directives/repeat.js
+// node_modules/lit-html/directives/repeat.js
 var u4 = (e5, s5, t5) => {
   const r6 = /* @__PURE__ */ new Map();
   for (let l3 = s5; l3 <= t5; l3++) r6.set(e5[l3], l3);
@@ -1374,7 +1374,7 @@ var c4 = e4(class extends i4 {
   }
 });
 
-// ../../node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directives/style-map.js
+// node_modules/lit-html/directives/style-map.js
 var n5 = "important";
 var i6 = " !" + n5;
 var o6 = e4(class extends i4 {
@@ -1403,7 +1403,7 @@ var o6 = e4(class extends i4 {
   }
 });
 
-// ../../node_modules/.pnpm/@outfitkit+core@file+..+outfitkit/node_modules/@outfitkit/core/dist/ok-data-table.js
+// ../outfitkit/dist/ok-data-table.js
 var __defProp2 = Object.defineProperty;
 var __decorateClass2 = (decorators, target, key, kind) => {
   var result = void 0;
@@ -1571,12 +1571,15 @@ var OkDataTable = class extends i3 {
 
     /* ── Topbar / cabecera (relieve) ─────────────────────────────────────────────────────── */
     .bar { display: flex; flex-direction: column; gap: 0.6rem; padding: 0.65rem 1rem; border-bottom: 1px solid var(--border-color); background: var(--header-background); }
-    /* Toolbar CONSOLIDADA: TODOS los controles (buscador, filtros, page-size, vistas, columnas,
-     * CSV, ⋮, alta) son hijos directos de UNA sola fila flex que envuelve ELEMENTO A ELEMENTO
-     * (no por bloques): caben en una línea → una línea; los que no caben bajan a la(s) línea(s)
-     * que hagan falta. El cluster derecho se empuja al borde con .tk-spacer (hueco flexible)
-     * solo cuando todo cabe en una línea; al envolver, el spacer se oculta y todo se apila a la
-     * izquierda. */
+    /* Toolbar CONSOLIDADA: TODOS los controles son hijos directos de UNA sola fila flex que
+     * envuelve ELEMENTO A ELEMENTO (no por bloques): caben en una línea → una línea; los que no
+     * caben bajan a la(s) línea(s) que hagan falta. El cluster derecho se empuja al borde con
+     * .tk-spacer (hueco flexible) solo cuando todo cabe en una línea; al envolver, el spacer se
+     * oculta y todo se apila a la izquierda.
+     * ORDEN CANÓNICO (2026-06-22, izquierda→derecha): [buscador] · [filtros en línea] · ‹spacer› ·
+     * [SELECTORES: columnas → filas/página] · [BOTONES: vistas → filtros(funnel) → import → export →
+     * alta → ⋮ → acción primaria]. Es decir: buscador al inicio, filtros en medio, y al final los
+     * selectores (columnas, luego «N por página») seguidos de los botones de acción. */
     .bar-main { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
     .bar-main > ion-button { --padding-start: 0.5rem; --padding-end: 0.5rem; margin: 0; }
     /* Spacer que absorbe el hueco libre en pantallas anchas (empuja el cluster derecho al borde).
@@ -2287,6 +2290,19 @@ var OkDataTable = class extends i3 {
                   ${this.hasSearch ? b2`<div class="search">${searchbar}</div>` : A}
                   ${this.inlineFilters ? this.renderInlineFilters() : A}
                   <span class="tk-spacer"></span>
+                    ${this.effColumnPicker ? b2`
+                          <ion-select
+                            class="tk-cols"
+                            multiple
+                            interface="popover"
+                            aria-label=${this.t.columnsVisible}
+                            .value=${this.visibleColumns.map((c5) => c5.key)}
+                            .selectedText=${this.t.columns}
+                            @ionChange=${(e5) => this.setVisibleColumns(e5.detail.value)}
+                          >
+                            ${this.columns.map((c5) => b2`<ion-select-option value=${c5.key}>${c5.header}</ion-select-option>`)}
+                          </ion-select>
+                        ` : A}
                     ${this.effPageSizes.length ? b2`
                           <ion-select
                             class="tk-psize"
@@ -2303,19 +2319,6 @@ var OkDataTable = class extends i3 {
                             ${this.toolButton("list-outline", this.viewMode === "table", () => this.setViewMode("table"), this.t.viewList)}
                             ${this.toolButton("grid-outline", this.viewMode === "cards", () => this.setViewMode("cards"), this.t.viewCards)}
                           </span>
-                        ` : A}
-                    ${this.effColumnPicker ? b2`
-                          <ion-select
-                            class="tk-cols"
-                            multiple
-                            interface="popover"
-                            aria-label=${this.t.columnsVisible}
-                            .value=${this.visibleColumns.map((c5) => c5.key)}
-                            .selectedText=${this.t.columns}
-                            @ionChange=${(e5) => this.setVisibleColumns(e5.detail.value)}
-                          >
-                            ${this.columns.map((c5) => b2`<ion-select-option value=${c5.key}>${c5.header}</ion-select-option>`)}
-                          </ion-select>
                         ` : A}
                     ${this.hasFilterRow && !this.inlineFilters ? this.toolButton("funnel-outline", this.panel === "filters" || this.activeFilterCount > 0, () => this.toggle("filters"), this.t.filters, this.serverSide ? void 0 : this.activeFilterCount) : A}
                     ${this.effImport ? b2`
@@ -2678,7 +2681,7 @@ __decorateClass2([
 ], OkDataTable.prototype, "menuOpen");
 define("ok-data-table", OkDataTable);
 
-// ../../node_modules/.pnpm/@erplora+module-sdk@file+..+hub+packages+module-sdk/node_modules/@erplora/module-sdk/src/index.ts
+// ../hub/packages/module-sdk/src/index.ts
 function isEmpty(v3) {
   return v3 === null || v3 === void 0 || v3 === "";
 }
@@ -2796,7 +2799,242 @@ function createListController(client, queryName, onChange = () => {
   return new ListController(client, queryName, onChange, opts);
 }
 
-// ui/components/erp-kitchen-display/erp-kitchen-display.ts
+// ../modules-workspace/modules/kitchen/locales/es.json
+var es_default = {
+  name: "Cocina",
+  navigation: {
+    display: {
+      label: "Pantalla"
+    },
+    active: {
+      label: "Comandas"
+    },
+    stations: {
+      label: "Estaciones"
+    }
+  },
+  ui: {
+    displayTitle: "Kitchen Display",
+    settingsToggleOpen: "Ajustes",
+    settingsToggleClose: "Cerrar ajustes",
+    settingsTitle: "Ajustes de cocina",
+    fieldAutoAcceptOrders: "Auto-aceptar comandas",
+    fieldShowTimer: "Mostrar temporizador",
+    fieldSoundEnabled: "Sonido",
+    fieldSoundOnNewOrder: "Sonido al recibir comanda",
+    fieldSoundOnRush: "Sonido en prioridad rush",
+    fieldAutoBumpEnabled: "Auto-bump",
+    fieldColorCodingEnabled: "Colores por tiempo",
+    fieldAutoPrintTickets: "Imprimir tickets autom\xE1ticamente",
+    fieldUseRounds: "Usar rondas",
+    fieldAutoFireOnRound: "Lanzar al cerrar ronda",
+    fieldWarningTime: "Aviso (min)",
+    fieldCriticalTime: "Cr\xEDtico (min)",
+    fieldItemsPerPage: "Comandas por p\xE1gina",
+    fieldAutoRefresh: "Refresco (s)",
+    fieldAutoBumpDelay: "Auto-bump (s)",
+    defaultOrderType: "Tipo por defecto",
+    orderTypeDineIn: "En sala",
+    orderTypeTakeaway: "Para llevar",
+    orderTypeDelivery: "A domicilio",
+    saveSettings: "Guardar ajustes",
+    savingSettings: "Guardando\u2026",
+    settingsSaved: "Ajustes guardados",
+    settingsLoadError: "No se pudieron cargar los ajustes",
+    settingsSaveError: "No se pudieron guardar los ajustes",
+    colAction: "Acci\xF3n",
+    colOrder: "Comanda",
+    colNotes: "Notas",
+    colWhen: "Cu\xE1ndo",
+    actionReceived: "Recibidas",
+    actionStarted: "Lanzadas",
+    actionBumped: "Listas (bump)",
+    actionServed: "Servidas",
+    actionRecalled: "Recuperadas",
+    actionCancelled: "Canceladas",
+    searchLogs: "Buscar acci\xF3n, comanda o notas\u2026",
+    loading: "Cargando\u2026",
+    emptyLogs: "Sin actividad reciente en cocina.",
+    ordersTitle: "Comandas",
+    colType: "Tipo",
+    colPriority: "Prioridad",
+    colStatus: "Estado",
+    colTotal: "Total",
+    statusPending: "Pendiente",
+    statusPreparing: "En preparaci\xF3n",
+    statusReady: "Lista",
+    statusServed: "Servida",
+    statusCancelled: "Cancelada",
+    rowFire: "Lanzar",
+    rowMarkReady: "Lista",
+    rowMarkServed: "Servida",
+    rowRecall: "Recuperar",
+    rowCancel: "Cancelar",
+    placeholderType: "Tipo",
+    placeholderNotes: "Notas",
+    newOrder: "Nueva comanda",
+    creatingOrder: "Creando\u2026",
+    createOrderError: "No se pudo crear la comanda",
+    updateStatusError: "No se pudo actualizar el estado",
+    searchOrders: "Buscar comanda o estado\u2026",
+    emptyOrders: "Sin comandas.",
+    stationsTitle: "Estaciones de producci\xF3n",
+    colStation: "Estaci\xF3n",
+    colPrinter: "Impresora",
+    colInProgress: "En curso",
+    colActive: "Activa",
+    yes: "S\xED",
+    no: "No",
+    rowEdit: "Editar",
+    rowRoute: "Enrutar",
+    rowDelete: "Eliminar",
+    placeholderStationName: "Nombre (Plancha)",
+    placeholderPrinterOptional: "Impresora (opcional)",
+    addStation: "A\xF1adir",
+    createStationError: "No se pudo crear la estaci\xF3n",
+    editStationTitle: "Editar estaci\xF3n",
+    labelName: "Nombre",
+    labelColor: "Color",
+    labelPrinter: "Impresora",
+    labelActive: "Activa",
+    save: "Guardar",
+    saving: "Guardando\u2026",
+    cancel: "Cancelar",
+    stationUpdated: "Estaci\xF3n actualizada",
+    updateStationError: "No se pudo actualizar la estaci\xF3n",
+    routingTitle: "Enrutado producto/categor\xEDa \u2192 estaci\xF3n",
+    placeholderStation: "Estaci\xF3n",
+    labelProductId: "ID de producto",
+    labelCategoryId: "ID de categor\xEDa",
+    placeholderOptional: "(opcional)",
+    saveRouting: "Guardar enrutado",
+    routingSaved: "Enrutado guardado",
+    saveRoutingError: "No se pudo guardar el enrutado",
+    deleteStationError: "No se pudo eliminar la estaci\xF3n",
+    searchStations: "Buscar estaci\xF3n\u2026",
+    emptyStations: "Sin estaciones."
+  }
+};
+
+// ../modules-workspace/modules/kitchen/locales/en.json
+var en_default = {
+  name: "Kitchen",
+  navigation: {
+    display: {
+      label: "Display"
+    },
+    active: {
+      label: "Commands"
+    },
+    stations: {
+      label: "Stations"
+    }
+  },
+  ui: {
+    displayTitle: "Kitchen Display",
+    settingsToggleOpen: "Settings",
+    settingsToggleClose: "Close settings",
+    settingsTitle: "Kitchen settings",
+    fieldAutoAcceptOrders: "Auto-accept orders",
+    fieldShowTimer: "Show timer",
+    fieldSoundEnabled: "Sound",
+    fieldSoundOnNewOrder: "Sound on new order",
+    fieldSoundOnRush: "Sound on rush priority",
+    fieldAutoBumpEnabled: "Auto-bump",
+    fieldColorCodingEnabled: "Color coding by time",
+    fieldAutoPrintTickets: "Auto-print tickets",
+    fieldUseRounds: "Use rounds",
+    fieldAutoFireOnRound: "Fire when round closes",
+    fieldWarningTime: "Warning (min)",
+    fieldCriticalTime: "Critical (min)",
+    fieldItemsPerPage: "Orders per page",
+    fieldAutoRefresh: "Refresh (s)",
+    fieldAutoBumpDelay: "Auto-bump (s)",
+    defaultOrderType: "Default type",
+    orderTypeDineIn: "Dine in",
+    orderTypeTakeaway: "Takeaway",
+    orderTypeDelivery: "Delivery",
+    saveSettings: "Save settings",
+    savingSettings: "Saving\u2026",
+    settingsSaved: "Settings saved",
+    settingsLoadError: "Could not load settings",
+    settingsSaveError: "Could not save settings",
+    colAction: "Action",
+    colOrder: "Order",
+    colNotes: "Notes",
+    colWhen: "When",
+    actionReceived: "Received",
+    actionStarted: "Fired",
+    actionBumped: "Ready (bump)",
+    actionServed: "Served",
+    actionRecalled: "Recalled",
+    actionCancelled: "Cancelled",
+    searchLogs: "Search action, order or notes\u2026",
+    loading: "Loading\u2026",
+    emptyLogs: "No recent kitchen activity.",
+    ordersTitle: "Orders",
+    colType: "Type",
+    colPriority: "Priority",
+    colStatus: "Status",
+    colTotal: "Total",
+    statusPending: "Pending",
+    statusPreparing: "Preparing",
+    statusReady: "Ready",
+    statusServed: "Served",
+    statusCancelled: "Cancelled",
+    rowFire: "Fire",
+    rowMarkReady: "Ready",
+    rowMarkServed: "Served",
+    rowRecall: "Recall",
+    rowCancel: "Cancel",
+    placeholderType: "Type",
+    placeholderNotes: "Notes",
+    newOrder: "New order",
+    creatingOrder: "Creating\u2026",
+    createOrderError: "Could not create order",
+    updateStatusError: "Could not update status",
+    searchOrders: "Search order or status\u2026",
+    emptyOrders: "No orders.",
+    stationsTitle: "Production stations",
+    colStation: "Station",
+    colPrinter: "Printer",
+    colInProgress: "In progress",
+    colActive: "Active",
+    yes: "Yes",
+    no: "No",
+    rowEdit: "Edit",
+    rowRoute: "Route",
+    rowDelete: "Delete",
+    placeholderStationName: "Name (Grill)",
+    placeholderPrinterOptional: "Printer (optional)",
+    addStation: "Add",
+    createStationError: "Could not create station",
+    editStationTitle: "Edit station",
+    labelName: "Name",
+    labelColor: "Color",
+    labelPrinter: "Printer",
+    labelActive: "Active",
+    save: "Save",
+    saving: "Saving\u2026",
+    cancel: "Cancel",
+    stationUpdated: "Station updated",
+    updateStationError: "Could not update station",
+    routingTitle: "Product/category routing \u2192 station",
+    placeholderStation: "Station",
+    labelProductId: "Product ID",
+    labelCategoryId: "Category ID",
+    placeholderOptional: "(optional)",
+    saveRouting: "Save routing",
+    routingSaved: "Routing saved",
+    saveRoutingError: "Could not save routing",
+    deleteStationError: "Could not delete station",
+    searchStations: "Search station\u2026",
+    emptyStations: "No stations."
+  }
+};
+
+// ../modules-workspace/modules/kitchen/ui/components/erp-kitchen-display/erp-kitchen-display.ts
+var CATALOG = { es: es_default, en: en_default };
 var DEFAULT_SETTINGS = {
   auto_accept_orders: false,
   show_timer: true,
@@ -2816,23 +3054,23 @@ var DEFAULT_SETTINGS = {
   default_order_type: "dine_in"
 };
 var BOOL_FIELDS = [
-  { key: "auto_accept_orders", label: "Auto-aceptar comandas" },
-  { key: "show_timer", label: "Mostrar temporizador" },
-  { key: "sound_enabled", label: "Sonido" },
-  { key: "sound_on_new_order", label: "Sonido al recibir comanda" },
-  { key: "sound_on_rush", label: "Sonido en prioridad rush" },
-  { key: "auto_bump_enabled", label: "Auto-bump" },
-  { key: "color_coding_enabled", label: "Colores por tiempo" },
-  { key: "auto_print_tickets", label: "Imprimir tickets autom\xE1ticamente" },
-  { key: "use_rounds", label: "Usar rondas" },
-  { key: "auto_fire_on_round", label: "Lanzar al cerrar ronda" }
+  { key: "auto_accept_orders", labelKey: "ui.fieldAutoAcceptOrders" },
+  { key: "show_timer", labelKey: "ui.fieldShowTimer" },
+  { key: "sound_enabled", labelKey: "ui.fieldSoundEnabled" },
+  { key: "sound_on_new_order", labelKey: "ui.fieldSoundOnNewOrder" },
+  { key: "sound_on_rush", labelKey: "ui.fieldSoundOnRush" },
+  { key: "auto_bump_enabled", labelKey: "ui.fieldAutoBumpEnabled" },
+  { key: "color_coding_enabled", labelKey: "ui.fieldColorCodingEnabled" },
+  { key: "auto_print_tickets", labelKey: "ui.fieldAutoPrintTickets" },
+  { key: "use_rounds", labelKey: "ui.fieldUseRounds" },
+  { key: "auto_fire_on_round", labelKey: "ui.fieldAutoFireOnRound" }
 ];
 var INT_FIELDS = [
-  { key: "warning_time_minutes", label: "Aviso (min)", min: 1, max: 120 },
-  { key: "critical_time_minutes", label: "Cr\xEDtico (min)", min: 1, max: 120 },
-  { key: "items_per_page", label: "Comandas por p\xE1gina", min: 4, max: 50 },
-  { key: "auto_refresh_seconds", label: "Refresco (s)", min: 3, max: 120 },
-  { key: "auto_bump_delay_seconds", label: "Auto-bump (s)", min: 1, max: 300 }
+  { key: "warning_time_minutes", labelKey: "ui.fieldWarningTime", min: 1, max: 120 },
+  { key: "critical_time_minutes", labelKey: "ui.fieldCriticalTime", min: 1, max: 120 },
+  { key: "items_per_page", labelKey: "ui.fieldItemsPerPage", min: 4, max: 50 },
+  { key: "auto_refresh_seconds", labelKey: "ui.fieldAutoRefresh", min: 3, max: 120 },
+  { key: "auto_bump_delay_seconds", labelKey: "ui.fieldAutoBumpDelay", min: 1, max: 300 }
 ];
 function erplora() {
   const c5 = globalThis.erplora;
@@ -2848,26 +3086,7 @@ var ErpKitchenDisplay = class extends i3 {
     this.settingsMsg = "";
     this.settingsErr = "";
     this.savingSettings = false;
-    this.columns = [
-      {
-        key: "action",
-        header: "Acci\xF3n",
-        sortable: true,
-        filterable: true,
-        filterType: "select",
-        options: [
-          { value: "received", label: "Recibidas" },
-          { value: "started", label: "Lanzadas" },
-          { value: "bumped", label: "Listas (bump)" },
-          { value: "served", label: "Servidas" },
-          { value: "recalled", label: "Recuperadas" },
-          { value: "cancelled", label: "Canceladas" }
-        ]
-      },
-      { key: "order_id", header: "Comanda", sortable: true, filterable: true, filterType: "text" },
-      { key: "notes", header: "Notas", sortable: true, filterable: true, filterType: "text" },
-      { key: "created_at", header: "Cu\xE1ndo", sortable: true, filterable: true, filterType: "daterange" }
-    ];
+    this.onLocaleChange = () => this.requestUpdate();
   }
   static {
     this.styles = i`
@@ -2885,8 +3104,33 @@ var ErpKitchenDisplay = class extends i3 {
     .settings footer { display:flex; gap:.5rem; align-items:center; margin-top:.75rem; }
   `;
   }
+  // Getter (no campo): se re-evalúa en cada render → los textos cambian con el idioma activo (ADR-0055).
+  get columns() {
+    const t5 = (k2) => erplora().t(CATALOG, k2);
+    return [
+      {
+        key: "action",
+        header: t5("ui.colAction"),
+        sortable: true,
+        filterable: true,
+        filterType: "select",
+        options: [
+          { value: "received", label: t5("ui.actionReceived") },
+          { value: "started", label: t5("ui.actionStarted") },
+          { value: "bumped", label: t5("ui.actionBumped") },
+          { value: "served", label: t5("ui.actionServed") },
+          { value: "recalled", label: t5("ui.actionRecalled") },
+          { value: "cancelled", label: t5("ui.actionCancelled") }
+        ]
+      },
+      { key: "order_id", header: t5("ui.colOrder"), sortable: true, filterable: true, filterType: "text" },
+      { key: "notes", header: t5("ui.colNotes"), sortable: true, filterable: true, filterType: "text" },
+      { key: "created_at", header: t5("ui.colWhen"), sortable: true, filterable: true, filterType: "daterange" }
+    ];
+  }
   async connectedCallback() {
     super.connectedCallback();
+    window.addEventListener("erplora:locale-changed", this.onLocaleChange);
     this.ctrl = createListController(erplora(), "kitchen.logs.list", () => this.requestUpdate(), {
       pageSize: 50,
       sort: "created_at",
@@ -2907,6 +3151,7 @@ var ErpKitchenDisplay = class extends i3 {
     }
   }
   disconnectedCallback() {
+    window.removeEventListener("erplora:locale-changed", this.onLocaleChange);
     super.disconnectedCallback();
     this.unsub?.();
   }
@@ -2927,7 +3172,7 @@ var ErpKitchenDisplay = class extends i3 {
         this.settings = next;
       }
     } catch (e5) {
-      this.settingsErr = e5 instanceof Error ? e5.message : "No se pudieron cargar los ajustes";
+      this.settingsErr = e5 instanceof Error ? e5.message : erplora().t(CATALOG, "ui.settingsLoadError");
     }
   }
   async saveSettings() {
@@ -2936,9 +3181,9 @@ var ErpKitchenDisplay = class extends i3 {
     this.settingsErr = "";
     try {
       await erplora().command("kitchen.settings.update", { ...this.settings });
-      this.settingsMsg = "Ajustes guardados";
+      this.settingsMsg = erplora().t(CATALOG, "ui.settingsSaved");
     } catch (e5) {
-      this.settingsErr = e5 instanceof Error ? e5.message : "No se pudieron guardar los ajustes";
+      this.settingsErr = e5 instanceof Error ? e5.message : erplora().t(CATALOG, "ui.settingsSaveError");
     } finally {
       this.savingSettings = false;
     }
@@ -2951,41 +3196,43 @@ var ErpKitchenDisplay = class extends i3 {
     this.settings = { ...this.settings, [key]: n6 };
   }
   renderSettings() {
+    const t5 = (k2) => erplora().t(CATALOG, k2);
     return b2`<section class="settings">
-      <h3>Ajustes de cocina</h3>
+      <h3>${t5("ui.settingsTitle")}</h3>
       <div class="grid">
         ${BOOL_FIELDS.map(
       (f3) => b2`<ion-item lines="none">
-            <ion-toggle .checked=${Boolean(this.settings[f3.key])} @ionChange=${(e5) => this.setBool(f3.key, e5.detail.checked)}>${f3.label}</ion-toggle>
+            <ion-toggle .checked=${Boolean(this.settings[f3.key])} @ionChange=${(e5) => this.setBool(f3.key, e5.detail.checked)}>${t5(f3.labelKey)}</ion-toggle>
           </ion-item>`
     )}
       </div>
       <div class="nums">
         ${INT_FIELDS.map(
-      (f3) => b2`<ion-input type="number" label=${f3.label} label-placement="stacked" min=${f3.min} max=${f3.max} .value=${String(this.settings[f3.key])} @ionInput=${(e5) => this.setInt(f3.key, e5.target.value, f3.min, f3.max)}></ion-input>`
+      (f3) => b2`<ion-input type="number" label=${t5(f3.labelKey)} label-placement="stacked" min=${f3.min} max=${f3.max} .value=${String(this.settings[f3.key])} @ionInput=${(e5) => this.setInt(f3.key, e5.target.value, f3.min, f3.max)}></ion-input>`
     )}
-        <ion-select label="Tipo por defecto" label-placement="stacked" .value=${this.settings.default_order_type} @ionChange=${(e5) => this.settings = { ...this.settings, default_order_type: e5.target.value }}>
-          <ion-select-option value="dine_in">En sala</ion-select-option>
-          <ion-select-option value="takeaway">Para llevar</ion-select-option>
-          <ion-select-option value="delivery">A domicilio</ion-select-option>
+        <ion-select label=${t5("ui.defaultOrderType")} label-placement="stacked" .value=${this.settings.default_order_type} @ionChange=${(e5) => this.settings = { ...this.settings, default_order_type: e5.target.value }}>
+          <ion-select-option value="dine_in">${t5("ui.orderTypeDineIn")}</ion-select-option>
+          <ion-select-option value="takeaway">${t5("ui.orderTypeTakeaway")}</ion-select-option>
+          <ion-select-option value="delivery">${t5("ui.orderTypeDelivery")}</ion-select-option>
         </ion-select>
       </div>
       <footer>
-        <ion-button size="small" ?disabled=${this.savingSettings} @click=${() => this.saveSettings()}>${this.savingSettings ? "Guardando\u2026" : "Guardar ajustes"}</ion-button>
+        <ion-button size="small" ?disabled=${this.savingSettings} @click=${() => this.saveSettings()}>${this.savingSettings ? t5("ui.savingSettings") : t5("ui.saveSettings")}</ion-button>
         ${this.settingsMsg ? b2`<span class="ok">${this.settingsMsg}</span>` : A}
         ${this.settingsErr ? b2`<span class="err">${this.settingsErr}</span>` : A}
       </footer>
     </section>`;
   }
   render() {
+    const t5 = (k2) => erplora().t(CATALOG, k2);
     return b2`<div>
         <header>
-          <h2>Kitchen Display</h2>
-          <ion-button size="small" fill="outline" @click=${() => this.toggleSettings()}>${this.showSettings ? "Cerrar ajustes" : "Ajustes"}</ion-button>
+          <h2>${t5("ui.displayTitle")}</h2>
+          <ion-button size="small" fill="outline" @click=${() => this.toggleSettings()}>${this.showSettings ? t5("ui.settingsToggleClose") : t5("ui.settingsToggleOpen")}</ion-button>
         </header>
         ${this.showSettings ? this.renderSettings() : A}
         ${this.ctrl?.error ? b2`<p class="err">${this.ctrl.error}</p>` : A}
-        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "desc"} .searchable=${true} .searchPlaceholder=${"Buscar acci\xF3n, comanda o notas\u2026"} .emptyMessage=${this.ctrl?.loading ? "Cargando\u2026" : "Sin actividad reciente en cocina."} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}></ok-data-table>
+        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "desc"} .searchable=${true} .searchPlaceholder=${t5("ui.searchLogs")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyLogs")} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}></ok-data-table>
       </div>`;
   }
 };
@@ -3009,7 +3256,8 @@ __decorateClass([
 ], ErpKitchenDisplay.prototype, "savingSettings", 2);
 define("erp-kitchen-display", ErpKitchenDisplay);
 
-// ui/components/erp-kitchen-orders-active/erp-kitchen-orders-active.ts
+// ../modules-workspace/modules/kitchen/ui/components/erp-kitchen-orders-active/erp-kitchen-orders-active.ts
+var CATALOG2 = { es: es_default, en: en_default };
 function erplora2() {
   const c5 = globalThis.erplora;
   if (!c5) throw new Error("erplora SDK no inicializado por el shell");
@@ -3023,41 +3271,7 @@ var ErpKitchenOrdersActive = class extends i3 {
     this.newNotes = "";
     this.saving = false;
     this.tick = 0;
-    this.columns = [
-      { key: "order_number", header: "Comanda", sortable: true, filterable: true, filterType: "text" },
-      { key: "order_type", header: "Tipo", sortable: true, filterable: true, filterType: "text" },
-      { key: "priority", header: "Prioridad", sortable: true, filterable: true, filterType: "text" },
-      {
-        key: "status",
-        header: "Estado",
-        sortable: true,
-        filterable: true,
-        filterType: "select",
-        options: [
-          { value: "pending", label: "Pendiente" },
-          { value: "preparing", label: "En preparaci\xF3n" },
-          { value: "ready", label: "Lista" },
-          { value: "served", label: "Servida" },
-          { value: "cancelled", label: "Cancelada" }
-        ]
-      },
-      {
-        key: "total",
-        header: "Total",
-        align: "right",
-        sortable: true,
-        filterable: true,
-        filterType: "range",
-        format: (r6) => Number(r6.total).toFixed(2)
-      }
-    ];
-    this.rowActions = [
-      { id: "fire", label: "Lanzar" },
-      { id: "mark_ready", label: "Lista" },
-      { id: "mark_served", label: "Servida" },
-      { id: "recall", label: "Recuperar" },
-      { id: "cancel", label: "Cancelar", color: "danger" }
-    ];
+    this.onLocaleChange = () => this.requestUpdate();
   }
   static {
     this.styles = i`
@@ -3070,8 +3284,51 @@ var ErpKitchenOrdersActive = class extends i3 {
     .actions { display:flex; gap:.35rem; }
   `;
   }
+  // Getters (no campos): se re-evalúan en cada render → los textos cambian con el idioma activo (ADR-0055).
+  get columns() {
+    const t5 = (k2) => erplora2().t(CATALOG2, k2);
+    return [
+      { key: "order_number", header: t5("ui.colOrder"), sortable: true, filterable: true, filterType: "text" },
+      { key: "order_type", header: t5("ui.colType"), sortable: true, filterable: true, filterType: "text" },
+      { key: "priority", header: t5("ui.colPriority"), sortable: true, filterable: true, filterType: "text" },
+      {
+        key: "status",
+        header: t5("ui.colStatus"),
+        sortable: true,
+        filterable: true,
+        filterType: "select",
+        options: [
+          { value: "pending", label: t5("ui.statusPending") },
+          { value: "preparing", label: t5("ui.statusPreparing") },
+          { value: "ready", label: t5("ui.statusReady") },
+          { value: "served", label: t5("ui.statusServed") },
+          { value: "cancelled", label: t5("ui.statusCancelled") }
+        ]
+      },
+      {
+        key: "total",
+        header: t5("ui.colTotal"),
+        align: "right",
+        sortable: true,
+        filterable: true,
+        filterType: "range",
+        format: (r6) => Number(r6.total).toFixed(2)
+      }
+    ];
+  }
+  get rowActions() {
+    const t5 = (k2) => erplora2().t(CATALOG2, k2);
+    return [
+      { id: "fire", label: t5("ui.rowFire") },
+      { id: "mark_ready", label: t5("ui.rowMarkReady") },
+      { id: "mark_served", label: t5("ui.rowMarkServed") },
+      { id: "recall", label: t5("ui.rowRecall") },
+      { id: "cancel", label: t5("ui.rowCancel"), color: "danger" }
+    ];
+  }
   async connectedCallback() {
     super.connectedCallback();
+    window.addEventListener("erplora:locale-changed", this.onLocaleChange);
     this.ctrl = createListController(erplora2(), "kitchen.orders.list", () => this.requestUpdate(), {
       pageSize: 50,
       sort: "created_at",
@@ -3094,6 +3351,7 @@ var ErpKitchenOrdersActive = class extends i3 {
     }
   }
   disconnectedCallback() {
+    window.removeEventListener("erplora:locale-changed", this.onLocaleChange);
     super.disconnectedCallback();
     this.unsub?.();
   }
@@ -3111,7 +3369,7 @@ var ErpKitchenOrdersActive = class extends i3 {
       this.newNotes = "";
       await this.ctrl.load();
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : "No se pudo crear la comanda";
+      this.formError = e5 instanceof Error ? e5.message : erplora2().t(CATALOG2, "ui.createOrderError");
     } finally {
       this.saving = false;
     }
@@ -3126,26 +3384,27 @@ var ErpKitchenOrdersActive = class extends i3 {
       });
       await this.ctrl.load();
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : "No se pudo actualizar el estado";
+      this.formError = e5 instanceof Error ? e5.message : erplora2().t(CATALOG2, "ui.updateStatusError");
     }
   }
   render() {
+    const t5 = (k2) => erplora2().t(CATALOG2, k2);
     return b2`<div>
         <header>
-          <h2>Comandas</h2>
+          <h2>${t5("ui.ordersTitle")}</h2>
         </header>
         <form class="form" @submit=${(e5) => this.createOrder(e5)}>
-          <ion-select placeholder="Tipo" .value=${this.newType} @ionChange=${(e5) => this.newType = e5.target.value}>
-            <ion-select-option value="dine_in">En sala</ion-select-option>
-            <ion-select-option value="takeaway">Para llevar</ion-select-option>
-            <ion-select-option value="delivery">A domicilio</ion-select-option>
+          <ion-select placeholder=${t5("ui.placeholderType")} .value=${this.newType} @ionChange=${(e5) => this.newType = e5.target.value}>
+            <ion-select-option value="dine_in">${t5("ui.orderTypeDineIn")}</ion-select-option>
+            <ion-select-option value="takeaway">${t5("ui.orderTypeTakeaway")}</ion-select-option>
+            <ion-select-option value="delivery">${t5("ui.orderTypeDelivery")}</ion-select-option>
           </ion-select>
-          <ion-input placeholder="Notas" .value=${this.newNotes} @ionInput=${(e5) => this.newNotes = e5.target.value}></ion-input>
-          <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? "Creando\u2026" : "Nueva comanda"}</ion-button>
+          <ion-input placeholder=${t5("ui.placeholderNotes")} .value=${this.newNotes} @ionInput=${(e5) => this.newNotes = e5.target.value}></ion-input>
+          <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t5("ui.creatingOrder") : t5("ui.newOrder")}</ion-button>
         </form>
         ${this.formError ? b2`<p class="err">${this.formError}</p>` : A}
         ${this.ctrl?.error ? b2`<p class="err">${this.ctrl.error}</p>` : A}
-        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "desc"} .searchable=${true} .searchPlaceholder=${"Buscar comanda o estado\u2026"} .emptyMessage=${this.ctrl?.loading ? "Cargando\u2026" : "Sin comandas."} .actions=${this.rowActions} @rowAction=${(e5) => this.onRowAction(e5)} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}></ok-data-table>
+        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "desc"} .searchable=${true} .searchPlaceholder=${t5("ui.searchOrders")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyOrders")} .actions=${this.rowActions} @rowAction=${(e5) => this.onRowAction(e5)} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}></ok-data-table>
       </div>`;
   }
 };
@@ -3166,7 +3425,8 @@ __decorateClass([
 ], ErpKitchenOrdersActive.prototype, "tick", 2);
 define("erp-kitchen-orders-active", ErpKitchenOrdersActive);
 
-// ui/components/erp-kitchen-orders-stations/erp-kitchen-orders-stations.ts
+// ../modules-workspace/modules/kitchen/ui/components/erp-kitchen-orders-stations/erp-kitchen-orders-stations.ts
+var CATALOG3 = { es: es_default, en: en_default };
 function erplora3() {
   const c5 = globalThis.erplora;
   if (!c5) throw new Error("erplora SDK no inicializado por el shell");
@@ -3190,35 +3450,7 @@ var ErpKitchenOrdersStations = class extends i3 {
     this.routeProductId = "";
     this.routeCategoryId = "";
     this.pendingCounts = /* @__PURE__ */ new Map();
-    this.columns = [
-      { key: "name", header: "Estaci\xF3n", sortable: true, filterable: true, filterType: "text" },
-      {
-        key: "printer_name",
-        header: "Impresora",
-        sortable: true,
-        filterable: true,
-        filterType: "text",
-        format: (r6) => r6.printer_name || "\u2014"
-      },
-      { key: "pending_count", header: "En curso", align: "right", format: (r6) => String(this.pendingCounts.get(String(r6.id)) ?? 0) },
-      {
-        key: "is_active",
-        header: "Activa",
-        sortable: true,
-        filterable: true,
-        filterType: "select",
-        options: [
-          { value: "1", label: "S\xED" },
-          { value: "0", label: "No" }
-        ],
-        format: (r6) => Number(r6.is_active) ? "S\xED" : "No"
-      }
-    ];
-    this.rowActions = [
-      { id: "edit", label: "Editar" },
-      { id: "route", label: "Enrutar" },
-      { id: "delete", label: "Eliminar", color: "danger" }
-    ];
+    this.onLocaleChange = () => this.requestUpdate();
   }
   static {
     this.styles = i`
@@ -3233,8 +3465,45 @@ var ErpKitchenOrdersStations = class extends i3 {
     .ok { color:#2b8a3e; font-weight:600; }
   `;
   }
+  // Getters (no campos): se re-evalúan en cada render → los textos cambian con el idioma activo (ADR-0055).
+  get columns() {
+    const t5 = (k2) => erplora3().t(CATALOG3, k2);
+    return [
+      { key: "name", header: t5("ui.colStation"), sortable: true, filterable: true, filterType: "text" },
+      {
+        key: "printer_name",
+        header: t5("ui.colPrinter"),
+        sortable: true,
+        filterable: true,
+        filterType: "text",
+        format: (r6) => r6.printer_name || "\u2014"
+      },
+      { key: "pending_count", header: t5("ui.colInProgress"), align: "right", format: (r6) => String(this.pendingCounts.get(String(r6.id)) ?? 0) },
+      {
+        key: "is_active",
+        header: t5("ui.colActive"),
+        sortable: true,
+        filterable: true,
+        filterType: "select",
+        options: [
+          { value: "1", label: t5("ui.yes") },
+          { value: "0", label: t5("ui.no") }
+        ],
+        format: (r6) => Number(r6.is_active) ? t5("ui.yes") : t5("ui.no")
+      }
+    ];
+  }
+  get rowActions() {
+    const t5 = (k2) => erplora3().t(CATALOG3, k2);
+    return [
+      { id: "edit", label: t5("ui.rowEdit") },
+      { id: "route", label: t5("ui.rowRoute") },
+      { id: "delete", label: t5("ui.rowDelete"), color: "danger" }
+    ];
+  }
   async connectedCallback() {
     super.connectedCallback();
+    window.addEventListener("erplora:locale-changed", this.onLocaleChange);
     this.ctrl = createListController(erplora3(), "kitchen.stations.list", () => this.requestUpdate(), {
       pageSize: 50,
       sort: "name",
@@ -3253,6 +3522,7 @@ var ErpKitchenOrdersStations = class extends i3 {
     }
   }
   disconnectedCallback() {
+    window.removeEventListener("erplora:locale-changed", this.onLocaleChange);
     super.disconnectedCallback();
     this.unsub?.();
   }
@@ -3282,7 +3552,7 @@ var ErpKitchenOrdersStations = class extends i3 {
       this.newPrinter = "";
       await this.reload();
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : "No se pudo crear la estaci\xF3n";
+      this.formError = e5 instanceof Error ? e5.message : erplora3().t(CATALOG3, "ui.createStationError");
     } finally {
       this.saving = false;
     }
@@ -3310,11 +3580,11 @@ var ErpKitchenOrdersStations = class extends i3 {
         printer_name: this.editPrinter.trim(),
         is_active: this.editActive ? 1 : 0
       });
-      this.formMsg = "Estaci\xF3n actualizada";
+      this.formMsg = erplora3().t(CATALOG3, "ui.stationUpdated");
       this.editing = null;
       await this.reload();
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : "No se pudo actualizar la estaci\xF3n";
+      this.formError = e5 instanceof Error ? e5.message : erplora3().t(CATALOG3, "ui.updateStationError");
     } finally {
       this.saving = false;
     }
@@ -3331,12 +3601,12 @@ var ErpKitchenOrdersStations = class extends i3 {
         product_id: this.routeProductId.trim(),
         category_id: this.routeCategoryId.trim()
       });
-      this.formMsg = "Enrutado guardado";
+      this.formMsg = erplora3().t(CATALOG3, "ui.routingSaved");
       this.routeProductId = "";
       this.routeCategoryId = "";
       await this.reload();
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : "No se pudo guardar el enrutado";
+      this.formError = e5 instanceof Error ? e5.message : erplora3().t(CATALOG3, "ui.saveRoutingError");
     } finally {
       this.saving = false;
     }
@@ -3360,53 +3630,56 @@ var ErpKitchenOrdersStations = class extends i3 {
       await erplora3().command("kitchen.stations.delete", { station_id: station.id });
       await this.reload();
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : "No se pudo eliminar la estaci\xF3n";
+      this.formError = e5 instanceof Error ? e5.message : erplora3().t(CATALOG3, "ui.deleteStationError");
     }
   }
   renderEditPanel() {
     if (!this.editing) return A;
+    const t5 = (k2) => erplora3().t(CATALOG3, k2);
     return b2`<section class="panel">
-      <h3>Editar estación · ${this.editing.name}</h3>
+      <h3>${t5("ui.editStationTitle")} · ${this.editing.name}</h3>
       <form class="form" @submit=${(e5) => this.saveEdit(e5)}>
-        <ion-input label="Nombre" label-placement="stacked" .value=${this.editName} @ionInput=${(e5) => this.editName = e5.target.value}></ion-input>
-        <ion-input label="Color" label-placement="stacked" placeholder="#F97316" .value=${this.editColor} @ionInput=${(e5) => this.editColor = e5.target.value}></ion-input>
-        <ion-input label="Impresora" label-placement="stacked" .value=${this.editPrinter} @ionInput=${(e5) => this.editPrinter = e5.target.value}></ion-input>
-        <ion-toggle .checked=${this.editActive} @ionChange=${(e5) => this.editActive = e5.detail.checked}>Activa</ion-toggle>
-        <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? "Guardando\u2026" : "Guardar"}</ion-button>
-        <ion-button size="small" fill="outline" @click=${() => this.editing = null}>Cancelar</ion-button>
+        <ion-input label=${t5("ui.labelName")} label-placement="stacked" .value=${this.editName} @ionInput=${(e5) => this.editName = e5.target.value}></ion-input>
+        <ion-input label=${t5("ui.labelColor")} label-placement="stacked" placeholder="#F97316" .value=${this.editColor} @ionInput=${(e5) => this.editColor = e5.target.value}></ion-input>
+        <ion-input label=${t5("ui.labelPrinter")} label-placement="stacked" .value=${this.editPrinter} @ionInput=${(e5) => this.editPrinter = e5.target.value}></ion-input>
+        <ion-toggle .checked=${this.editActive} @ionChange=${(e5) => this.editActive = e5.detail.checked}>${t5("ui.labelActive")}</ion-toggle>
+        <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t5("ui.saving") : t5("ui.save")}</ion-button>
+        <ion-button size="small" fill="outline" @click=${() => this.editing = null}>${t5("ui.cancel")}</ion-button>
       </form>
     </section>`;
   }
   renderRoutingPanel() {
+    const t5 = (k2) => erplora3().t(CATALOG3, k2);
     const stations = this.ctrl?.rows ?? [];
     return b2`<section class="panel">
-      <h3>Enrutado producto/categoría → estación</h3>
+      <h3>${t5("ui.routingTitle")}</h3>
       <form class="form" @submit=${(e5) => this.saveRouting(e5)}>
-        <ion-select placeholder="Estación" .value=${this.routeStationId} @ionChange=${(e5) => this.routeStationId = e5.target.value}>
+        <ion-select placeholder=${t5("ui.placeholderStation")} .value=${this.routeStationId} @ionChange=${(e5) => this.routeStationId = e5.target.value}>
           ${stations.map((s5) => b2`<ion-select-option value=${s5.id}>${s5.name}</ion-select-option>`)}
         </ion-select>
-        <ion-input label="ID de producto" label-placement="stacked" placeholder="(opcional)" .value=${this.routeProductId} @ionInput=${(e5) => this.routeProductId = e5.target.value}></ion-input>
-        <ion-input label="ID de categoría" label-placement="stacked" placeholder="(opcional)" .value=${this.routeCategoryId} @ionInput=${(e5) => this.routeCategoryId = e5.target.value}></ion-input>
-        <ion-button type="submit" size="small" ?disabled=${this.saving || !this.routeStationId || !this.routeProductId.trim() && !this.routeCategoryId.trim()}>${this.saving ? "Guardando\u2026" : "Guardar enrutado"}</ion-button>
+        <ion-input label=${t5("ui.labelProductId")} label-placement="stacked" placeholder=${t5("ui.placeholderOptional")} .value=${this.routeProductId} @ionInput=${(e5) => this.routeProductId = e5.target.value}></ion-input>
+        <ion-input label=${t5("ui.labelCategoryId")} label-placement="stacked" placeholder=${t5("ui.placeholderOptional")} .value=${this.routeCategoryId} @ionInput=${(e5) => this.routeCategoryId = e5.target.value}></ion-input>
+        <ion-button type="submit" size="small" ?disabled=${this.saving || !this.routeStationId || !this.routeProductId.trim() && !this.routeCategoryId.trim()}>${this.saving ? t5("ui.saving") : t5("ui.saveRouting")}</ion-button>
       </form>
     </section>`;
   }
   render() {
+    const t5 = (k2) => erplora3().t(CATALOG3, k2);
     return b2`<div>
         <header>
-          <h2>Estaciones de producción</h2>
+          <h2>${t5("ui.stationsTitle")}</h2>
         </header>
         <form class="form" @submit=${(e5) => this.createStation(e5)}>
-          <ion-input placeholder="Nombre (Plancha)" .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
-          <ion-input placeholder="Impresora (opcional)" .value=${this.newPrinter} @ionInput=${(e5) => this.newPrinter = e5.target.value}></ion-input>
-          <ion-button type="submit" size="small" ?disabled=${this.saving || !this.newName}>${this.saving ? "Guardando\u2026" : "A\xF1adir"}</ion-button>
+          <ion-input placeholder=${t5("ui.placeholderStationName")} .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
+          <ion-input placeholder=${t5("ui.placeholderPrinterOptional")} .value=${this.newPrinter} @ionInput=${(e5) => this.newPrinter = e5.target.value}></ion-input>
+          <ion-button type="submit" size="small" ?disabled=${this.saving || !this.newName}>${this.saving ? t5("ui.saving") : t5("ui.addStation")}</ion-button>
         </form>
         ${this.renderEditPanel()}
         ${this.renderRoutingPanel()}
         ${this.formMsg ? b2`<p class="ok">${this.formMsg}</p>` : A}
         ${this.formError ? b2`<p class="err">${this.formError}</p>` : A}
         ${this.ctrl?.error ? b2`<p class="err">${this.ctrl.error}</p>` : A}
-        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${"Buscar estaci\xF3n\u2026"} .emptyMessage=${this.ctrl?.loading ? "Cargando\u2026" : "Sin estaciones."} .actions=${this.rowActions} @rowAction=${(e5) => this.onRowAction(e5)} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}></ok-data-table>
+        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t5("ui.searchStations")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyStations")} .actions=${this.rowActions} @rowAction=${(e5) => this.onRowAction(e5)} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}></ok-data-table>
       </div>`;
   }
 };

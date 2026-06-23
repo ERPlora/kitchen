@@ -5,12 +5,19 @@ import '@erplora/outfitkit/ok-data-table';
 import type { DataTableColumn, DataTableAction } from '@erplora/outfitkit';
 import { createListController } from '@erplora/module-sdk';
 import type { ListController, ListClient, ListParams, ListPage } from '@erplora/module-sdk';
+// Catálogo i18n del módulo (ADR-0055): esbuild inlinea estos JSON en el `dist` del WC.
+import esLocale from '../../../locales/es.json';
+import enLocale from '../../../locales/en.json';
+const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
 
 interface ErploraClientLike extends ListClient {
   query<T = unknown>(name: string, params?: Record<string, unknown>): Promise<T>;
   queryPage<R = unknown>(name: string, params: ListParams): Promise<ListPage<R>>;
   command<T = unknown>(name: string, payload?: Record<string, unknown>): Promise<T>;
   on(event: string, cb: (payload: unknown) => void): () => void;
+  /** i18n del módulo (ADR-0055): idioma activo + traducción del catálogo `ui`. */
+  locale: string;
+  t(catalog: Record<string, unknown>, key: string, params?: Record<string, unknown>): string;
 }
 
 interface Order {
@@ -55,45 +62,55 @@ export class ErpKitchenOrdersActive extends LitElement {
 
   private unsub?: () => void;
 
-  private columns: DataTableColumn[] = [
-    { key: 'order_number', header: 'Comanda', sortable: true, filterable: true, filterType: 'text' },
-    { key: 'order_type', header: 'Tipo', sortable: true, filterable: true, filterType: 'text' },
-    { key: 'priority', header: 'Prioridad', sortable: true, filterable: true, filterType: 'text' },
+  // Getters (no campos): se re-evalúan en cada render → los textos cambian con el idioma activo (ADR-0055).
+  private get columns(): DataTableColumn[] {
+    const t = (k: string): string => erplora().t(CATALOG, k);
+    return [
+    { key: 'order_number', header: t('ui.colOrder'), sortable: true, filterable: true, filterType: 'text' },
+    { key: 'order_type', header: t('ui.colType'), sortable: true, filterable: true, filterType: 'text' },
+    { key: 'priority', header: t('ui.colPriority'), sortable: true, filterable: true, filterType: 'text' },
     {
       key: 'status',
-      header: 'Estado',
+      header: t('ui.colStatus'),
       sortable: true,
       filterable: true,
       filterType: 'select',
       options: [
-        { value: 'pending', label: 'Pendiente' },
-        { value: 'preparing', label: 'En preparación' },
-        { value: 'ready', label: 'Lista' },
-        { value: 'served', label: 'Servida' },
-        { value: 'cancelled', label: 'Cancelada' },
+        { value: 'pending', label: t('ui.statusPending') },
+        { value: 'preparing', label: t('ui.statusPreparing') },
+        { value: 'ready', label: t('ui.statusReady') },
+        { value: 'served', label: t('ui.statusServed') },
+        { value: 'cancelled', label: t('ui.statusCancelled') },
       ],
     },
     {
       key: 'total',
-      header: 'Total',
+      header: t('ui.colTotal'),
       align: 'right',
       sortable: true,
       filterable: true,
       filterType: 'range',
       format: (r) => Number(r.total).toFixed(2),
     },
-  ];
+    ];
+  }
 
-  private rowActions: DataTableAction[] = [
-    { id: 'fire', label: 'Lanzar' },
-    { id: 'mark_ready', label: 'Lista' },
-    { id: 'mark_served', label: 'Servida' },
-    { id: 'recall', label: 'Recuperar' },
-    { id: 'cancel', label: 'Cancelar', color: 'danger' },
-  ];
+  private get rowActions(): DataTableAction[] {
+    const t = (k: string): string => erplora().t(CATALOG, k);
+    return [
+    { id: 'fire', label: t('ui.rowFire') },
+    { id: 'mark_ready', label: t('ui.rowMarkReady') },
+    { id: 'mark_served', label: t('ui.rowMarkServed') },
+    { id: 'recall', label: t('ui.rowRecall') },
+    { id: 'cancel', label: t('ui.rowCancel'), color: 'danger' },
+    ];
+  }
+
+  private readonly onLocaleChange = (): void => this.requestUpdate();
 
   async connectedCallback() {
     super.connectedCallback();
+    window.addEventListener('erplora:locale-changed', this.onLocaleChange);
     this.ctrl = createListController<Order>(erplora(), 'kitchen.orders.list', () => this.requestUpdate(), {
       pageSize: 50,
       sort: 'created_at',
@@ -118,6 +135,7 @@ export class ErpKitchenOrdersActive extends LitElement {
   }
 
   disconnectedCallback() {
+    window.removeEventListener('erplora:locale-changed', this.onLocaleChange);
     super.disconnectedCallback();
     this.unsub?.();
   }
@@ -136,7 +154,7 @@ export class ErpKitchenOrdersActive extends LitElement {
       this.newNotes = '';
       await this.ctrl.load();
     } catch (e) {
-      this.formError = e instanceof Error ? e.message : 'No se pudo crear la comanda';
+      this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.createOrderError');
     } finally {
       this.saving = false;
     }
@@ -152,27 +170,28 @@ export class ErpKitchenOrdersActive extends LitElement {
       });
       await this.ctrl.load();
     } catch (e) {
-      this.formError = e instanceof Error ? e.message : 'No se pudo actualizar el estado';
+      this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.updateStatusError');
     }
   }
 
   render() {
+    const t = (k: string): string => erplora().t(CATALOG, k);
     return html`<div>
         <header>
-          <h2>Comandas</h2>
+          <h2>${t('ui.ordersTitle')}</h2>
         </header>
         <form class="form" @submit=${(e) => this.createOrder(e)}>
-          <ion-select placeholder="Tipo" .value=${this.newType} @ionChange=${(e: any) => (this.newType = e.target.value)}>
-            <ion-select-option value="dine_in">En sala</ion-select-option>
-            <ion-select-option value="takeaway">Para llevar</ion-select-option>
-            <ion-select-option value="delivery">A domicilio</ion-select-option>
+          <ion-select placeholder=${t('ui.placeholderType')} .value=${this.newType} @ionChange=${(e: any) => (this.newType = e.target.value)}>
+            <ion-select-option value="dine_in">${t('ui.orderTypeDineIn')}</ion-select-option>
+            <ion-select-option value="takeaway">${t('ui.orderTypeTakeaway')}</ion-select-option>
+            <ion-select-option value="delivery">${t('ui.orderTypeDelivery')}</ion-select-option>
           </ion-select>
-          <ion-input placeholder="Notas" .value=${this.newNotes} @ionInput=${(e: any) => (this.newNotes = e.target.value)}></ion-input>
-          <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? 'Creando…' : 'Nueva comanda'}</ion-button>
+          <ion-input placeholder=${t('ui.placeholderNotes')} .value=${this.newNotes} @ionInput=${(e: any) => (this.newNotes = e.target.value)}></ion-input>
+          <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t('ui.creatingOrder') : t('ui.newOrder')}</ion-button>
         </form>
         ${this.formError ? html`<p class="err">${this.formError}</p>` : nothing}
         ${this.ctrl?.error ? html`<p class="err">${this.ctrl.error}</p>` : nothing}
-        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'desc'} .searchable=${true} .searchPlaceholder=${"Buscar comanda o estado…"} .emptyMessage=${this.ctrl?.loading ? 'Cargando…' : 'Sin comandas.'} .actions=${this.rowActions} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}></ok-data-table>
+        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'desc'} .searchable=${true} .searchPlaceholder=${t('ui.searchOrders')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyOrders')} .actions=${this.rowActions} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}></ok-data-table>
       </div>`;
   }
 }

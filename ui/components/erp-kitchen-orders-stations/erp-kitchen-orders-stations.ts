@@ -5,12 +5,19 @@ import '@erplora/outfitkit/ok-data-table';
 import type { DataTableColumn, DataTableAction } from '@erplora/outfitkit';
 import { createListController } from '@erplora/module-sdk';
 import type { ListController, ListClient, ListParams, ListPage } from '@erplora/module-sdk';
+// Catálogo i18n del módulo (ADR-0055): esbuild inlinea estos JSON en el `dist` del WC.
+import esLocale from '../../../locales/es.json';
+import enLocale from '../../../locales/en.json';
+const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
 
 interface ErploraClientLike extends ListClient {
   query<T = unknown>(name: string, params?: Record<string, unknown>): Promise<T>;
   queryPage<R = unknown>(name: string, params: ListParams): Promise<ListPage<R>>;
   command<T = unknown>(name: string, payload?: Record<string, unknown>): Promise<T>;
   on(event: string, cb: (payload: unknown) => void): () => void;
+  /** i18n del módulo (ADR-0055): idioma activo + traducción del catálogo `ui`. */
+  locale: string;
+  t(catalog: Record<string, unknown>, key: string, params?: Record<string, unknown>): string;
 }
 
 interface Station {
@@ -83,39 +90,49 @@ export class ErpKitchenOrdersStations extends LitElement {
 
   private pendingCounts = new Map<string, number>();
 
-  private columns: DataTableColumn[] = [
-    { key: 'name', header: 'Estación', sortable: true, filterable: true, filterType: 'text' },
+  // Getters (no campos): se re-evalúan en cada render → los textos cambian con el idioma activo (ADR-0055).
+  private get columns(): DataTableColumn[] {
+    const t = (k: string): string => erplora().t(CATALOG, k);
+    return [
+    { key: 'name', header: t('ui.colStation'), sortable: true, filterable: true, filterType: 'text' },
     {
       key: 'printer_name',
-      header: 'Impresora',
+      header: t('ui.colPrinter'),
       sortable: true,
       filterable: true,
       filterType: 'text',
       format: (r) => (r.printer_name as string) || '—',
     },
-    { key: 'pending_count', header: 'En curso', align: 'right', format: (r) => String(this.pendingCounts.get(String(r.id)) ?? 0) },
+    { key: 'pending_count', header: t('ui.colInProgress'), align: 'right', format: (r) => String(this.pendingCounts.get(String(r.id)) ?? 0) },
     {
       key: 'is_active',
-      header: 'Activa',
+      header: t('ui.colActive'),
       sortable: true,
       filterable: true,
       filterType: 'select',
       options: [
-        { value: '1', label: 'Sí' },
-        { value: '0', label: 'No' },
+        { value: '1', label: t('ui.yes') },
+        { value: '0', label: t('ui.no') },
       ],
-      format: (r) => (Number(r.is_active) ? 'Sí' : 'No'),
+      format: (r) => (Number(r.is_active) ? t('ui.yes') : t('ui.no')),
     },
-  ];
+    ];
+  }
 
-  private rowActions: DataTableAction[] = [
-    { id: 'edit', label: 'Editar' },
-    { id: 'route', label: 'Enrutar' },
-    { id: 'delete', label: 'Eliminar', color: 'danger' },
-  ];
+  private get rowActions(): DataTableAction[] {
+    const t = (k: string): string => erplora().t(CATALOG, k);
+    return [
+    { id: 'edit', label: t('ui.rowEdit') },
+    { id: 'route', label: t('ui.rowRoute') },
+    { id: 'delete', label: t('ui.rowDelete'), color: 'danger' },
+    ];
+  }
+
+  private readonly onLocaleChange = (): void => this.requestUpdate();
 
   async connectedCallback() {
     super.connectedCallback();
+    window.addEventListener('erplora:locale-changed', this.onLocaleChange);
     this.ctrl = createListController<Station>(erplora(), 'kitchen.stations.list', () => this.requestUpdate(), {
       pageSize: 50,
       sort: 'name',
@@ -136,6 +153,7 @@ export class ErpKitchenOrdersStations extends LitElement {
   }
 
   disconnectedCallback() {
+    window.removeEventListener('erplora:locale-changed', this.onLocaleChange);
     super.disconnectedCallback();
     this.unsub?.();
   }
@@ -169,7 +187,7 @@ export class ErpKitchenOrdersStations extends LitElement {
       this.newPrinter = '';
       await this.reload();
     } catch (e) {
-      this.formError = e instanceof Error ? e.message : 'No se pudo crear la estación';
+      this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.createStationError');
     } finally {
       this.saving = false;
     }
@@ -199,11 +217,11 @@ export class ErpKitchenOrdersStations extends LitElement {
         printer_name: this.editPrinter.trim(),
         is_active: this.editActive ? 1 : 0,
       });
-      this.formMsg = 'Estación actualizada';
+      this.formMsg = erplora().t(CATALOG, 'ui.stationUpdated');
       this.editing = null;
       await this.reload();
     } catch (e) {
-      this.formError = e instanceof Error ? e.message : 'No se pudo actualizar la estación';
+      this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.updateStationError');
     } finally {
       this.saving = false;
     }
@@ -221,12 +239,12 @@ export class ErpKitchenOrdersStations extends LitElement {
         product_id: this.routeProductId.trim(),
         category_id: this.routeCategoryId.trim(),
       });
-      this.formMsg = 'Enrutado guardado';
+      this.formMsg = erplora().t(CATALOG, 'ui.routingSaved');
       this.routeProductId = '';
       this.routeCategoryId = '';
       await this.reload();
     } catch (e) {
-      this.formError = e instanceof Error ? e.message : 'No se pudo guardar el enrutado';
+      this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.saveRoutingError');
     } finally {
       this.saving = false;
     }
@@ -251,56 +269,59 @@ export class ErpKitchenOrdersStations extends LitElement {
       await erplora().command('kitchen.stations.delete', { station_id: station.id });
       await this.reload();
     } catch (e) {
-      this.formError = e instanceof Error ? e.message : 'No se pudo eliminar la estación';
+      this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.deleteStationError');
     }
   }
 
   private renderEditPanel() {
     if (!this.editing) return nothing;
+    const t = (k: string): string => erplora().t(CATALOG, k);
     return html`<section class="panel">
-      <h3>Editar estación · ${this.editing.name}</h3>
+      <h3>${t('ui.editStationTitle')} · ${this.editing.name}</h3>
       <form class="form" @submit=${(e: Event) => this.saveEdit(e)}>
-        <ion-input label="Nombre" label-placement="stacked" .value=${this.editName} @ionInput=${(e: any) => (this.editName = e.target.value)}></ion-input>
-        <ion-input label="Color" label-placement="stacked" placeholder="#F97316" .value=${this.editColor} @ionInput=${(e: any) => (this.editColor = e.target.value)}></ion-input>
-        <ion-input label="Impresora" label-placement="stacked" .value=${this.editPrinter} @ionInput=${(e: any) => (this.editPrinter = e.target.value)}></ion-input>
-        <ion-toggle .checked=${this.editActive} @ionChange=${(e: any) => (this.editActive = e.detail.checked)}>Activa</ion-toggle>
-        <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? 'Guardando…' : 'Guardar'}</ion-button>
-        <ion-button size="small" fill="outline" @click=${() => (this.editing = null)}>Cancelar</ion-button>
+        <ion-input label=${t('ui.labelName')} label-placement="stacked" .value=${this.editName} @ionInput=${(e: any) => (this.editName = e.target.value)}></ion-input>
+        <ion-input label=${t('ui.labelColor')} label-placement="stacked" placeholder="#F97316" .value=${this.editColor} @ionInput=${(e: any) => (this.editColor = e.target.value)}></ion-input>
+        <ion-input label=${t('ui.labelPrinter')} label-placement="stacked" .value=${this.editPrinter} @ionInput=${(e: any) => (this.editPrinter = e.target.value)}></ion-input>
+        <ion-toggle .checked=${this.editActive} @ionChange=${(e: any) => (this.editActive = e.detail.checked)}>${t('ui.labelActive')}</ion-toggle>
+        <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t('ui.saving') : t('ui.save')}</ion-button>
+        <ion-button size="small" fill="outline" @click=${() => (this.editing = null)}>${t('ui.cancel')}</ion-button>
       </form>
     </section>`;
   }
 
   private renderRoutingPanel() {
+    const t = (k: string): string => erplora().t(CATALOG, k);
     const stations = this.ctrl?.rows ?? [];
     return html`<section class="panel">
-      <h3>Enrutado producto/categoría → estación</h3>
+      <h3>${t('ui.routingTitle')}</h3>
       <form class="form" @submit=${(e: Event) => this.saveRouting(e)}>
-        <ion-select placeholder="Estación" .value=${this.routeStationId} @ionChange=${(e: any) => (this.routeStationId = e.target.value)}>
+        <ion-select placeholder=${t('ui.placeholderStation')} .value=${this.routeStationId} @ionChange=${(e: any) => (this.routeStationId = e.target.value)}>
           ${stations.map((s) => html`<ion-select-option value=${s.id}>${s.name}</ion-select-option>`)}
         </ion-select>
-        <ion-input label="ID de producto" label-placement="stacked" placeholder="(opcional)" .value=${this.routeProductId} @ionInput=${(e: any) => (this.routeProductId = e.target.value)}></ion-input>
-        <ion-input label="ID de categoría" label-placement="stacked" placeholder="(opcional)" .value=${this.routeCategoryId} @ionInput=${(e: any) => (this.routeCategoryId = e.target.value)}></ion-input>
-        <ion-button type="submit" size="small" ?disabled=${this.saving || !this.routeStationId || (!this.routeProductId.trim() && !this.routeCategoryId.trim())}>${this.saving ? 'Guardando…' : 'Guardar enrutado'}</ion-button>
+        <ion-input label=${t('ui.labelProductId')} label-placement="stacked" placeholder=${t('ui.placeholderOptional')} .value=${this.routeProductId} @ionInput=${(e: any) => (this.routeProductId = e.target.value)}></ion-input>
+        <ion-input label=${t('ui.labelCategoryId')} label-placement="stacked" placeholder=${t('ui.placeholderOptional')} .value=${this.routeCategoryId} @ionInput=${(e: any) => (this.routeCategoryId = e.target.value)}></ion-input>
+        <ion-button type="submit" size="small" ?disabled=${this.saving || !this.routeStationId || (!this.routeProductId.trim() && !this.routeCategoryId.trim())}>${this.saving ? t('ui.saving') : t('ui.saveRouting')}</ion-button>
       </form>
     </section>`;
   }
 
   render() {
+    const t = (k: string): string => erplora().t(CATALOG, k);
     return html`<div>
         <header>
-          <h2>Estaciones de producción</h2>
+          <h2>${t('ui.stationsTitle')}</h2>
         </header>
         <form class="form" @submit=${(e) => this.createStation(e)}>
-          <ion-input placeholder="Nombre (Plancha)" .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
-          <ion-input placeholder="Impresora (opcional)" .value=${this.newPrinter} @ionInput=${(e: any) => (this.newPrinter = e.target.value)}></ion-input>
-          <ion-button type="submit" size="small" ?disabled=${this.saving || !this.newName}>${this.saving ? 'Guardando…' : 'Añadir'}</ion-button>
+          <ion-input placeholder=${t('ui.placeholderStationName')} .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
+          <ion-input placeholder=${t('ui.placeholderPrinterOptional')} .value=${this.newPrinter} @ionInput=${(e: any) => (this.newPrinter = e.target.value)}></ion-input>
+          <ion-button type="submit" size="small" ?disabled=${this.saving || !this.newName}>${this.saving ? t('ui.saving') : t('ui.addStation')}</ion-button>
         </form>
         ${this.renderEditPanel()}
         ${this.renderRoutingPanel()}
         ${this.formMsg ? html`<p class="ok">${this.formMsg}</p>` : nothing}
         ${this.formError ? html`<p class="err">${this.formError}</p>` : nothing}
         ${this.ctrl?.error ? html`<p class="err">${this.ctrl.error}</p>` : nothing}
-        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .searchPlaceholder=${"Buscar estación…"} .emptyMessage=${this.ctrl?.loading ? 'Cargando…' : 'Sin estaciones.'} .actions=${this.rowActions} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}></ok-data-table>
+        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .searchPlaceholder=${t('ui.searchStations')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyStations')} .actions=${this.rowActions} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}></ok-data-table>
       </div>`;
   }
 }

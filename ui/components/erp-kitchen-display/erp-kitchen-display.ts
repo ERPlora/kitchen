@@ -5,12 +5,19 @@ import '@erplora/outfitkit/ok-data-table';
 import type { DataTableColumn } from '@erplora/outfitkit';
 import { createListController } from '@erplora/module-sdk';
 import type { ListController, ListClient, ListParams, ListPage } from '@erplora/module-sdk';
+// Catálogo i18n del módulo (ADR-0055): esbuild inlinea estos JSON en el `dist` del WC.
+import esLocale from '../../../locales/es.json';
+import enLocale from '../../../locales/en.json';
+const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
 
 interface ErploraClientLike extends ListClient {
   query<T = unknown>(name: string, params?: Record<string, unknown>): Promise<T>;
   queryPage<R = unknown>(name: string, params: ListParams): Promise<ListPage<R>>;
   command<T = unknown>(name: string, payload?: Record<string, unknown>): Promise<T>;
   on(event: string, cb: (payload: unknown) => void): () => void;
+  /** i18n del módulo (ADR-0055): idioma activo + traducción del catálogo `ui`. */
+  locale: string;
+  t(catalog: Record<string, unknown>, key: string, params?: Record<string, unknown>): string;
 }
 
 interface KitchenLog {
@@ -61,25 +68,25 @@ const DEFAULT_SETTINGS: KitchenSettings = {
   default_order_type: 'dine_in',
 };
 
-const BOOL_FIELDS: Array<{ key: keyof KitchenSettings; label: string }> = [
-  { key: 'auto_accept_orders', label: 'Auto-aceptar comandas' },
-  { key: 'show_timer', label: 'Mostrar temporizador' },
-  { key: 'sound_enabled', label: 'Sonido' },
-  { key: 'sound_on_new_order', label: 'Sonido al recibir comanda' },
-  { key: 'sound_on_rush', label: 'Sonido en prioridad rush' },
-  { key: 'auto_bump_enabled', label: 'Auto-bump' },
-  { key: 'color_coding_enabled', label: 'Colores por tiempo' },
-  { key: 'auto_print_tickets', label: 'Imprimir tickets automáticamente' },
-  { key: 'use_rounds', label: 'Usar rondas' },
-  { key: 'auto_fire_on_round', label: 'Lanzar al cerrar ronda' },
+const BOOL_FIELDS: Array<{ key: keyof KitchenSettings; labelKey: string }> = [
+  { key: 'auto_accept_orders', labelKey: 'ui.fieldAutoAcceptOrders' },
+  { key: 'show_timer', labelKey: 'ui.fieldShowTimer' },
+  { key: 'sound_enabled', labelKey: 'ui.fieldSoundEnabled' },
+  { key: 'sound_on_new_order', labelKey: 'ui.fieldSoundOnNewOrder' },
+  { key: 'sound_on_rush', labelKey: 'ui.fieldSoundOnRush' },
+  { key: 'auto_bump_enabled', labelKey: 'ui.fieldAutoBumpEnabled' },
+  { key: 'color_coding_enabled', labelKey: 'ui.fieldColorCodingEnabled' },
+  { key: 'auto_print_tickets', labelKey: 'ui.fieldAutoPrintTickets' },
+  { key: 'use_rounds', labelKey: 'ui.fieldUseRounds' },
+  { key: 'auto_fire_on_round', labelKey: 'ui.fieldAutoFireOnRound' },
 ];
 
-const INT_FIELDS: Array<{ key: keyof KitchenSettings; label: string; min: number; max: number }> = [
-  { key: 'warning_time_minutes', label: 'Aviso (min)', min: 1, max: 120 },
-  { key: 'critical_time_minutes', label: 'Crítico (min)', min: 1, max: 120 },
-  { key: 'items_per_page', label: 'Comandas por página', min: 4, max: 50 },
-  { key: 'auto_refresh_seconds', label: 'Refresco (s)', min: 3, max: 120 },
-  { key: 'auto_bump_delay_seconds', label: 'Auto-bump (s)', min: 1, max: 300 },
+const INT_FIELDS: Array<{ key: keyof KitchenSettings; labelKey: string; min: number; max: number }> = [
+  { key: 'warning_time_minutes', labelKey: 'ui.fieldWarningTime', min: 1, max: 120 },
+  { key: 'critical_time_minutes', labelKey: 'ui.fieldCriticalTime', min: 1, max: 120 },
+  { key: 'items_per_page', labelKey: 'ui.fieldItemsPerPage', min: 4, max: 50 },
+  { key: 'auto_refresh_seconds', labelKey: 'ui.fieldAutoRefresh', min: 3, max: 120 },
+  { key: 'auto_bump_delay_seconds', labelKey: 'ui.fieldAutoBumpDelay', min: 1, max: 300 },
 ];
 
 function erplora(): ErploraClientLike {
@@ -120,29 +127,36 @@ export class ErpKitchenDisplay extends LitElement {
 
   private unsub?: () => void;
 
-  private columns: DataTableColumn[] = [
+  // Getter (no campo): se re-evalúa en cada render → los textos cambian con el idioma activo (ADR-0055).
+  private get columns(): DataTableColumn[] {
+    const t = (k: string): string => erplora().t(CATALOG, k);
+    return [
     {
       key: 'action',
-      header: 'Acción',
+      header: t('ui.colAction'),
       sortable: true,
       filterable: true,
       filterType: 'select',
       options: [
-        { value: 'received', label: 'Recibidas' },
-        { value: 'started', label: 'Lanzadas' },
-        { value: 'bumped', label: 'Listas (bump)' },
-        { value: 'served', label: 'Servidas' },
-        { value: 'recalled', label: 'Recuperadas' },
-        { value: 'cancelled', label: 'Canceladas' },
+        { value: 'received', label: t('ui.actionReceived') },
+        { value: 'started', label: t('ui.actionStarted') },
+        { value: 'bumped', label: t('ui.actionBumped') },
+        { value: 'served', label: t('ui.actionServed') },
+        { value: 'recalled', label: t('ui.actionRecalled') },
+        { value: 'cancelled', label: t('ui.actionCancelled') },
       ],
     },
-    { key: 'order_id', header: 'Comanda', sortable: true, filterable: true, filterType: 'text' },
-    { key: 'notes', header: 'Notas', sortable: true, filterable: true, filterType: 'text' },
-    { key: 'created_at', header: 'Cuándo', sortable: true, filterable: true, filterType: 'daterange' },
-  ];
+    { key: 'order_id', header: t('ui.colOrder'), sortable: true, filterable: true, filterType: 'text' },
+    { key: 'notes', header: t('ui.colNotes'), sortable: true, filterable: true, filterType: 'text' },
+    { key: 'created_at', header: t('ui.colWhen'), sortable: true, filterable: true, filterType: 'daterange' },
+    ];
+  }
+
+  private readonly onLocaleChange = (): void => this.requestUpdate();
 
   async connectedCallback() {
     super.connectedCallback();
+    window.addEventListener('erplora:locale-changed', this.onLocaleChange);
     this.ctrl = createListController<KitchenLog>(erplora(), 'kitchen.logs.list', () => this.requestUpdate(), {
       pageSize: 50,
       sort: 'created_at',
@@ -167,6 +181,7 @@ export class ErpKitchenDisplay extends LitElement {
   }
 
   disconnectedCallback() {
+    window.removeEventListener('erplora:locale-changed', this.onLocaleChange);
     super.disconnectedCallback();
     this.unsub?.();
   }
@@ -188,7 +203,7 @@ export class ErpKitchenDisplay extends LitElement {
         this.settings = next as unknown as KitchenSettings;
       }
     } catch (e) {
-      this.settingsErr = e instanceof Error ? e.message : 'No se pudieron cargar los ajustes';
+      this.settingsErr = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.settingsLoadError');
     }
   }
 
@@ -198,9 +213,9 @@ export class ErpKitchenDisplay extends LitElement {
     this.settingsErr = '';
     try {
       await erplora().command('kitchen.settings.update', { ...this.settings });
-      this.settingsMsg = 'Ajustes guardados';
+      this.settingsMsg = erplora().t(CATALOG, 'ui.settingsSaved');
     } catch (e) {
-      this.settingsErr = e instanceof Error ? e.message : 'No se pudieron guardar los ajustes';
+      this.settingsErr = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.settingsSaveError');
     } finally {
       this.savingSettings = false;
     }
@@ -216,27 +231,28 @@ export class ErpKitchenDisplay extends LitElement {
   }
 
   private renderSettings() {
+    const t = (k: string): string => erplora().t(CATALOG, k);
     return html`<section class="settings">
-      <h3>Ajustes de cocina</h3>
+      <h3>${t('ui.settingsTitle')}</h3>
       <div class="grid">
         ${BOOL_FIELDS.map(
           (f) => html`<ion-item lines="none">
-            <ion-toggle .checked=${Boolean(this.settings[f.key])} @ionChange=${(e: any) => this.setBool(f.key, e.detail.checked)}>${f.label}</ion-toggle>
+            <ion-toggle .checked=${Boolean(this.settings[f.key])} @ionChange=${(e: any) => this.setBool(f.key, e.detail.checked)}>${t(f.labelKey)}</ion-toggle>
           </ion-item>`,
         )}
       </div>
       <div class="nums">
         ${INT_FIELDS.map(
-          (f) => html`<ion-input type="number" label=${f.label} label-placement="stacked" min=${f.min} max=${f.max} .value=${String(this.settings[f.key])} @ionInput=${(e: any) => this.setInt(f.key, e.target.value, f.min, f.max)}></ion-input>`,
+          (f) => html`<ion-input type="number" label=${t(f.labelKey)} label-placement="stacked" min=${f.min} max=${f.max} .value=${String(this.settings[f.key])} @ionInput=${(e: any) => this.setInt(f.key, e.target.value, f.min, f.max)}></ion-input>`,
         )}
-        <ion-select label="Tipo por defecto" label-placement="stacked" .value=${this.settings.default_order_type} @ionChange=${(e: any) => (this.settings = { ...this.settings, default_order_type: e.target.value })}>
-          <ion-select-option value="dine_in">En sala</ion-select-option>
-          <ion-select-option value="takeaway">Para llevar</ion-select-option>
-          <ion-select-option value="delivery">A domicilio</ion-select-option>
+        <ion-select label=${t('ui.defaultOrderType')} label-placement="stacked" .value=${this.settings.default_order_type} @ionChange=${(e: any) => (this.settings = { ...this.settings, default_order_type: e.target.value })}>
+          <ion-select-option value="dine_in">${t('ui.orderTypeDineIn')}</ion-select-option>
+          <ion-select-option value="takeaway">${t('ui.orderTypeTakeaway')}</ion-select-option>
+          <ion-select-option value="delivery">${t('ui.orderTypeDelivery')}</ion-select-option>
         </ion-select>
       </div>
       <footer>
-        <ion-button size="small" ?disabled=${this.savingSettings} @click=${() => this.saveSettings()}>${this.savingSettings ? 'Guardando…' : 'Guardar ajustes'}</ion-button>
+        <ion-button size="small" ?disabled=${this.savingSettings} @click=${() => this.saveSettings()}>${this.savingSettings ? t('ui.savingSettings') : t('ui.saveSettings')}</ion-button>
         ${this.settingsMsg ? html`<span class="ok">${this.settingsMsg}</span>` : nothing}
         ${this.settingsErr ? html`<span class="err">${this.settingsErr}</span>` : nothing}
       </footer>
@@ -244,14 +260,15 @@ export class ErpKitchenDisplay extends LitElement {
   }
 
   render() {
+    const t = (k: string): string => erplora().t(CATALOG, k);
     return html`<div>
         <header>
-          <h2>Kitchen Display</h2>
-          <ion-button size="small" fill="outline" @click=${() => this.toggleSettings()}>${this.showSettings ? 'Cerrar ajustes' : 'Ajustes'}</ion-button>
+          <h2>${t('ui.displayTitle')}</h2>
+          <ion-button size="small" fill="outline" @click=${() => this.toggleSettings()}>${this.showSettings ? t('ui.settingsToggleClose') : t('ui.settingsToggleOpen')}</ion-button>
         </header>
         ${this.showSettings ? this.renderSettings() : nothing}
         ${this.ctrl?.error ? html`<p class="err">${this.ctrl.error}</p>` : nothing}
-        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'desc'} .searchable=${true} .searchPlaceholder=${"Buscar acción, comanda o notas…"} .emptyMessage=${this.ctrl?.loading ? 'Cargando…' : 'Sin actividad reciente en cocina.'} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}></ok-data-table>
+        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'desc'} .searchable=${true} .searchPlaceholder=${t('ui.searchLogs')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyLogs')} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}></ok-data-table>
       </div>`;
   }
 }
