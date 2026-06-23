@@ -106,8 +106,8 @@ export class ErpKitchenDisplay extends LitElement {
     .badge { display:inline-block; padding:.1rem .5rem; border-radius:999px; background:#eef6fb; color:#1496d6; font-size:.75rem; font-weight:600; }
     .settings { border:1px solid var(--line, #e7e2d6); border-radius:10px; padding: .75rem 1rem; margin: 0 0 1rem; background: var(--surface-2, #faf8f2); }
     .settings .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap:.25rem .75rem; }
-    .settings .nums { display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.5rem; }
-    .settings .nums ion-input { max-width: 11rem; --background: #fff; border:1px solid var(--line,#e7e2d6); border-radius:8px; }
+    .settings .nums { display:flex; gap:.75rem; flex-wrap:wrap; align-items:end; margin-top:.5rem; }
+    .settings .nums ion-input, .settings .nums ion-select { flex:1 1 11rem; min-width:9rem; max-width:13rem; }
     .settings footer { display:flex; gap:.5rem; align-items:center; margin-top:.75rem; }
   `;
 
@@ -243,9 +243,9 @@ export class ErpKitchenDisplay extends LitElement {
       </div>
       <div class="nums">
         ${INT_FIELDS.map(
-          (f) => html`<ion-input type="number" label=${t(f.labelKey)} label-placement="stacked" min=${f.min} max=${f.max} .value=${String(this.settings[f.key])} @ionInput=${(e: any) => this.setInt(f.key, e.target.value, f.min, f.max)}></ion-input>`,
+          (f) => html`<ion-input fill="outline" type="number" label=${t(f.labelKey)} label-placement="floating" min=${f.min} max=${f.max} .value=${String(this.settings[f.key])} @ionInput=${(e: any) => this.setInt(f.key, e.target.value, f.min, f.max)}></ion-input>`,
         )}
-        <ion-select label=${t('ui.defaultOrderType')} label-placement="stacked" .value=${this.settings.default_order_type} @ionChange=${(e: any) => (this.settings = { ...this.settings, default_order_type: e.target.value })}>
+        <ion-select fill="outline" label=${t('ui.defaultOrderType')} label-placement="floating" .value=${this.settings.default_order_type} @ionChange=${(e: any) => (this.settings = { ...this.settings, default_order_type: e.target.value })}>
           <ion-select-option value="dine_in">${t('ui.orderTypeDineIn')}</ion-select-option>
           <ion-select-option value="takeaway">${t('ui.orderTypeTakeaway')}</ion-select-option>
           <ion-select-option value="delivery">${t('ui.orderTypeDelivery')}</ion-select-option>

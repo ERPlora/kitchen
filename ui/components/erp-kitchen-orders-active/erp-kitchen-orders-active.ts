@@ -42,8 +42,8 @@ export class ErpKitchenOrdersActive extends LitElement {
     :host { display:block; font-family: system-ui, sans-serif; color: var(--ink, #1c1b18); }
     header { display:flex; gap:.5rem; align-items:center; margin-bottom:.75rem; }
     h2 { margin:0; font-size:1.15rem; flex:1; }
-    .form { display:flex; gap:.5rem; flex-wrap:wrap; align-items:end; margin:.5rem 0 1rem; }
-    .form ion-input, .form ion-select { --background:var(--surface-2,#f7f4ec); border:1px solid var(--line,#e7e2d6); border-radius:8px; min-width:8rem; }
+    .form { display:flex; gap:.75rem; flex-wrap:wrap; align-items:end; margin:.5rem 0 1rem; }
+    .form ion-input, .form ion-select { flex:1 1 11rem; min-width:9rem; }
     .err { color:#d9480f; font-weight:600; }
     .actions { display:flex; gap:.35rem; }
   `;
@@ -181,12 +181,12 @@ export class ErpKitchenOrdersActive extends LitElement {
           <h2>${t('ui.ordersTitle')}</h2>
         </header>
         <form class="form" @submit=${(e) => this.createOrder(e)}>
-          <ion-select placeholder=${t('ui.placeholderType')} .value=${this.newType} @ionChange=${(e: any) => (this.newType = e.target.value)}>
+          <ion-select fill="outline" label-placement="floating" label=${t('ui.colType')} .value=${this.newType} @ionChange=${(e: any) => (this.newType = e.target.value)}>
             <ion-select-option value="dine_in">${t('ui.orderTypeDineIn')}</ion-select-option>
             <ion-select-option value="takeaway">${t('ui.orderTypeTakeaway')}</ion-select-option>
             <ion-select-option value="delivery">${t('ui.orderTypeDelivery')}</ion-select-option>
           </ion-select>
-          <ion-input placeholder=${t('ui.placeholderNotes')} .value=${this.newNotes} @ionInput=${(e: any) => (this.newNotes = e.target.value)}></ion-input>
+          <ion-input fill="outline" label-placement="floating" label=${t('ui.colNotes')} .value=${this.newNotes} @ionInput=${(e: any) => (this.newNotes = e.target.value)}></ion-input>
           <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t('ui.creatingOrder') : t('ui.newOrder')}</ion-button>
         </form>
         ${this.formError ? html`<p class="err">${this.formError}</p>` : nothing}

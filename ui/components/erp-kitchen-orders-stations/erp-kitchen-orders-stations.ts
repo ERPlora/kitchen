@@ -47,8 +47,8 @@ export class ErpKitchenOrdersStations extends LitElement {
     header { display:flex; gap:.5rem; align-items:center; margin-bottom:.75rem; }
     h2 { margin:0; font-size:1.15rem; flex:1; }
     h3 { margin:.25rem 0 .5rem; font-size:1rem; }
-    .form { display:flex; gap:.5rem; flex-wrap:wrap; align-items:end; margin:.5rem 0 1rem; }
-    .form ion-input, .form ion-select { --background:var(--surface-2,#f7f4ec); border:1px solid var(--line,#e7e2d6); border-radius:8px; min-width:8rem; }
+    .form { display:flex; gap:.75rem; flex-wrap:wrap; align-items:end; margin:.5rem 0 1rem; }
+    .form ion-input, .form ion-select { flex:1 1 11rem; min-width:9rem; }
     .panel { border:1px solid var(--line,#e7e2d6); border-radius:10px; padding:.75rem 1rem; margin:0 0 1rem; background:var(--surface-2,#faf8f2); }
     .err { color:#d9480f; font-weight:600; }
     .ok { color:#2b8a3e; font-weight:600; }
@@ -279,9 +279,9 @@ export class ErpKitchenOrdersStations extends LitElement {
     return html`<section class="panel">
       <h3>${t('ui.editStationTitle')} · ${this.editing.name}</h3>
       <form class="form" @submit=${(e: Event) => this.saveEdit(e)}>
-        <ion-input label=${t('ui.labelName')} label-placement="stacked" .value=${this.editName} @ionInput=${(e: any) => (this.editName = e.target.value)}></ion-input>
-        <ion-input label=${t('ui.labelColor')} label-placement="stacked" placeholder="#F97316" .value=${this.editColor} @ionInput=${(e: any) => (this.editColor = e.target.value)}></ion-input>
-        <ion-input label=${t('ui.labelPrinter')} label-placement="stacked" .value=${this.editPrinter} @ionInput=${(e: any) => (this.editPrinter = e.target.value)}></ion-input>
+        <ion-input fill="outline" label=${t('ui.labelName')} label-placement="floating" .value=${this.editName} @ionInput=${(e: any) => (this.editName = e.target.value)}></ion-input>
+        <ion-input fill="outline" label=${t('ui.labelColor')} label-placement="floating" placeholder="#F97316" .value=${this.editColor} @ionInput=${(e: any) => (this.editColor = e.target.value)}></ion-input>
+        <ion-input fill="outline" label=${t('ui.labelPrinter')} label-placement="floating" .value=${this.editPrinter} @ionInput=${(e: any) => (this.editPrinter = e.target.value)}></ion-input>
         <ion-toggle .checked=${this.editActive} @ionChange=${(e: any) => (this.editActive = e.detail.checked)}>${t('ui.labelActive')}</ion-toggle>
         <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t('ui.saving') : t('ui.save')}</ion-button>
         <ion-button size="small" fill="outline" @click=${() => (this.editing = null)}>${t('ui.cancel')}</ion-button>
@@ -295,11 +295,11 @@ export class ErpKitchenOrdersStations extends LitElement {
     return html`<section class="panel">
       <h3>${t('ui.routingTitle')}</h3>
       <form class="form" @submit=${(e: Event) => this.saveRouting(e)}>
-        <ion-select placeholder=${t('ui.placeholderStation')} .value=${this.routeStationId} @ionChange=${(e: any) => (this.routeStationId = e.target.value)}>
+        <ion-select fill="outline" label-placement="floating" label=${t('ui.colStation')} .value=${this.routeStationId} @ionChange=${(e: any) => (this.routeStationId = e.target.value)}>
           ${stations.map((s) => html`<ion-select-option value=${s.id}>${s.name}</ion-select-option>`)}
         </ion-select>
-        <ion-input label=${t('ui.labelProductId')} label-placement="stacked" placeholder=${t('ui.placeholderOptional')} .value=${this.routeProductId} @ionInput=${(e: any) => (this.routeProductId = e.target.value)}></ion-input>
-        <ion-input label=${t('ui.labelCategoryId')} label-placement="stacked" placeholder=${t('ui.placeholderOptional')} .value=${this.routeCategoryId} @ionInput=${(e: any) => (this.routeCategoryId = e.target.value)}></ion-input>
+        <ion-input fill="outline" label=${t('ui.labelProductId')} label-placement="floating" placeholder=${t('ui.placeholderOptional')} .value=${this.routeProductId} @ionInput=${(e: any) => (this.routeProductId = e.target.value)}></ion-input>
+        <ion-input fill="outline" label=${t('ui.labelCategoryId')} label-placement="floating" placeholder=${t('ui.placeholderOptional')} .value=${this.routeCategoryId} @ionInput=${(e: any) => (this.routeCategoryId = e.target.value)}></ion-input>
         <ion-button type="submit" size="small" ?disabled=${this.saving || !this.routeStationId || (!this.routeProductId.trim() && !this.routeCategoryId.trim())}>${this.saving ? t('ui.saving') : t('ui.saveRouting')}</ion-button>
       </form>
     </section>`;
@@ -312,8 +312,8 @@ export class ErpKitchenOrdersStations extends LitElement {
           <h2>${t('ui.stationsTitle')}</h2>
         </header>
         <form class="form" @submit=${(e) => this.createStation(e)}>
-          <ion-input placeholder=${t('ui.placeholderStationName')} .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
-          <ion-input placeholder=${t('ui.placeholderPrinterOptional')} .value=${this.newPrinter} @ionInput=${(e: any) => (this.newPrinter = e.target.value)}></ion-input>
+          <ion-input fill="outline" label-placement="floating" label=${t('ui.labelName')} placeholder=${t('ui.placeholderStationName')} .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
+          <ion-input fill="outline" label-placement="floating" label=${t('ui.labelPrinter')} placeholder=${t('ui.placeholderPrinterOptional')} .value=${this.newPrinter} @ionInput=${(e: any) => (this.newPrinter = e.target.value)}></ion-input>
           <ion-button type="submit" size="small" ?disabled=${this.saving || !this.newName}>${this.saving ? t('ui.saving') : t('ui.addStation')}</ion-button>
         </form>
         ${this.renderEditPanel()}
