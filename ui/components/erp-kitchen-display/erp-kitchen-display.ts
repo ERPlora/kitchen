@@ -104,7 +104,7 @@ export class ErpKitchenDisplay extends LitElement {
     .err { color:#d9480f; font-weight:600; }
     .ok { color:#2b8a3e; font-weight:600; }
     .badge { display:inline-block; padding:.1rem .5rem; border-radius:999px; background:#eef6fb; color:#1496d6; font-size:.75rem; font-weight:600; }
-    .settings { border:1px solid var(--line, #e7e2d6); border-radius:10px; padding: .75rem 1rem; margin: 0 0 1rem; background: var(--surface-2, #faf8f2); }
+    .settings { border:1px solid var(--ion-border-color, #e7e2d6); border-radius:10px; padding: .75rem 1rem; margin: 0 0 1rem; background: var(--ok-surface-2, var(--ion-color-step-50, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.04))); }
     .settings .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap:.25rem .75rem; }
     .settings .nums { display:flex; gap:.75rem; flex-wrap:wrap; align-items:end; margin-top:.5rem; }
     .settings .nums ion-input, .settings .nums ion-select { flex:1 1 11rem; min-width:9rem; max-width:13rem; }
