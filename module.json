@@ -182,7 +182,8 @@
       },
       "ai": {
         "description": "Lists active kitchen orders, optionally filtered by status"
-      }
+      },
+      "expose_api": true
     },
     "kitchen.orders.get": {
       "permission": "kitchen.view_order",
@@ -190,7 +191,8 @@
       "schema": "schemas/order_get.json",
       "ai": {
         "description": "Retrieves the full detail of a kitchen order by its identifier"
-      }
+      },
+      "expose_api": true
     },
     "kitchen.orders.items": {
       "permission": "kitchen.view_order",
@@ -198,7 +200,8 @@
       "schema": "schemas/order_items.json",
       "ai": {
         "description": "Lists the line items of a specific kitchen order"
-      }
+      },
+      "expose_api": true
     },
     "kitchen.stations.list": {
       "permission": "kitchen.view_order",
@@ -253,7 +256,8 @@
       },
       "ai": {
         "description": "Lists the configured kitchen stations"
-      }
+      },
+      "expose_api": true
     },
     "kitchen.stations.pending_counts": {
       "permission": "kitchen.view_order",
@@ -328,7 +332,8 @@
       },
       "ai": {
         "description": "Creates a new kitchen order (the handler emits kitchen.order.created)"
-      }
+      },
+      "expose_api": true
     },
     "kitchen.orders.update": {
       "permission": "kitchen.change_order",
@@ -342,7 +347,8 @@
       ],
       "ai": {
         "description": "Updates the data of an existing kitchen order"
-      }
+      },
+      "expose_api": true
     },
     "kitchen.orders.set_status": {
       "permission": "kitchen.change_order",
