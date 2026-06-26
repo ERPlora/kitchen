@@ -81,6 +81,13 @@
       "component": "erp-kitchen-orders-stations"
     }
   ],
+  "settings": {
+    "title": "Cocina",
+    "icon": "restaurant-outline",
+    "schema": "schemas/settings_update.json",
+    "get": "kitchen.settings.get",
+    "set": "kitchen.settings.update"
+  },
   "migrations": {
     "sqlite": [
       "migrations/sqlite/001_init.sql"
