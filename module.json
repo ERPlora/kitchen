@@ -151,7 +151,7 @@
             "op": "eq"
           },
           "notes": {
-            "op": "eq"
+            "op": "like"
           },
           "subtotal": {
             "op": "range"
@@ -225,13 +225,13 @@
         "default_dir": "asc",
         "filters": {
           "name": {
-            "op": "eq"
+            "op": "like"
           },
           "name_es": {
-            "op": "eq"
+            "op": "like"
           },
           "description": {
-            "op": "eq"
+            "op": "like"
           },
           "color": {
             "op": "eq"
@@ -304,7 +304,7 @@
             "op": "eq"
           },
           "notes": {
-            "op": "eq"
+            "op": "like"
           },
           "created_at": {
             "op": "range"
