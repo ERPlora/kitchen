@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "module": "kitchen",
+  "consumes": {
+    "queries": [
+      "kitchen.logs.list",
+      "kitchen.orders.list",
+      "kitchen.settings.get",
+      "kitchen.stations.list",
+      "kitchen.stations.pending_counts"
+    ],
+    "optional_queries": [],
+    "commands": [
+      "kitchen.orders.create",
+      "kitchen.orders.set_status",
+      "kitchen.settings.update",
+      "kitchen.stations.create",
+      "kitchen.stations.delete",
+      "kitchen.stations.set_routing",
+      "kitchen.stations.update"
+    ],
+    "events": [
+      "kitchen.order.cancelled",
+      "kitchen.order.created",
+      "kitchen.order.deleted",
+      "kitchen.order.fired",
+      "kitchen.order.ready",
+      "kitchen.order.recalled",
+      "kitchen.order.served",
+      "kitchen.order.updated",
+      "kitchen.routing.changed",
+      "kitchen.station.created",
+      "kitchen.station.deleted",
+      "kitchen.station.updated"
+    ],
+    "slots": []
+  }
+}
