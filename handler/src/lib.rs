@@ -12,6 +12,9 @@
 //! * `order_number` atómico `YYYYMMDD-NNNN`: `_bump_counter` (upsert) + `_insert_order`
 //!   leyendo el contador con subquery en la misma transacción (patrón `sales`).
 
+use erplora_guest_sdk::money;
+use rust_decimal::prelude::FromPrimitive;
+use rust_decimal::Decimal;
 use erplora_guest_sdk::{Event, Operation, Output};
 use serde_json::{json, Map, Value};
 
@@ -66,31 +69,10 @@ fn to_fn_result(r: Result<Output, String>) -> FnResult<Json<Output>> {
 
 // ── Helpers (mismo estilo que sales-handler) ───────────────────────────────
 
-/// Redondea céntimos fraccionarios a céntimos enteros half-even (ADR-0007). `x` ya en
-/// el espacio de céntimos.
-fn round_cents(x: f64) -> i64 {
-    let floor = x.floor();
-    let diff = x - floor;
-    let r = if (diff - 0.5).abs() < 1e-9 {
-        if (floor as i64) % 2 == 0 { floor } else { floor + 1.0 }
-    } else {
-        x.round()
-    };
-    r as i64
-}
 
-/// Lee un importe **en céntimos** (`i64`) del payload: entero, string de entero, o
-/// (robustez) decimal interpretado como céntimos ya escalados. El contrato es céntimos.
-fn cents(v: &Value, d: i64) -> i64 {
-    match v {
-        Value::Number(n) => n.as_i64().or_else(|| n.as_f64().map(round_cents)).unwrap_or(d),
-        Value::String(s) => {
-            let s = s.trim();
-            s.parse::<i64>().ok().or_else(|| s.parse::<f64>().ok().map(round_cents)).unwrap_or(d)
-        }
-        _ => d,
-    }
-}
+// El DINERO lo calcula `erplora_guest_sdk::money` (ADR-0123): una sola implementación para todos
+// los handlers, un solo modo de redondeo (HALF_UP). Este módulo tenía su propio `round_cents`
+// (half-even sobre `f64`), copiado byte a byte de otros cuatro.
 
 fn as_f64(v: &Value, d: f64) -> f64 {
     match v {
@@ -209,8 +191,9 @@ fn build_order_ops(
     let mut subtotal: i64 = 0; // céntimos
     for (i, item) in items.iter().enumerate() {
         let qty = item.get("quantity").map(|v| as_f64(v, 1.0)).unwrap_or(1.0);
-        let unit_price = cents(item.get("unit_price").unwrap_or(&Value::Null), 0); // céntimos
-        let line_total = round_cents(unit_price as f64 * qty); // céntimos
+        let unit_price = money::from_json(item.get("unit_price").unwrap_or(&Value::Null), 0);
+        // precio × cantidad, con UN solo redondeo (la cantidad es fraccionable; el dinero no).
+        let line_total = money::mul_qty(unit_price, Decimal::from_f64(qty).unwrap_or(Decimal::ZERO));
         subtotal += line_total;
 
         let item_id = ctx.new_ids.get(i + 1).cloned().unwrap_or_default();
