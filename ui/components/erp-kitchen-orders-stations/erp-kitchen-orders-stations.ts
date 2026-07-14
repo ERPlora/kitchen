@@ -127,9 +127,10 @@ export class ErpKitchenOrdersStations extends LitElement {
   private get rowActions(): DataTableAction[] {
     const t = (k: string): string => erplora().t(CATALOG, k);
     return [
-    { id: 'edit', label: t('ui.rowEdit') },
-    { id: 'route', label: t('ui.rowRoute') },
-    { id: 'delete', label: t('ui.rowDelete'), color: 'danger' },
+    // Solo icono (ADR-0133): el `label` viaja como title + aria-label del botón, no como texto.
+    { id: 'edit', label: t('ui.rowEdit'), icon: 'create-outline' },
+    { id: 'route', label: t('ui.rowRoute'), icon: 'git-branch-outline' },
+    { id: 'delete', label: t('ui.rowDelete'), icon: 'trash-outline', color: 'danger' },
     ];
   }
 
@@ -329,7 +330,7 @@ export class ErpKitchenOrdersStations extends LitElement {
         ${this.formMsg ? html`<p class="ok">${this.formMsg}</p>` : nothing}
         ${this.formError ? html`<p class="err">${this.formError}</p>` : nothing}
         ${this.ctrl?.error ? html`<p class="err">${this.ctrl.error}</p>` : nothing}
-        <ok-data-table .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .searchPlaceholder=${t('ui.searchStations')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyStations')} .actions=${this.rowActions} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @pageSizeChange=${(e: CustomEvent<number>) => this.ctrl.setPageSize(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}>
+        <ok-data-table .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.name ?? '—')} .cardIcon=${() => 'flame-outline'} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .searchPlaceholder=${t('ui.searchStations')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyStations')} .actions=${this.rowActions} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @pageSizeChange=${(e: CustomEvent<number>) => this.ctrl.setPageSize(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}>
           <!-- Alta de estación: se proyecta SIEMPRE (aunque el panel esté cerrado); si se renderizara
                solo con el panel abierto, el «+» de la barra abriría un panel vacío. -->
           <form slot="create" class="create-form" @submit=${(e: Event) => this.createStation(e)}>

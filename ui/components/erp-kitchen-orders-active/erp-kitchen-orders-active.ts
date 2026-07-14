@@ -98,11 +98,12 @@ export class ErpKitchenOrdersActive extends LitElement {
   private get rowActions(): DataTableAction[] {
     const t = (k: string): string => erplora().t(CATALOG, k);
     return [
-    { id: 'fire', label: t('ui.rowFire') },
-    { id: 'mark_ready', label: t('ui.rowMarkReady') },
-    { id: 'mark_served', label: t('ui.rowMarkServed') },
-    { id: 'recall', label: t('ui.rowRecall') },
-    { id: 'cancel', label: t('ui.rowCancel'), color: 'danger' },
+    // Solo icono (ADR-0133): el `label` viaja como title + aria-label del botón, no como texto.
+    { id: 'fire', label: t('ui.rowFire'), icon: 'flame-outline' },
+    { id: 'mark_ready', label: t('ui.rowMarkReady'), icon: 'checkmark-done-outline' },
+    { id: 'mark_served', label: t('ui.rowMarkServed'), icon: 'restaurant-outline' },
+    { id: 'recall', label: t('ui.rowRecall'), icon: 'arrow-undo-outline' },
+    { id: 'cancel', label: t('ui.rowCancel'), icon: 'close-circle-outline', color: 'danger' },
     ];
   }
 
@@ -191,7 +192,7 @@ export class ErpKitchenOrdersActive extends LitElement {
         </form>
         ${this.formError ? html`<p class="err">${this.formError}</p>` : nothing}
         ${this.ctrl?.error ? html`<p class="err">${this.ctrl.error}</p>` : nothing}
-        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'desc'} .searchable=${true} .searchPlaceholder=${t('ui.searchOrders')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyOrders')} .actions=${this.rowActions} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}></ok-data-table>
+        <ok-data-table .serverSide=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.order_number ?? '—')} .cardIcon=${() => 'restaurant-outline'} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'desc'} .searchable=${true} .searchPlaceholder=${t('ui.searchOrders')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyOrders')} .actions=${this.rowActions} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}></ok-data-table>
       </div>`;
   }
 }
