@@ -83,12 +83,14 @@
     "sqlite": [
       "migrations/sqlite/001_init.sql",
       "migrations/sqlite/002_order_source.sql",
-      "migrations/sqlite/003_station_destination.sql"
+      "migrations/sqlite/003_station_destination.sql",
+      "migrations/sqlite/004_dispatch_snapshot.sql"
     ],
     "postgres": [
       "migrations/postgres/001_init.sql",
       "migrations/postgres/002_order_source.sql",
-      "migrations/postgres/003_station_destination.sql"
+      "migrations/postgres/003_station_destination.sql",
+      "migrations/postgres/004_dispatch_snapshot.sql"
     ]
   },
   "queries": {

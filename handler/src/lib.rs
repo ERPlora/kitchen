@@ -12,8 +12,7 @@
 //! * `order_number` atómico `YYYYMMDD-NNNN`: `_bump_counter` (upsert) + `_insert_order`
 //!   leyendo el contador con subquery en la misma transacción (patrón `sales`).
 
-use erplora_guest_sdk::money;
-use rust_decimal::prelude::FromPrimitive;
+use erplora_guest_sdk::money::{self, Qty};
 use rust_decimal::Decimal;
 use erplora_guest_sdk::{Event, Operation, Output};
 use serde_json::{json, Map, Value};
@@ -80,14 +79,6 @@ fn to_fn_result(r: Result<Output, String>) -> FnResult<Json<Output>> {
 // El DINERO lo calcula `erplora_guest_sdk::money` (ADR-0123): una sola implementación para todos
 // los handlers, un solo modo de redondeo (HALF_UP). Este módulo tenía su propio `round_cents`
 // (half-even sobre `f64`), copiado byte a byte de otros cuatro.
-
-fn as_f64(v: &Value, d: f64) -> f64 {
-    match v {
-        Value::Number(n) => n.as_f64().unwrap_or(d),
-        Value::String(s) => s.trim().parse::<f64>().unwrap_or(d),
-        _ => d,
-    }
-}
 
 fn as_i64(v: &Value, d: i64) -> i64 {
     match v {
@@ -197,10 +188,13 @@ fn build_order_ops(
 
     let mut subtotal: i64 = 0; // céntimos
     for (i, item) in items.iter().enumerate() {
-        let qty = item.get("quantity").map(|v| as_f64(v, 1.0)).unwrap_or(1.0);
+        // `Qty` es LA puerta de las cantidades del SDK (money.rs): un Decimal envuelto, sin pasar
+        // por f64. Antes esto hacía `as_f64` → `Decimal::from_f64`, un round-trip por coma flotante
+        // en el camino del IMPORTE — la vía por la que entran los 0.30000000000000004.
+        let qty = Qty::from_json(item.get("quantity").unwrap_or(&Value::Null), Decimal::ONE);
         let unit_price = money::from_json(item.get("unit_price").unwrap_or(&Value::Null), 0);
         // precio × cantidad, con UN solo redondeo (la cantidad es fraccionable; el dinero no).
-        let line_total = money::mul_qty(unit_price, Decimal::from_f64(qty).unwrap_or(Decimal::ZERO));
+        let line_total = money::mul_qty(unit_price, qty.value());
         subtotal += line_total;
 
         let item_id = ctx.new_ids.get(i + 1).cloned().unwrap_or_default();
@@ -210,9 +204,15 @@ fn build_order_ops(
         p.insert("station_id".into(), opt_str(item, "station_id"));
         p.insert("product_id".into(), opt_str(item, "product_id"));
         p.insert("category_id".into(), opt_str(item, "category_id"));
+        // De qué línea de pedido salió esto: es lo que necesita la anulación para repartir
+        // cantidades entre las estaciones que recibieron cada ronda.
+        p.insert("sales_order_item_id".into(), opt_str(item, "order_item_id"));
         p.insert("product_name".into(), json!(str_or(item, "product_name", "")));
         p.insert("unit_price".into(), json!(unit_price)); // céntimos
-        p.insert("quantity".into(), json!(as_i64(item.get("quantity").unwrap_or(&Value::Null), 1)));
+        // FRACCIONABLE: media ración y medio kilo de gambas son cantidades reales de un bar. Con
+        // `as_i64` esto era `0.5 as i64` = 0 y al cocinero le llegaba «0 × Gambas».
+        // `to_f64` porque la columna es REAL: una cantidad NO es dinero (money.rs).
+        p.insert("quantity".into(), json!(qty.to_f64()));
         p.insert("total".into(), json!(line_total)); // céntimos
         p.insert("modifiers".into(), json!(str_or(item, "modifiers", "")));
         p.insert("notes".into(), json!(str_or(item, "notes", "")));
