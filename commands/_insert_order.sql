@@ -16,7 +16,15 @@ VALUES
        SELECT last_number FROM kitchen_order_counter WHERE hub_id = :hub_id AND day = :day
    ), 4),
    :table_id, :sale_id, :customer_id, :waiter_id,
-   :source_order_id, :label,
+   :source_order_id,
+   -- Etiqueta (ADR-0141/0144): es del PEDIDO, aunque la aporte quien dispara. Si una ronda llega
+   -- sin ella —el POS reanudó el pedido sin la mesa cargada, otro turno, otra tablet—, hereda la
+   -- de la ronda anterior: una comanda sin destino es comida que cocina no sabe a dónde mandar.
+   COALESCE(NULLIF(:label, ''), (
+       SELECT label FROM kitchen_order
+       WHERE hub_id = :hub_id AND source_order_id = :source_order_id AND is_deleted = 0
+       ORDER BY round_number DESC LIMIT 1
+   ), ''),
    :order_type, :status, :priority,
    -- Ronda (ADR-0141): el handler WASM no puede leer la BD, así que manda 0 = «numérala tú» y se
    -- calcula aquí, en la MISMA transacción, contra las comandas ya disparadas de ESE pedido.
