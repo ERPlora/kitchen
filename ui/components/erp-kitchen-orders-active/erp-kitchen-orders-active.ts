@@ -25,6 +25,7 @@ interface Order {
   order_number: string;
   status: string;
   order_type: string;
+  label: string;
   priority: string;
   total: string;
   notes: string;
@@ -67,6 +68,9 @@ export class ErpKitchenOrdersActive extends LitElement {
     const t = (k: string): string => erplora().t(CATALOG, k);
     return [
     { key: 'order_number', header: t('ui.colOrder'), sortable: true, filterable: true, filterType: 'text' },
+    // ADR-0141: a dónde va el plato. Es una ETIQUETA OPACA que manda quien dispara ("Mesa 4",
+    // "Barra", "Recogida Ana"): cocina la imprime tal cual y no depende de `tables`.
+    { key: 'label', header: t('ui.colLabel'), width: '140px', sortable: true, filterable: true, filterType: 'text' },
     { key: 'order_type', header: t('ui.colType'), sortable: true, filterable: true, filterType: 'text' },
     { key: 'priority', header: t('ui.colPriority'), sortable: true, filterable: true, filterType: 'text' },
     {

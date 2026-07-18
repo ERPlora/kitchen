@@ -110,6 +110,7 @@
     "saveRoutingError": "No se pudo guardar el enrutado",
     "deleteStationError": "No se pudo eliminar la estación",
     "searchStations": "Buscar estación…",
-    "emptyStations": "Sin estaciones."
+    "emptyStations": "Sin estaciones.",
+    "colLabel": "Destino"
   }
 }
