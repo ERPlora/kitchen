@@ -10,6 +10,8 @@
     "color": { "type": ["string", "null"], "maxLength": 7, "default": null },
     "icon": { "type": ["string", "null"], "maxLength": 50, "default": null },
     "printer_name": { "type": ["string", "null"], "maxLength": 100, "default": null },
+    "destination": { "type": ["string", "null"], "enum": ["display", "printer", "both", null], "default": null },
+    "printer_role": { "type": ["string", "null"], "maxLength": 50, "default": null },
     "is_active": { "type": ["integer", "null"], "enum": [0, 1, null], "default": null }
   }
 }
