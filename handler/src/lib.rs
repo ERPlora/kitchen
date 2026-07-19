@@ -13,6 +13,7 @@
 //!   leyendo el contador con subquery en la misma transacción (patrón `sales`).
 
 use erplora_guest_sdk::money::{self, Qty};
+use erplora_guest_sdk::units::QUANTITY_SCALE;
 use rust_decimal::Decimal;
 use erplora_guest_sdk::{Event, Operation, Output};
 use serde_json::{json, Map, Value};
@@ -188,10 +189,16 @@ fn build_order_ops(
 
     let mut subtotal: i64 = 0; // céntimos
     for (i, item) in items.iter().enumerate() {
-        // `Qty` es LA puerta de las cantidades del SDK (money.rs): un Decimal envuelto, sin pasar
-        // por f64. Antes esto hacía `as_f64` → `Decimal::from_f64`, un round-trip por coma flotante
-        // en el camino del IMPORTE — la vía por la que entran los 0.30000000000000004.
-        let qty = Qty::from_json(item.get("quantity").unwrap_or(&Value::Null), Decimal::ONE);
+        // ADR-0147: la cantidad llega como PUNTO FIJO entero, escala global 10⁶ (0,5 = 500000) —
+        // nunca un float. Esta es la FRONTERA de cocina: aquí se convierte a su representación
+        // propia (Decimal exacto ÷ 10⁶; la columna sigue siendo REAL hasta la migración de este
+        // módulo). Un float que llegara aquí no se repesca: es un error de quien emite.
+        let qty_raw = match item.get("quantity") {
+            Some(Value::Number(n)) => n.as_i64().unwrap_or(0),
+            Some(Value::String(s)) => s.trim().parse::<i64>().unwrap_or(0),
+            _ => QUANTITY_SCALE, // ausente → 1 unidad (el default de siempre)
+        };
+        let qty = Qty::from_decimal(Decimal::from(qty_raw) / Decimal::from(QUANTITY_SCALE));
         let unit_price = money::from_json(item.get("unit_price").unwrap_or(&Value::Null), 0);
         // precio × cantidad, con UN solo redondeo (la cantidad es fraccionable; el dinero no).
         let line_total = money::mul_qty(unit_price, qty.value());
@@ -568,7 +575,7 @@ mod tests {
         let out = create_order_from_order_pure(fired(
             "Mesa 4",
             "dine_in",
-            json!([{ "product_name": "Croquetas", "quantity": 2, "unit_price": 350, "notes": "sin gluten" }]),
+            json!([{ "product_name": "Croquetas", "quantity": 2_000_000, "unit_price": 350, "notes": "sin gluten" }]),
         ))
         .expect("crear la comanda");
 
@@ -590,13 +597,33 @@ mod tests {
     }
 
     #[test]
+    fn media_racion_entra_en_escala_10e6_y_se_guarda_como_media() {
+        // ADR-0147: la cantidad viaja como PUNTO FIJO entero, escala global 10⁶ — 0,5 es 500000,
+        // nunca un float. Cocina la convierte EN SU FRONTERA a su representación propia (columna
+        // REAL, pendiente de su propia migración): al cocinero le llega «0,5 × Gambas», ni 0 ni 1.
+        let out = create_order_from_order_pure(fired(
+            "Mesa 4",
+            "dine_in",
+            json!([{ "product_name": "Gambas", "quantity": 500_000, "unit_price": 2400 }]),
+        ))
+        .expect("crear la comanda");
+        let item = out
+            .operations
+            .iter()
+            .find(|o| o.command == "kitchen._insert_item")
+            .expect("la línea baja a cocina");
+        assert_eq!(item.params["quantity"], json!(0.5), "media ración es 0,5: {:?}", item.params);
+        assert_eq!(item.params["total"], json!(1200), "2400 × 0,5 = 1200 céntimos, un redondeo");
+    }
+
+    #[test]
     fn las_lineas_de_servicio_no_se_cocinan() {
         let out = create_order_from_order_pure(fired(
             "Barra",
             "takeaway",
             json!([
-                { "product_name": "Tarta", "quantity": 1, "unit_price": 400 },
-                { "product_name": "Servicio de sala", "quantity": 1, "unit_price": 200, "is_service": true }
+                { "product_name": "Tarta", "quantity": 1_000_000, "unit_price": 400 },
+                { "product_name": "Servicio de sala", "quantity": 1_000_000, "unit_price": 200, "is_service": true }
             ]),
         ))
         .unwrap();
