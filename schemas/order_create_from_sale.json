@@ -21,7 +21,7 @@
         "properties": {
           "product_id": { "type": ["string", "null"], "default": null },
           "product_name": { "type": "string", "default": "" },
-          "quantity": { "type": "number", "minimum": 0 },
+          "quantity": { "type": "integer", "minimum": 0, "description": "Punto fijo escala 10⁶ (ADR-0147); coherente con order_create — un float ya no es una cantidad válida" },
           "unit_price": { "type": "integer", "minimum": 0, "default": 0 },
           "is_service": { "type": "boolean", "default": false },
           "notes": { "type": "string", "default": "" }
