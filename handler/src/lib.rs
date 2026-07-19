@@ -216,10 +216,9 @@ fn build_order_ops(
         p.insert("sales_order_item_id".into(), opt_str(item, "order_item_id"));
         p.insert("product_name".into(), json!(str_or(item, "product_name", "")));
         p.insert("unit_price".into(), json!(unit_price)); // céntimos
-        // FRACCIONABLE: media ración y medio kilo de gambas son cantidades reales de un bar. Con
-        // `as_i64` esto era `0.5 as i64` = 0 y al cocinero le llegaba «0 × Gambas».
-        // `to_f64` porque la columna es REAL: una cantidad NO es dinero (money.rs).
-        p.insert("quantity".into(), json!(qty.to_f64()));
+        // Punto fijo 10⁶ TAMBIÉN en la fila (ADR-0147 §2.1: REAL prohibido para cantidades de
+        // negocio; la migración 005 reescala la columna). El lógico solo existe al pintar.
+        p.insert("quantity".into(), json!(qty_raw));
         p.insert("total".into(), json!(line_total)); // céntimos
         p.insert("modifiers".into(), json!(str_or(item, "modifiers", "")));
         p.insert("notes".into(), json!(str_or(item, "notes", "")));
@@ -597,10 +596,11 @@ mod tests {
     }
 
     #[test]
-    fn media_racion_entra_en_escala_10e6_y_se_guarda_como_media() {
-        // ADR-0147: la cantidad viaja como PUNTO FIJO entero, escala global 10⁶ — 0,5 es 500000,
-        // nunca un float. Cocina la convierte EN SU FRONTERA a su representación propia (columna
-        // REAL, pendiente de su propia migración): al cocinero le llega «0,5 × Gambas», ni 0 ni 1.
+    fn media_racion_entra_y_se_persiste_en_escala_10e6() {
+        // ADR-0147 §2.1: la cantidad es punto fijo entero 10⁶ en el cable Y EN LA FILA — la
+        // persistencia lógica en f64 («0.5» a una columna REAL) era el residuo transitorio que
+        // la migración 005 elimina (REAL prohibido para cantidades de negocio). El dinero se
+        // sigue calculando con la lógica exacta: 2400 × 0,5 = 1200, un redondeo.
         let out = create_order_from_order_pure(fired(
             "Mesa 4",
             "dine_in",
@@ -612,7 +612,7 @@ mod tests {
             .iter()
             .find(|o| o.command == "kitchen._insert_item")
             .expect("la línea baja a cocina");
-        assert_eq!(item.params["quantity"], json!(0.5), "media ración es 0,5: {:?}", item.params);
+        assert_eq!(item.params["quantity"], json!(500_000), "la fila guarda µ, no el lógico f64: {:?}", item.params);
         assert_eq!(item.params["total"], json!(1200), "2400 × 0,5 = 1200 céntimos, un redondeo");
     }
 

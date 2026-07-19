@@ -32,7 +32,7 @@
           "product_id": { "type": "string", "minLength": 1 },
           "product_name": { "type": "string", "default": "" },
           "unit_price": { "type": "integer", "minimum": 0, "default": 0 },
-          "quantity": { "type": "integer", "minimum": 1 },
+          "quantity": { "type": "integer", "minimum": 1, "description": "Punto fijo escala 10⁶ (ADR-0147): 1000000 = 1 ración" },
           "category_id": { "type": ["string", "null"], "default": null },
           "station_id": { "type": ["string", "null"], "default": null },
           "modifiers": { "type": "string", "default": "" },
