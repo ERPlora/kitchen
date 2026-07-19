@@ -110,6 +110,7 @@
     "saveRoutingError": "Could not save routing",
     "deleteStationError": "Could not delete station",
     "searchStations": "Search station…",
-    "emptyStations": "No stations."
+    "emptyStations": "No stations.",
+    "colLabel": "Where"
   }
 }

@@ -19,9 +19,7 @@
     ]
   },
   "depends_on": [
-    "tables",
     "sales",
-    "customers",
     "inventory"
   ],
   "permissions": [
@@ -83,10 +81,16 @@
   ],
   "migrations": {
     "sqlite": [
-      "migrations/sqlite/001_init.sql"
+      "migrations/sqlite/001_init.sql",
+      "migrations/sqlite/002_order_source.sql",
+      "migrations/sqlite/003_station_destination.sql",
+      "migrations/sqlite/004_dispatch_snapshot.sql"
     ],
     "postgres": [
-      "migrations/postgres/001_init.sql"
+      "migrations/postgres/001_init.sql",
+      "migrations/postgres/002_order_source.sql",
+      "migrations/postgres/003_station_destination.sql",
+      "migrations/postgres/004_dispatch_snapshot.sql"
     ]
   },
   "queries": {
@@ -380,6 +384,18 @@
         "description": "Creates a kitchen order automatically from a completed sale (event-driven, idempotent per sale)"
       }
     },
+    "kitchen.orders.create_from_order": {
+      "permission": "kitchen.add_order",
+      "schema": "schemas/order_create_from_order.json",
+      "handler": {
+        "type": "wasm",
+        "file": "dist/handler.wasm",
+        "function": "create_order_from_order"
+      },
+      "ai": {
+        "description": "Creates a kitchen ticket from a FIRED ORDER (event `order.fired`, ADR-0141) — the ticket is born when the waiter takes the order, not when the customer pays. Carries an opaque label (e.g. \"Table 4\") that kitchen prints verbatim, so kitchen depends on neither tables nor customers. Each fire is a new round of the same order."
+      }
+    },
     "kitchen.stations.create": {
       "permission": "kitchen.manage_settings",
       "transaction": true,
@@ -514,8 +530,8 @@
   },
   "events": {
     "listen": {
-      "sale.completed": {
-        "command": "kitchen.orders.create_from_sale"
+      "order.fired": {
+        "command": "kitchen.orders.create_from_order"
       },
       "kitchen.order.fired": {
         "command": "kitchen.logs.create"

@@ -1,0 +1,22 @@
+-- Destino de la estación: pantalla, impresora, o las dos.
+--
+-- Hasta ahora disparar una comanda la guardaba en la BD **y ya**: nadie la imprimía y nadie
+-- garantizaba que apareciese en una pantalla. Un restaurante real tiene varias estaciones
+-- —caliente, fría, barra, postres— y cada una sale por donde puede: en la plancha nadie mira una
+-- pantalla con las manos ocupadas (papel), y en la barra imprimir es tirar papel porque el
+-- camarero se sirve solo (pantalla).
+--
+-- El destino es de la ESTACIÓN, no de la comanda: así "caliente imprime, barra solo pantalla" se
+-- configura una vez y no en cada disparo, que es donde el camarero se equivocaría en hora punta.
+-- El enrutado producto→estación ya existía (`_insert_item.sql`); esto solo añade el **a dónde**.
+--
+-- `printer_role` es el ROL de impresora del Bridge (`kitchen`, `bar`, …), no un nombre de
+-- dispositivo: qué impresora física es eso vive en el Bridge (devices.json) y puede cambiar sin
+-- tocar el hub. Deja obsoleto a `printer_name`, que era texto libre y nunca lo leyó nadie; se
+-- conserva la columna para no romper las estaciones ya creadas.
+--
+-- Default `both` a propósito: si fuese `display`, un hub que actualiza y ya tenía sus estaciones
+-- dejaría de imprimir sin que nadie toque nada, y la cocina se entera con la comida fría. Sobra
+-- papel, pero no se pierde ninguna comanda.
+ALTER TABLE kitchen_station ADD COLUMN IF NOT EXISTS destination  TEXT NOT NULL DEFAULT 'both';    -- display|printer|both
+ALTER TABLE kitchen_station ADD COLUMN IF NOT EXISTS printer_role TEXT NOT NULL DEFAULT 'kitchen';

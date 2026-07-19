@@ -2,6 +2,7 @@
 -- Los filtros/orden/paginación los aporta el runtime según `list` del manifest.
 SELECT id, order_number, status, order_type, priority,
        table_id, sale_id, customer_id, waiter_id,
+       source_order_id, label,
        round_number, notes, subtotal, tax, discount, total,
        fired_at, ready_at, served_at, created_at
 FROM kitchen_order

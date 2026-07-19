@@ -12,8 +12,7 @@
 //! * `order_number` atómico `YYYYMMDD-NNNN`: `_bump_counter` (upsert) + `_insert_order`
 //!   leyendo el contador con subquery en la misma transacción (patrón `sales`).
 
-use erplora_guest_sdk::money;
-use rust_decimal::prelude::FromPrimitive;
+use erplora_guest_sdk::money::{self, Qty};
 use rust_decimal::Decimal;
 use erplora_guest_sdk::{Event, Operation, Output};
 use serde_json::{json, Map, Value};
@@ -39,6 +38,13 @@ pub fn update_order_status(input: Json<erplora_guest_sdk::Input>) -> FnResult<Js
 #[plugin_fn]
 pub fn delete_order(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
     to_fn_result(delete_order_pure(input.into_inner().into_value()))
+}
+
+/// ADR-0141: la comanda nace del PEDIDO. Ver `create_order_from_order_pure`.
+#[cfg(feature = "guest")]
+#[plugin_fn]
+pub fn create_order_from_order(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
+    to_fn_result(create_order_from_order_pure(input.into_inner().into_value()))
 }
 
 #[cfg(feature = "guest")]
@@ -73,14 +79,6 @@ fn to_fn_result(r: Result<Output, String>) -> FnResult<Json<Output>> {
 // El DINERO lo calcula `erplora_guest_sdk::money` (ADR-0123): una sola implementación para todos
 // los handlers, un solo modo de redondeo (HALF_UP). Este módulo tenía su propio `round_cents`
 // (half-even sobre `f64`), copiado byte a byte de otros cuatro.
-
-fn as_f64(v: &Value, d: f64) -> f64 {
-    match v {
-        Value::Number(n) => n.as_f64().unwrap_or(d),
-        Value::String(s) => s.trim().parse::<f64>().unwrap_or(d),
-        _ => d,
-    }
-}
 
 fn as_i64(v: &Value, d: i64) -> i64 {
     match v {
@@ -190,10 +188,13 @@ fn build_order_ops(
 
     let mut subtotal: i64 = 0; // céntimos
     for (i, item) in items.iter().enumerate() {
-        let qty = item.get("quantity").map(|v| as_f64(v, 1.0)).unwrap_or(1.0);
+        // `Qty` es LA puerta de las cantidades del SDK (money.rs): un Decimal envuelto, sin pasar
+        // por f64. Antes esto hacía `as_f64` → `Decimal::from_f64`, un round-trip por coma flotante
+        // en el camino del IMPORTE — la vía por la que entran los 0.30000000000000004.
+        let qty = Qty::from_json(item.get("quantity").unwrap_or(&Value::Null), Decimal::ONE);
         let unit_price = money::from_json(item.get("unit_price").unwrap_or(&Value::Null), 0);
         // precio × cantidad, con UN solo redondeo (la cantidad es fraccionable; el dinero no).
-        let line_total = money::mul_qty(unit_price, Decimal::from_f64(qty).unwrap_or(Decimal::ZERO));
+        let line_total = money::mul_qty(unit_price, qty.value());
         subtotal += line_total;
 
         let item_id = ctx.new_ids.get(i + 1).cloned().unwrap_or_default();
@@ -203,9 +204,15 @@ fn build_order_ops(
         p.insert("station_id".into(), opt_str(item, "station_id"));
         p.insert("product_id".into(), opt_str(item, "product_id"));
         p.insert("category_id".into(), opt_str(item, "category_id"));
+        // De qué línea de pedido salió esto: es lo que necesita la anulación para repartir
+        // cantidades entre las estaciones que recibieron cada ronda.
+        p.insert("sales_order_item_id".into(), opt_str(item, "order_item_id"));
         p.insert("product_name".into(), json!(str_or(item, "product_name", "")));
         p.insert("unit_price".into(), json!(unit_price)); // céntimos
-        p.insert("quantity".into(), json!(as_i64(item.get("quantity").unwrap_or(&Value::Null), 1)));
+        // FRACCIONABLE: media ración y medio kilo de gambas son cantidades reales de un bar. Con
+        // `as_i64` esto era `0.5 as i64` = 0 y al cocinero le llegaba «0 × Gambas».
+        // `to_f64` porque la columna es REAL: una cantidad NO es dinero (money.rs).
+        p.insert("quantity".into(), json!(qty.to_f64()));
         p.insert("total".into(), json!(line_total)); // céntimos
         p.insert("modifiers".into(), json!(str_or(item, "modifiers", "")));
         p.insert("notes".into(), json!(str_or(item, "notes", "")));
@@ -223,6 +230,11 @@ fn build_order_ops(
     h.insert("sale_id".into(), sale_id);
     h.insert("customer_id".into(), opt_str(header, "customer_id"));
     h.insert("waiter_id".into(), opt_str(header, "waiter_id"));
+    // ADR-0141: los dos flujos (legacy desde venta, y desde pedido) pasan por aquí. Se declaran
+    // SIEMPRE para que el binder no mande NULL a `label` (NOT NULL); `create_order_from_order` los
+    // sobreescribe con el pedido real.
+    h.insert("source_order_id".into(), Value::Null);
+    h.insert("label".into(), json!(""));
     h.insert("order_type".into(), json!(str_or(header, "order_type", "dine_in")));
     h.insert("status".into(), json!("pending"));
     h.insert("priority".into(), json!(str_or(header, "priority", "normal")));
@@ -463,4 +475,143 @@ pub fn set_routing_pure(input: Value) -> Result<Output, String> {
         "category_id": if category_id.is_empty() { Value::Null } else { json!(category_id) },
     }));
     Ok(Output { operations: ops, events: vec![ev] })
+}
+
+// ── create_order_from_order (command kitchen.orders.create_from_order) ─────
+
+/// ADR-0141 — **la comanda nace del PEDIDO**, no de la venta.
+///
+/// Antes esto colgaba de `sale.completed`, o sea del **cobro**: la comida salía a cocina cuando el
+/// cliente pagaba, que en un restaurante es el final del servicio. El camarero dispara cuando toma
+/// nota, y el pedido vive abierto una hora antes de que exista ninguna venta.
+///
+/// Cocina deja de conocer a `tables` y a `customers`: lo que recibe es una **etiqueta opaca**
+/// (`label`) que imprime tal cual —"Mesa 4", "Barra", "Recogida Ana"— y un **canal**. Quien dispara
+/// sabe qué significa; cocina no tiene por qué.
+///
+/// Cada disparo es una **ronda** del mismo pedido (bebidas primero, comida después). Como el guest
+/// no puede leer la BD, manda `round_number = 0` y el SQL la calcula contra las comandas ya
+/// disparadas de ese pedido, en la misma transacción.
+pub fn create_order_from_order_pure(input: Value) -> Result<Output, String> {
+    let (payload, ctx) = split_input(&input);
+    let source_order_id = as_str(payload.get("order_id").unwrap_or(&Value::Null));
+    if source_order_id.is_empty() {
+        return Err("missing_order_id".to_string());
+    }
+    let kitchen_order_id = ctx.new_ids.first().cloned().unwrap_or_default();
+    if kitchen_order_id.is_empty() {
+        return Err("missing_new_ids".to_string());
+    }
+    let day = day_from_now(&ctx.now);
+
+    // Las líneas de servicio no se cocinan (mismo criterio que inventory al descontar stock).
+    let empty: Vec<Value> = Vec::new();
+    let items: Vec<Value> = payload
+        .get("items")
+        .and_then(|v| v.as_array())
+        .unwrap_or(&empty)
+        .iter()
+        .filter(|it| !it.get("is_service").map(as_bool).unwrap_or(false))
+        .cloned()
+        .collect();
+
+    let channel = as_str(payload.get("channel").unwrap_or(&Value::Null));
+    let order_type = if ORDER_TYPES.contains(&channel.as_str()) { channel } else { "dine_in".to_string() };
+    let label = str_or(&payload, "label", "");
+
+    let header = json!({
+        "order_type": order_type,
+        "priority": "normal",
+        "notes": "",
+        "round_number": 0, // 0 = "numérala tú" (subconsulta en _insert_order)
+    });
+    let (mut ops, total) =
+        build_order_ops(&ctx, &kitchen_order_id, &day, &header, Value::Null, &items);
+
+    // El pedido de origen y la etiqueta se añaden a la cabecera ya construida: son lo único que
+    // este flujo aporta sobre el legacy, y así `build_order_ops` sigue sirviendo a los dos.
+    if let Some(op) = ops.iter_mut().find(|o| o.command == "kitchen._insert_order") {
+        op.params.insert("source_order_id".into(), json!(source_order_id));
+        op.params.insert("label".into(), json!(label));
+    }
+
+    let mut ev = order_event("kitchen.order.created", &kitchen_order_id, "received", "", &ctx.user_id);
+    if let Value::Object(p) = &mut ev.payload {
+        p.insert("source_order_id".into(), json!(source_order_id));
+        p.insert("label".into(), json!(label));
+        p.insert("total".into(), json!(total)); // céntimos
+        p.insert("items_count".into(), json!(items.len()));
+        p.insert("order_type".into(), json!(str_or(&header, "order_type", "dine_in")));
+    }
+    Ok(Output { operations: ops, events: vec![ev] })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Payload tal y como llega el evento `order.fired` que emite `sales` (ADR-0141).
+    fn fired(label: &str, channel: &str, items: Value) -> Value {
+        json!({
+            "payload": { "order_id": "ord-1", "label": label, "channel": channel, "items": items },
+            "context": {
+                "hub_id": "h1", "current_user_id": "u1", "now": "2026-07-18T10:00:00+00:00",
+                "new_ids": ["kit-1", "kit-2", "kit-3"]
+            }
+        })
+    }
+
+    #[test]
+    fn la_comanda_cuelga_del_pedido_y_guarda_la_etiqueta_tal_cual() {
+        // ADR-0141: cocina NO sabe qué es una mesa. Recibe un texto opaco y lo imprime; si mañana
+        // el hub vende para llevar, la misma comanda dice "Recogida Ana" sin tocar este módulo.
+        let out = create_order_from_order_pure(fired(
+            "Mesa 4",
+            "dine_in",
+            json!([{ "product_name": "Croquetas", "quantity": 2, "unit_price": 350, "notes": "sin gluten" }]),
+        ))
+        .expect("crear la comanda");
+
+        let header = out
+            .operations
+            .iter()
+            .find(|o| o.command == "kitchen._insert_order")
+            .expect("cabecera de comanda");
+        assert_eq!(header.params["source_order_id"], json!("ord-1"));
+        assert_eq!(header.params["label"], json!("Mesa 4"));
+        assert_eq!(header.params["order_type"], json!("dine_in"));
+        // La ronda la numera el SQL contra las comandas ya disparadas de ESE pedido: el handler no
+        // puede leer la BD, así que manda 0 = "calcúlala tú".
+        assert_eq!(header.params["round_number"], json!(0));
+        // Ni rastro de la mesa ni del cliente: eso era lo que ataba cocina a otros dos módulos.
+        assert_eq!(header.params["table_id"], Value::Null);
+        assert_eq!(header.params["customer_id"], Value::Null);
+        assert_eq!(header.params["sale_id"], Value::Null, "todavía no hay venta: nadie ha pagado");
+    }
+
+    #[test]
+    fn las_lineas_de_servicio_no_se_cocinan() {
+        let out = create_order_from_order_pure(fired(
+            "Barra",
+            "takeaway",
+            json!([
+                { "product_name": "Tarta", "quantity": 1, "unit_price": 400 },
+                { "product_name": "Servicio de sala", "quantity": 1, "unit_price": 200, "is_service": true }
+            ]),
+        ))
+        .unwrap();
+        let items: Vec<_> =
+            out.operations.iter().filter(|o| o.command == "kitchen._insert_item").collect();
+        assert_eq!(items.len(), 1, "el servicio no baja a cocina");
+        assert_eq!(items[0].params["product_name"], json!("Tarta"));
+    }
+
+    #[test]
+    fn sin_pedido_no_hay_comanda() {
+        let inp = json!({
+            "payload": { "label": "Mesa 4", "items": [] },
+            "context": { "hub_id": "h1", "current_user_id": "u1", "now": "2026-07-18T10:00:00+00:00", "new_ids": ["kit-1"] }
+        });
+        assert!(create_order_from_order_pure(inp).is_err());
+    }
 }

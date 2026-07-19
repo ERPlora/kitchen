@@ -11,6 +11,18 @@
     "color": { "type": "string", "default": "#F97316", "maxLength": 7 },
     "icon": { "type": "string", "default": "flame-outline", "maxLength": 50 },
     "printer_name": { "type": "string", "default": "", "maxLength": 100 },
+    "destination": {
+      "description": "Por dónde sale la comanda de esta estación. `both` por defecto: si fuese `display`, un hub que actualiza dejaría de imprimir sin tocar nada y la cocina se entera con la comida fría.",
+      "type": "string",
+      "enum": ["display", "printer", "both"],
+      "default": "both"
+    },
+    "printer_role": {
+      "description": "ROL de impresora del Bridge (`kitchen`, `bar`, …), no un dispositivo: qué impresora física es eso vive en el Bridge y puede cambiar sin tocar el hub.",
+      "type": "string",
+      "default": "kitchen",
+      "maxLength": 50
+    },
     "sort_order": { "type": "integer", "minimum": 0, "default": 0 }
   }
 }
