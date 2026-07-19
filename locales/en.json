@@ -112,6 +112,16 @@
     "searchStations": "Search station…",
     "emptyStations": "No stations.",
     "colLabel": "Where",
-    "fireToKitchen": "Send to kitchen"
+    "fireToKitchen": "Send to kitchen",
+    "posComandas": "Tickets",
+    "posComandasTitle": "Order tickets",
+    "comandaN": "Order ticket {n}",
+    "stQueued": "Queued",
+    "stPreparing": "Preparing",
+    "stReady": "Ready",
+    "stServed": "Served",
+    "stPaid": "Paid",
+    "stCancelled": "Cancelled",
+    "close": "Close"
   }
 }

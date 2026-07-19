@@ -9,13 +9,13 @@
 //   filler → host  `erp:order-fire {}` (bubbles+composed) — el HOST ejecuta su
 //                  `sales.order.fire`: el estado del carrito vive en él, aquí no viaja
 //                  ninguna línea. kitchen jamás llama comandos de sales.
-import { LitElement, css, html } from 'lit';
+import { LitElement, css, html, nothing } from 'lit';
 import { state } from 'lit/decorators.js';
 import { define } from '@erplora/outfitkit/define';
 // Catálogo i18n del módulo (ADR-0055): esbuild inlinea estos JSON en el dist del WC.
 import esLocale from '../../../locales/es.json';
 import enLocale from '../../../locales/en.json';
-import { canFire, type PosState } from '../../lib/pos-fire.js';
+import { canFire, pendingCount, type PosState } from '../../lib/pos-fire.js';
 
 const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
 
@@ -34,7 +34,12 @@ export class ErpKitchenPosFire extends LitElement {
     :host { display: contents; }
     /* El tamaño lo manda el footer del HOST (mismos 56px outline que «imprimir cuenta»);
        aquí solo se hereda — un filler no impone su layout (ADR-0043). */
-    ion-button.fire { margin: 0; }
+    ion-button.fire { margin: 0; position: relative; }
+    /* Badge de PENDIENTES: cuánto queda sin marchar, de un vistazo. */
+    .badge { position: absolute; top: -0.3rem; right: -0.3rem; z-index: 1; min-width: 1.1rem;
+      height: 1.1rem; padding: 0 0.2rem; border-radius: 999px;
+      background: var(--ion-color-warning, #f5a623); color: #1c1b18; font-size: 0.68rem;
+      font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
   `;
 
   @state() private posState?: PosState;
@@ -60,11 +65,14 @@ export class ErpKitchenPosFire extends LitElement {
 
   render() {
     const label = t('ui.fireToKitchen');
+    const pendientes = pendingCount(this.posState);
     return html`
       <ion-button class="fire" fill="outline" ?disabled=${!canFire(this.posState)}
                   title=${label} aria-label=${label}
                   @click=${() => this.fire()}>
         <ion-icon slot="icon-only" name="restaurant-outline"></ion-icon>
+        ${pendientes > 0 && this.posState?.pending_count !== undefined
+          ? html`<span class="badge">${pendientes}</span>` : nothing}
       </ion-button>`;
   }
 }

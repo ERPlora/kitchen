@@ -64,3 +64,23 @@ describe('erp-kitchen-pos-fire (filler del footer del TPV)', () => {
     expect(disparos, 'un toque = un disparo, y cruza el shadow boundary').toBe(1);
   });
 });
+
+// El badge de PENDIENTES (2ª ronda del debate, 2026-07-19): el host cuenta en `erp:pos-state`
+// cuánto queda SIN enviar (`pending_count`) y el botón lo enseña — el camarero ve de un vistazo
+// que tiene 3 artículos sin marchar, sin abrir nada.
+describe('badge de pendientes en el botón', () => {
+  it('muestra el pending_count y desaparece a cero', async () => {
+    const el = await montar();
+    el.dispatchEvent(new CustomEvent('erp:pos-state', {
+      detail: { order_id: 'o1', items_count: 5, pending_count: 3 }, bubbles: false,
+    }));
+    await (el as unknown as { updateComplete: Promise<unknown> }).updateComplete;
+    expect(el.shadowRoot!.querySelector('.badge')?.textContent?.trim(), 'el badge cuenta lo sin enviar').toBe('3');
+
+    el.dispatchEvent(new CustomEvent('erp:pos-state', {
+      detail: { order_id: 'o1', items_count: 5, pending_count: 0 }, bubbles: false,
+    }));
+    await (el as unknown as { updateComplete: Promise<unknown> }).updateComplete;
+    expect(el.shadowRoot!.querySelector('.badge'), 'a cero no hay badge (ni botón activo)').toBeFalsy();
+  });
+});
