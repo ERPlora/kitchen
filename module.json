@@ -1,7 +1,7 @@
 {
   "id": "kitchen",
   "name": "Kitchen",
-  "version": "2.2.10",
+  "version": "2.2.11",
   "agent": {
     "description": "Single kitchen module: kitchen display system (KDS), production orders (create, track and transition status from firing to serving), stations with product/category routing, and an audit log of kitchen actions.",
     "keywords": [
