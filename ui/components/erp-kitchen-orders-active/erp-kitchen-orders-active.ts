@@ -18,6 +18,9 @@ interface ErploraClientLike extends ListClient {
   /** i18n del módulo (ADR-0055): idioma activo + traducción del catálogo `ui`. */
   locale: string;
   t(catalog: Record<string, unknown>, key: string, params?: Record<string, unknown>): string;
+  /** Formateo de dinero (ADR-0059): recibe CÉNTIMOS y divide. El dinero viaja como
+   *  INTEGER de céntimos (ADR-0007/0123) → SIEMPRE `formatMoney`, nunca ÷100 a mano. */
+  formatMoney(cents: number, opts?: { currency?: string; locale?: string }): string;
 }
 
 interface Order {
@@ -94,7 +97,9 @@ export class ErpKitchenOrdersActive extends LitElement {
       sortable: true,
       filterable: true,
       filterType: 'range',
-      format: (r) => Number(r.total).toFixed(2),
+      // El total llega en CÉNTIMOS → `formatMoney` (divide). Antes hacía `toFixed(2)` sobre
+      // los céntimos crudos y una comanda de 6,00 € se pintaba «600.00» (incidencia 5).
+      format: (r) => erplora().formatMoney(Number(r.total || 0)),
     },
     ];
   }
