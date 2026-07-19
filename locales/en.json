@@ -111,6 +111,7 @@
     "deleteStationError": "Could not delete station",
     "searchStations": "Search station…",
     "emptyStations": "No stations.",
-    "colLabel": "Where"
+    "colLabel": "Where",
+    "fireToKitchen": "Send to kitchen"
   }
 }

@@ -111,6 +111,7 @@
     "deleteStationError": "No se pudo eliminar la estación",
     "searchStations": "Buscar estación…",
     "emptyStations": "Sin estaciones.",
-    "colLabel": "Destino"
+    "colLabel": "Destino",
+    "fireToKitchen": "Enviar a cocina"
   }
 }
