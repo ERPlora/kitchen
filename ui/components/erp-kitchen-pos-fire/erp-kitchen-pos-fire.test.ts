@@ -1,15 +1,15 @@
-// Contrato del FILLER de cocina en el footer del TPV (slot `sales.pos.actions`, ADR pendiente de
+// Contrato del FILLER de cocina en «Comanda actual» (slot `sales.pos.actions`, ADR pendiente de
 // número — decisión Ioan 2026-07-19). El reparto de papeles:
 //
-//   - El HOST (`sales`) monta este WC en su footer y le cuenta el estado del carrito con
+//   - El HOST (`sales`) monta este WC debajo del borrador de comanda y le cuenta el estado con
 //     `erp:pos-state {order_id?, items_count, label, channel}` (dispatch SOBRE el elemento,
 //     bubbles:false — mismo canal que `erp:order-restored` en el slot de asignación).
 //   - El filler es SOLO el botón: al pulsarlo emite `erp:order-fire {}` (bubbles+composed) y es el
 //     host quien ejecuta su `sales.order.fire` — el estado del carrito vive en el host, aquí no
 //     viaja ninguna línea.
 //
-// Así, sin `kitchen` instalado el slot queda vacío y el footer del TPV no enseña cocina a una
-// peluquería; y `kitchen` jamás llama comandos de `sales`.
+// Así, sin `kitchen` instalado desaparece toda la vista «Comanda actual»; y `kitchen` jamás llama
+// comandos de `sales`.
 import { beforeEach, describe, expect, it } from 'vitest';
 
 beforeEach(() => {
@@ -27,13 +27,15 @@ async function montar() {
   return el;
 }
 
-describe('erp-kitchen-pos-fire (filler del footer del TPV)', () => {
-  it('es un botón solo-icono (restaurant) con su etiqueta en aria-label (ADR-0133)', async () => {
+describe('erp-kitchen-pos-fire (acción de Comanda actual)', () => {
+  it('es una acción textual de envío con icono y etiqueta accesible', async () => {
     const el = await montar();
     const btn = el.shadowRoot!.querySelector('ion-button.fire')!;
     expect(btn, 'el filler pinta su ion-button').toBeTruthy();
-    expect(btn.getAttribute('aria-label'), 'la etiqueta va en aria (solo-icono)').toBe('ui.fireToKitchen');
-    expect(btn.querySelector('ion-icon[name="restaurant-outline"]'), 'icono de cocina').toBeTruthy();
+    expect(btn.getAttribute('aria-label')).toBe('ui.fireToKitchen');
+    expect(btn.querySelector('ion-icon[name="send-outline"]'), 'icono de envío').toBeTruthy();
+    expect(btn.textContent?.trim(), 'la acción principal se entiende sin memorizar un icono')
+      .toContain('ui.fireToKitchen');
   });
 
   it('nace deshabilitado y se habilita cuando el host le cuenta que hay artículos', async () => {

@@ -1,7 +1,7 @@
-// erp-kitchen-pos-fire — el botón «Enviar a cocina» del TPV, INYECTADO por kitchen (slot
-// `sales.pos.actions`, decisión Ioan 2026-07-19). Antes vivía hardcodeado en el footer de
-// `sales` y lo veían peluquerías y tiendas sin cocina; ahora solo existe si kitchen está
-// instalado y activo (el shell no monta fillers de módulos inactivos, ADR-0128).
+// erp-kitchen-pos-fire — el botón «Enviar comanda» del TPV, INYECTADO por kitchen (slot
+// `sales.pos.actions`). El host lo coloca dentro de «Comanda actual», nunca en el pie de cobro;
+// antes pertenecía a `sales` y lo veían peluquerías y tiendas sin cocina. Ahora solo existe si
+// kitchen está instalado y activo (el shell no monta fillers de módulos inactivos, ADR-0128).
 //
 // Reparto de papeles (ADR-0043: host↔filler por CustomEvents, sin imports cruzados):
 //   host → filler  `erp:pos-state {order_id?, items_count, label, channel}` (sobre el elemento,
@@ -31,10 +31,13 @@ function t(key: string): string {
 
 export class ErpKitchenPosFire extends LitElement {
   static styles = css`
-    :host { display: contents; }
-    /* El tamaño lo manda el footer del HOST (mismos 56px outline que «imprimir cuenta»);
-       aquí solo se hereda — un filler no impone su layout (ADR-0043). */
-    ion-button.fire { margin: 0; position: relative; }
+    :host { display:block; flex:1; min-width:0; }
+    /* Dentro de la vista temporal la acción ocupa todo el ancho: es la validación operativa de
+       la comanda, no un icono secundario junto a Cobrar. El host decide dónde vive; kitchen sigue
+       siendo dueño del control y de su disponibilidad (ADR-0043). */
+    ion-button.fire { width:100%; min-height:3rem; margin:0; position:relative;
+      font-weight:800; --border-radius:11px; }
+    ion-button.fire ion-icon { font-size:1.15rem; }
     /* Badge de PENDIENTES: cuánto queda sin marchar, de un vistazo. */
     .badge { position: absolute; top: -0.3rem; right: -0.3rem; z-index: 1; min-width: 1.1rem;
       height: 1.1rem; padding: 0 0.2rem; border-radius: 999px;
@@ -70,7 +73,8 @@ export class ErpKitchenPosFire extends LitElement {
       <ion-button class="fire" fill="outline" ?disabled=${!canFire(this.posState)}
                   title=${label} aria-label=${label}
                   @click=${() => this.fire()}>
-        <ion-icon slot="icon-only" name="restaurant-outline"></ion-icon>
+        <ion-icon slot="start" name="send-outline"></ion-icon>
+        <span>${label}</span>
         ${pendientes > 0 && this.posState?.pending_count !== undefined
           ? html`<span class="badge">${pendientes}</span>` : nothing}
       </ion-button>`;

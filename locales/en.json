@@ -112,7 +112,7 @@
     "searchStations": "Search station…",
     "emptyStations": "No stations.",
     "colLabel": "Where",
-    "fireToKitchen": "Send to kitchen",
+    "fireToKitchen": "Send order",
     "posComandas": "Tickets",
     "posComandasTitle": "Order tickets",
     "comandaN": "Order ticket {n}",

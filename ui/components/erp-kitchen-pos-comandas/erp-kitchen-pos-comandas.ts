@@ -7,7 +7,7 @@
 // kitchen instalado, el slot queda vacío y el TPV de tienda no ve cocina ni de lejos.
 //
 //   host → filler  `erp:pos-state {order_id, …}` (mismo canal que el botón del footer).
-//   El filler consulta SUS comandas (kitchen.orders.list, f_source_order_id) y se suscribe a
+//   El filler consulta SUS comandas (kitchen.orders.list, filtro source_order_id) y se suscribe a
 //   los eventos del KDS (kitchen.order.fired/ready/served/…): el camarero ve pasar la comanda
 //   a LISTA sin tocar nada. Modal = <dialog> nativo showModal() (top layer, patrón del picker
 //   de mesas de tables; los overlays de Ionic en shadow Lit se re-parentan, ADR-0028).
@@ -144,7 +144,7 @@ export class ErpKitchenPosComandas extends LitElement {
     if (!this.orderId) { this.comandas = []; return; }
     try {
       const rows = await erplora().queryAll<Comanda>('kitchen.orders.list', {
-        f_source_order_id: this.orderId, sort: 'round_number', dir: 'desc',
+        filters: { source_order_id: this.orderId }, sort: 'round_number', dir: 'desc',
       });
       // La más reciente primero (la que el camarero consulta).
       this.comandas = [...rows].sort((a, b) => (b.round_number ?? 0) - (a.round_number ?? 0));

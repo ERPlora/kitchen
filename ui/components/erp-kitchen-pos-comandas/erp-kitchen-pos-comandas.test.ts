@@ -5,7 +5,7 @@
 // (`source_order_id`) y lo pinta este filler:
 //
 //   - host → filler `erp:pos-state {order_id, …}` (mismo canal que el botón del footer).
-//   - El filler consulta SUS comandas (`kitchen.orders.list` filtrado por f_source_order_id) y
+//   - El filler consulta SUS comandas (`kitchen.orders.list` filtrado por source_order_id) y
 //     pinta un chip «Comandas · N» que abre SU modal (dialog top-layer, patrón del picker de
 //     mesas). Sin comandas o sin pedido: NADA (el TPV de tienda no ve cocina ni de lejos).
 //   - Los eventos del KDS (kitchen.order.ready/served/…) refrescan en vivo: el camarero ve
@@ -28,7 +28,8 @@ beforeEach(() => {
     t: (_catalog: unknown, key: string, params?: Record<string, unknown>) =>
       (params ? `${key} ${Object.values(params).join(' ')}` : key),
     queryAll: async (name: string, params?: Record<string, unknown>) => {
-      if (name === 'kitchen.orders.list' && params?.f_source_order_id === 'o1') return comandasStub;
+      if (name === 'kitchen.orders.list'
+        && (params?.filters as Record<string, unknown> | undefined)?.source_order_id === 'o1') return comandasStub;
       return [];
     },
     // Las líneas van por query PLANA: el motor de listas mete paginación y la query de
