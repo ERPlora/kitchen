@@ -111,6 +111,17 @@
     "deleteStationError": "No se pudo eliminar la estación",
     "searchStations": "Buscar estación…",
     "emptyStations": "Sin estaciones.",
-    "colLabel": "Destino"
+    "colLabel": "Destino",
+    "fireToKitchen": "Enviar comanda",
+    "posComandas": "Comandas",
+    "posComandasTitle": "Comandas de la cuenta",
+    "comandaN": "Comanda {n}",
+    "stQueued": "En cola",
+    "stPreparing": "Preparando",
+    "stReady": "Lista",
+    "stServed": "Servida",
+    "stPaid": "Pagada",
+    "stCancelled": "Anulada",
+    "close": "Cerrar"
   }
 }

@@ -680,44 +680,44 @@ var e = t.ShadowRoot && (void 0 === t.ShadyCSS || t.ShadyCSS.nativeShadow) && "a
 var s = Symbol();
 var o = /* @__PURE__ */ new WeakMap();
 var n = class {
-  constructor(t5, e5, o7) {
+  constructor(t7, e5, o7) {
     if (this._$cssResult$ = true, o7 !== s) throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");
-    this.cssText = t5, this.t = e5;
+    this.cssText = t7, this.t = e5;
   }
   get styleSheet() {
-    let t5 = this.o;
+    let t7 = this.o;
     const s5 = this.t;
-    if (e && void 0 === t5) {
+    if (e && void 0 === t7) {
       const e5 = void 0 !== s5 && 1 === s5.length;
-      e5 && (t5 = o.get(s5)), void 0 === t5 && ((this.o = t5 = new CSSStyleSheet()).replaceSync(this.cssText), e5 && o.set(s5, t5));
+      e5 && (t7 = o.get(s5)), void 0 === t7 && ((this.o = t7 = new CSSStyleSheet()).replaceSync(this.cssText), e5 && o.set(s5, t7));
     }
-    return t5;
+    return t7;
   }
   toString() {
     return this.cssText;
   }
 };
-var r = (t5) => new n("string" == typeof t5 ? t5 : t5 + "", void 0, s);
-var i = (t5, ...e5) => {
-  const o7 = 1 === t5.length ? t5[0] : e5.reduce((e6, s5, o8) => e6 + ((t6) => {
-    if (true === t6._$cssResult$) return t6.cssText;
-    if ("number" == typeof t6) return t6;
-    throw Error("Value passed to 'css' function must be a 'css' function result: " + t6 + ". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.");
-  })(s5) + t5[o8 + 1], t5[0]);
-  return new n(o7, t5, s);
+var r = (t7) => new n("string" == typeof t7 ? t7 : t7 + "", void 0, s);
+var i = (t7, ...e5) => {
+  const o7 = 1 === t7.length ? t7[0] : e5.reduce((e6, s5, o8) => e6 + ((t8) => {
+    if (true === t8._$cssResult$) return t8.cssText;
+    if ("number" == typeof t8) return t8;
+    throw Error("Value passed to 'css' function must be a 'css' function result: " + t8 + ". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.");
+  })(s5) + t7[o8 + 1], t7[0]);
+  return new n(o7, t7, s);
 };
 var S = (s5, o7) => {
-  if (e) s5.adoptedStyleSheets = o7.map((t5) => t5 instanceof CSSStyleSheet ? t5 : t5.styleSheet);
+  if (e) s5.adoptedStyleSheets = o7.map((t7) => t7 instanceof CSSStyleSheet ? t7 : t7.styleSheet);
   else for (const e5 of o7) {
     const o8 = document.createElement("style"), n6 = t.litNonce;
     void 0 !== n6 && o8.setAttribute("nonce", n6), o8.textContent = e5.cssText, s5.appendChild(o8);
   }
 };
-var c = e || void 0 === t.CSSStyleSheet ? (t5) => t5 : (t5) => t5 instanceof CSSStyleSheet ? ((t6) => {
+var c = e || void 0 === t.CSSStyleSheet ? (t7) => t7 : (t7) => t7 instanceof CSSStyleSheet ? ((t8) => {
   let e5 = "";
-  for (const s5 of t6.cssRules) e5 += s5.cssText;
+  for (const s5 of t8.cssRules) e5 += s5.cssText;
   return r(e5);
-})(t5) : t5;
+})(t7) : t7;
 
 // node_modules/.pnpm/@lit+reactive-element@2.1.2/node_modules/@lit/reactive-element/node/reactive-element.js
 var { is: h, defineProperty: r2, getOwnPropertyDescriptor: o2, getOwnPropertyNames: n2, getOwnPropertySymbols: a, getPrototypeOf: c2 } = Object;
@@ -726,169 +726,169 @@ l.customElements ??= customElements2;
 var p = l.trustedTypes;
 var d = p ? p.emptyScript : "";
 var u = l.reactiveElementPolyfillSupport;
-var f = (t5, s5) => t5;
-var b = { toAttribute(t5, s5) {
+var f = (t7, s5) => t7;
+var b = { toAttribute(t7, s5) {
   switch (s5) {
     case Boolean:
-      t5 = t5 ? d : null;
+      t7 = t7 ? d : null;
       break;
     case Object:
     case Array:
-      t5 = null == t5 ? t5 : JSON.stringify(t5);
+      t7 = null == t7 ? t7 : JSON.stringify(t7);
   }
-  return t5;
-}, fromAttribute(t5, s5) {
-  let i7 = t5;
+  return t7;
+}, fromAttribute(t7, s5) {
+  let i7 = t7;
   switch (s5) {
     case Boolean:
-      i7 = null !== t5;
+      i7 = null !== t7;
       break;
     case Number:
-      i7 = null === t5 ? null : Number(t5);
+      i7 = null === t7 ? null : Number(t7);
       break;
     case Object:
     case Array:
       try {
-        i7 = JSON.parse(t5);
-      } catch (t6) {
+        i7 = JSON.parse(t7);
+      } catch (t8) {
         i7 = null;
       }
   }
   return i7;
 } };
-var m = (t5, s5) => !h(t5, s5);
+var m = (t7, s5) => !h(t7, s5);
 var y = { attribute: true, type: String, converter: b, reflect: false, useDefault: false, hasChanged: m };
 Symbol.metadata ??= Symbol("metadata"), l.litPropertyMetadata ??= /* @__PURE__ */ new WeakMap();
 var g = class extends (globalThis.HTMLElement ?? HTMLElementShimWithRealType) {
-  static addInitializer(t5) {
-    this._$Ei(), (this.l ??= []).push(t5);
+  static addInitializer(t7) {
+    this._$Ei(), (this.l ??= []).push(t7);
   }
   static get observedAttributes() {
     return this.finalize(), this._$Eh && [...this._$Eh.keys()];
   }
-  static createProperty(t5, s5 = y) {
-    if (s5.state && (s5.attribute = false), this._$Ei(), this.prototype.hasOwnProperty(t5) && ((s5 = Object.create(s5)).wrapped = true), this.elementProperties.set(t5, s5), !s5.noAccessor) {
-      const i7 = Symbol(), e5 = this.getPropertyDescriptor(t5, i7, s5);
-      void 0 !== e5 && r2(this.prototype, t5, e5);
+  static createProperty(t7, s5 = y) {
+    if (s5.state && (s5.attribute = false), this._$Ei(), this.prototype.hasOwnProperty(t7) && ((s5 = Object.create(s5)).wrapped = true), this.elementProperties.set(t7, s5), !s5.noAccessor) {
+      const i7 = Symbol(), e5 = this.getPropertyDescriptor(t7, i7, s5);
+      void 0 !== e5 && r2(this.prototype, t7, e5);
     }
   }
-  static getPropertyDescriptor(t5, s5, i7) {
-    const { get: e5, set: h4 } = o2(this.prototype, t5) ?? { get() {
+  static getPropertyDescriptor(t7, s5, i7) {
+    const { get: e5, set: h4 } = o2(this.prototype, t7) ?? { get() {
       return this[s5];
-    }, set(t6) {
-      this[s5] = t6;
+    }, set(t8) {
+      this[s5] = t8;
     } };
     return { get: e5, set(s6) {
       const r6 = e5?.call(this);
-      h4?.call(this, s6), this.requestUpdate(t5, r6, i7);
+      h4?.call(this, s6), this.requestUpdate(t7, r6, i7);
     }, configurable: true, enumerable: true };
   }
-  static getPropertyOptions(t5) {
-    return this.elementProperties.get(t5) ?? y;
+  static getPropertyOptions(t7) {
+    return this.elementProperties.get(t7) ?? y;
   }
   static _$Ei() {
     if (this.hasOwnProperty(f("elementProperties"))) return;
-    const t5 = c2(this);
-    t5.finalize(), void 0 !== t5.l && (this.l = [...t5.l]), this.elementProperties = new Map(t5.elementProperties);
+    const t7 = c2(this);
+    t7.finalize(), void 0 !== t7.l && (this.l = [...t7.l]), this.elementProperties = new Map(t7.elementProperties);
   }
   static finalize() {
     if (this.hasOwnProperty(f("finalized"))) return;
     if (this.finalized = true, this._$Ei(), this.hasOwnProperty(f("properties"))) {
-      const t6 = this.properties, s5 = [...n2(t6), ...a(t6)];
-      for (const i7 of s5) this.createProperty(i7, t6[i7]);
+      const t8 = this.properties, s5 = [...n2(t8), ...a(t8)];
+      for (const i7 of s5) this.createProperty(i7, t8[i7]);
     }
-    const t5 = this[Symbol.metadata];
-    if (null !== t5) {
-      const s5 = litPropertyMetadata.get(t5);
-      if (void 0 !== s5) for (const [t6, i7] of s5) this.elementProperties.set(t6, i7);
+    const t7 = this[Symbol.metadata];
+    if (null !== t7) {
+      const s5 = litPropertyMetadata.get(t7);
+      if (void 0 !== s5) for (const [t8, i7] of s5) this.elementProperties.set(t8, i7);
     }
     this._$Eh = /* @__PURE__ */ new Map();
-    for (const [t6, s5] of this.elementProperties) {
-      const i7 = this._$Eu(t6, s5);
-      void 0 !== i7 && this._$Eh.set(i7, t6);
+    for (const [t8, s5] of this.elementProperties) {
+      const i7 = this._$Eu(t8, s5);
+      void 0 !== i7 && this._$Eh.set(i7, t8);
     }
     this.elementStyles = this.finalizeStyles(this.styles);
   }
-  static finalizeStyles(t5) {
+  static finalizeStyles(t7) {
     const s5 = [];
-    if (Array.isArray(t5)) {
-      const e5 = new Set(t5.flat(1 / 0).reverse());
-      for (const t6 of e5) s5.unshift(c(t6));
-    } else void 0 !== t5 && s5.push(c(t5));
+    if (Array.isArray(t7)) {
+      const e5 = new Set(t7.flat(1 / 0).reverse());
+      for (const t8 of e5) s5.unshift(c(t8));
+    } else void 0 !== t7 && s5.push(c(t7));
     return s5;
   }
-  static _$Eu(t5, s5) {
+  static _$Eu(t7, s5) {
     const i7 = s5.attribute;
-    return false === i7 ? void 0 : "string" == typeof i7 ? i7 : "string" == typeof t5 ? t5.toLowerCase() : void 0;
+    return false === i7 ? void 0 : "string" == typeof i7 ? i7 : "string" == typeof t7 ? t7.toLowerCase() : void 0;
   }
   constructor() {
     super(), this._$Ep = void 0, this.isUpdatePending = false, this.hasUpdated = false, this._$Em = null, this._$Ev();
   }
   _$Ev() {
-    this._$ES = new Promise((t5) => this.enableUpdating = t5), this._$AL = /* @__PURE__ */ new Map(), this._$E_(), this.requestUpdate(), this.constructor.l?.forEach((t5) => t5(this));
+    this._$ES = new Promise((t7) => this.enableUpdating = t7), this._$AL = /* @__PURE__ */ new Map(), this._$E_(), this.requestUpdate(), this.constructor.l?.forEach((t7) => t7(this));
   }
-  addController(t5) {
-    (this._$EO ??= /* @__PURE__ */ new Set()).add(t5), void 0 !== this.renderRoot && this.isConnected && t5.hostConnected?.();
+  addController(t7) {
+    (this._$EO ??= /* @__PURE__ */ new Set()).add(t7), void 0 !== this.renderRoot && this.isConnected && t7.hostConnected?.();
   }
-  removeController(t5) {
-    this._$EO?.delete(t5);
+  removeController(t7) {
+    this._$EO?.delete(t7);
   }
   _$E_() {
-    const t5 = /* @__PURE__ */ new Map(), s5 = this.constructor.elementProperties;
-    for (const i7 of s5.keys()) this.hasOwnProperty(i7) && (t5.set(i7, this[i7]), delete this[i7]);
-    t5.size > 0 && (this._$Ep = t5);
+    const t7 = /* @__PURE__ */ new Map(), s5 = this.constructor.elementProperties;
+    for (const i7 of s5.keys()) this.hasOwnProperty(i7) && (t7.set(i7, this[i7]), delete this[i7]);
+    t7.size > 0 && (this._$Ep = t7);
   }
   createRenderRoot() {
-    const t5 = this.shadowRoot ?? this.attachShadow(this.constructor.shadowRootOptions);
-    return S(t5, this.constructor.elementStyles), t5;
+    const t7 = this.shadowRoot ?? this.attachShadow(this.constructor.shadowRootOptions);
+    return S(t7, this.constructor.elementStyles), t7;
   }
   connectedCallback() {
-    this.renderRoot ??= this.createRenderRoot(), this.enableUpdating(true), this._$EO?.forEach((t5) => t5.hostConnected?.());
+    this.renderRoot ??= this.createRenderRoot(), this.enableUpdating(true), this._$EO?.forEach((t7) => t7.hostConnected?.());
   }
-  enableUpdating(t5) {
+  enableUpdating(t7) {
   }
   disconnectedCallback() {
-    this._$EO?.forEach((t5) => t5.hostDisconnected?.());
+    this._$EO?.forEach((t7) => t7.hostDisconnected?.());
   }
-  attributeChangedCallback(t5, s5, i7) {
-    this._$AK(t5, i7);
+  attributeChangedCallback(t7, s5, i7) {
+    this._$AK(t7, i7);
   }
-  _$ET(t5, s5) {
-    const i7 = this.constructor.elementProperties.get(t5), e5 = this.constructor._$Eu(t5, i7);
+  _$ET(t7, s5) {
+    const i7 = this.constructor.elementProperties.get(t7), e5 = this.constructor._$Eu(t7, i7);
     if (void 0 !== e5 && true === i7.reflect) {
       const h4 = (void 0 !== i7.converter?.toAttribute ? i7.converter : b).toAttribute(s5, i7.type);
-      this._$Em = t5, null == h4 ? this.removeAttribute(e5) : this.setAttribute(e5, h4), this._$Em = null;
+      this._$Em = t7, null == h4 ? this.removeAttribute(e5) : this.setAttribute(e5, h4), this._$Em = null;
     }
   }
-  _$AK(t5, s5) {
-    const i7 = this.constructor, e5 = i7._$Eh.get(t5);
+  _$AK(t7, s5) {
+    const i7 = this.constructor, e5 = i7._$Eh.get(t7);
     if (void 0 !== e5 && this._$Em !== e5) {
-      const t6 = i7.getPropertyOptions(e5), h4 = "function" == typeof t6.converter ? { fromAttribute: t6.converter } : void 0 !== t6.converter?.fromAttribute ? t6.converter : b;
+      const t8 = i7.getPropertyOptions(e5), h4 = "function" == typeof t8.converter ? { fromAttribute: t8.converter } : void 0 !== t8.converter?.fromAttribute ? t8.converter : b;
       this._$Em = e5;
-      const r6 = h4.fromAttribute(s5, t6.type);
+      const r6 = h4.fromAttribute(s5, t8.type);
       this[e5] = r6 ?? this._$Ej?.get(e5) ?? r6, this._$Em = null;
     }
   }
-  requestUpdate(t5, s5, i7, e5 = false, h4) {
-    if (void 0 !== t5) {
+  requestUpdate(t7, s5, i7, e5 = false, h4) {
+    if (void 0 !== t7) {
       const r6 = this.constructor;
-      if (false === e5 && (h4 = this[t5]), i7 ??= r6.getPropertyOptions(t5), !((i7.hasChanged ?? m)(h4, s5) || i7.useDefault && i7.reflect && h4 === this._$Ej?.get(t5) && !this.hasAttribute(r6._$Eu(t5, i7)))) return;
-      this.C(t5, s5, i7);
+      if (false === e5 && (h4 = this[t7]), i7 ??= r6.getPropertyOptions(t7), !((i7.hasChanged ?? m)(h4, s5) || i7.useDefault && i7.reflect && h4 === this._$Ej?.get(t7) && !this.hasAttribute(r6._$Eu(t7, i7)))) return;
+      this.C(t7, s5, i7);
     }
     false === this.isUpdatePending && (this._$ES = this._$EP());
   }
-  C(t5, s5, { useDefault: i7, reflect: e5, wrapped: h4 }, r6) {
-    i7 && !(this._$Ej ??= /* @__PURE__ */ new Map()).has(t5) && (this._$Ej.set(t5, r6 ?? s5 ?? this[t5]), true !== h4 || void 0 !== r6) || (this._$AL.has(t5) || (this.hasUpdated || i7 || (s5 = void 0), this._$AL.set(t5, s5)), true === e5 && this._$Em !== t5 && (this._$Eq ??= /* @__PURE__ */ new Set()).add(t5));
+  C(t7, s5, { useDefault: i7, reflect: e5, wrapped: h4 }, r6) {
+    i7 && !(this._$Ej ??= /* @__PURE__ */ new Map()).has(t7) && (this._$Ej.set(t7, r6 ?? s5 ?? this[t7]), true !== h4 || void 0 !== r6) || (this._$AL.has(t7) || (this.hasUpdated || i7 || (s5 = void 0), this._$AL.set(t7, s5)), true === e5 && this._$Em !== t7 && (this._$Eq ??= /* @__PURE__ */ new Set()).add(t7));
   }
   async _$EP() {
     this.isUpdatePending = true;
     try {
       await this._$ES;
-    } catch (t6) {
-      Promise.reject(t6);
+    } catch (t8) {
+      Promise.reject(t8);
     }
-    const t5 = this.scheduleUpdate();
-    return null != t5 && await t5, !this.isUpdatePending;
+    const t7 = this.scheduleUpdate();
+    return null != t7 && await t7, !this.isUpdatePending;
   }
   scheduleUpdate() {
     return this.performUpdate();
@@ -897,28 +897,28 @@ var g = class extends (globalThis.HTMLElement ?? HTMLElementShimWithRealType) {
     if (!this.isUpdatePending) return;
     if (!this.hasUpdated) {
       if (this.renderRoot ??= this.createRenderRoot(), this._$Ep) {
-        for (const [t7, s6] of this._$Ep) this[t7] = s6;
+        for (const [t9, s6] of this._$Ep) this[t9] = s6;
         this._$Ep = void 0;
       }
-      const t6 = this.constructor.elementProperties;
-      if (t6.size > 0) for (const [s6, i7] of t6) {
-        const { wrapped: t7 } = i7, e5 = this[s6];
-        true !== t7 || this._$AL.has(s6) || void 0 === e5 || this.C(s6, void 0, i7, e5);
+      const t8 = this.constructor.elementProperties;
+      if (t8.size > 0) for (const [s6, i7] of t8) {
+        const { wrapped: t9 } = i7, e5 = this[s6];
+        true !== t9 || this._$AL.has(s6) || void 0 === e5 || this.C(s6, void 0, i7, e5);
       }
     }
-    let t5 = false;
+    let t7 = false;
     const s5 = this._$AL;
     try {
-      t5 = this.shouldUpdate(s5), t5 ? (this.willUpdate(s5), this._$EO?.forEach((t6) => t6.hostUpdate?.()), this.update(s5)) : this._$EM();
+      t7 = this.shouldUpdate(s5), t7 ? (this.willUpdate(s5), this._$EO?.forEach((t8) => t8.hostUpdate?.()), this.update(s5)) : this._$EM();
     } catch (s6) {
-      throw t5 = false, this._$EM(), s6;
+      throw t7 = false, this._$EM(), s6;
     }
-    t5 && this._$AE(s5);
+    t7 && this._$AE(s5);
   }
-  willUpdate(t5) {
+  willUpdate(t7) {
   }
-  _$AE(t5) {
-    this._$EO?.forEach((t6) => t6.hostUpdated?.()), this.hasUpdated || (this.hasUpdated = true, this.firstUpdated(t5)), this.updated(t5);
+  _$AE(t7) {
+    this._$EO?.forEach((t8) => t8.hostUpdated?.()), this.hasUpdated || (this.hasUpdated = true, this.firstUpdated(t7)), this.updated(t7);
   }
   _$EM() {
     this._$AL = /* @__PURE__ */ new Map(), this.isUpdatePending = false;
@@ -929,33 +929,33 @@ var g = class extends (globalThis.HTMLElement ?? HTMLElementShimWithRealType) {
   getUpdateComplete() {
     return this._$ES;
   }
-  shouldUpdate(t5) {
+  shouldUpdate(t7) {
     return true;
   }
-  update(t5) {
-    this._$Eq &&= this._$Eq.forEach((t6) => this._$ET(t6, this[t6])), this._$EM();
+  update(t7) {
+    this._$Eq &&= this._$Eq.forEach((t8) => this._$ET(t8, this[t8])), this._$EM();
   }
-  updated(t5) {
+  updated(t7) {
   }
-  firstUpdated(t5) {
+  firstUpdated(t7) {
   }
 };
 g.elementStyles = [], g.shadowRootOptions = { mode: "open" }, g[f("elementProperties")] = /* @__PURE__ */ new Map(), g[f("finalized")] = /* @__PURE__ */ new Map(), u?.({ ReactiveElement: g }), (l.reactiveElementVersions ??= []).push("2.1.2");
 
 // node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/lit-html.js
 var t2 = globalThis;
-var i2 = (t5) => t5;
+var i2 = (t7) => t7;
 var s2 = t2.trustedTypes;
-var e2 = s2 ? s2.createPolicy("lit-html", { createHTML: (t5) => t5 }) : void 0;
+var e2 = s2 ? s2.createPolicy("lit-html", { createHTML: (t7) => t7 }) : void 0;
 var h2 = "$lit$";
 var o3 = `lit$${Math.random().toFixed(9).slice(2)}$`;
 var n3 = "?" + o3;
 var r3 = `<${n3}>`;
 var l2 = document;
 var c3 = () => l2.createComment("");
-var a2 = (t5) => null === t5 || "object" != typeof t5 && "function" != typeof t5;
+var a2 = (t7) => null === t7 || "object" != typeof t7 && "function" != typeof t7;
 var u2 = Array.isArray;
-var d2 = (t5) => u2(t5) || "function" == typeof t5?.[Symbol.iterator];
+var d2 = (t7) => u2(t7) || "function" == typeof t7?.[Symbol.iterator];
 var f2 = "[ 	\n\f\r]";
 var v = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g;
 var _ = /-->/g;
@@ -965,7 +965,7 @@ var p2 = RegExp(`>|${f2}(?:([^\\s"'>=/]+)(${f2}*=${f2}*(?:[^
 var g2 = /'/g;
 var $ = /"/g;
 var y2 = /^(?:script|style|textarea|title)$/i;
-var x = (t5) => (i7, ...s5) => ({ _$litType$: t5, strings: i7, values: s5 });
+var x = (t7) => (i7, ...s5) => ({ _$litType$: t7, strings: i7, values: s5 });
 var b2 = x(1);
 var w = x(2);
 var T = x(3);
@@ -973,68 +973,68 @@ var E = Symbol.for("lit-noChange");
 var A = Symbol.for("lit-nothing");
 var C = /* @__PURE__ */ new WeakMap();
 var P = l2.createTreeWalker(l2, 129);
-function V(t5, i7) {
-  if (!u2(t5) || !t5.hasOwnProperty("raw")) throw Error("invalid template strings array");
+function V(t7, i7) {
+  if (!u2(t7) || !t7.hasOwnProperty("raw")) throw Error("invalid template strings array");
   return void 0 !== e2 ? e2.createHTML(i7) : i7;
 }
-var N = (t5, i7) => {
-  const s5 = t5.length - 1, e5 = [];
+var N = (t7, i7) => {
+  const s5 = t7.length - 1, e5 = [];
   let n6, l3 = 2 === i7 ? "<svg>" : 3 === i7 ? "<math>" : "", c5 = v;
   for (let i8 = 0; i8 < s5; i8++) {
-    const s6 = t5[i8];
+    const s6 = t7[i8];
     let a3, u5, d3 = -1, f3 = 0;
     for (; f3 < s6.length && (c5.lastIndex = f3, u5 = c5.exec(s6), null !== u5); ) f3 = c5.lastIndex, c5 === v ? "!--" === u5[1] ? c5 = _ : void 0 !== u5[1] ? c5 = m2 : void 0 !== u5[2] ? (y2.test(u5[2]) && (n6 = RegExp("</" + u5[2], "g")), c5 = p2) : void 0 !== u5[3] && (c5 = p2) : c5 === p2 ? ">" === u5[0] ? (c5 = n6 ?? v, d3 = -1) : void 0 === u5[1] ? d3 = -2 : (d3 = c5.lastIndex - u5[2].length, a3 = u5[1], c5 = void 0 === u5[3] ? p2 : '"' === u5[3] ? $ : g2) : c5 === $ || c5 === g2 ? c5 = p2 : c5 === _ || c5 === m2 ? c5 = v : (c5 = p2, n6 = void 0);
-    const x2 = c5 === p2 && t5[i8 + 1].startsWith("/>") ? " " : "";
+    const x2 = c5 === p2 && t7[i8 + 1].startsWith("/>") ? " " : "";
     l3 += c5 === v ? s6 + r3 : d3 >= 0 ? (e5.push(a3), s6.slice(0, d3) + h2 + s6.slice(d3) + o3 + x2) : s6 + o3 + (-2 === d3 ? i8 : x2);
   }
-  return [V(t5, l3 + (t5[s5] || "<?>") + (2 === i7 ? "</svg>" : 3 === i7 ? "</math>" : "")), e5];
+  return [V(t7, l3 + (t7[s5] || "<?>") + (2 === i7 ? "</svg>" : 3 === i7 ? "</math>" : "")), e5];
 };
 var S2 = class _S {
-  constructor({ strings: t5, _$litType$: i7 }, e5) {
+  constructor({ strings: t7, _$litType$: i7 }, e5) {
     let r6;
     this.parts = [];
     let l3 = 0, a3 = 0;
-    const u5 = t5.length - 1, d3 = this.parts, [f3, v3] = N(t5, i7);
+    const u5 = t7.length - 1, d3 = this.parts, [f3, v3] = N(t7, i7);
     if (this.el = _S.createElement(f3, e5), P.currentNode = this.el.content, 2 === i7 || 3 === i7) {
-      const t6 = this.el.content.firstChild;
-      t6.replaceWith(...t6.childNodes);
+      const t8 = this.el.content.firstChild;
+      t8.replaceWith(...t8.childNodes);
     }
     for (; null !== (r6 = P.nextNode()) && d3.length < u5; ) {
       if (1 === r6.nodeType) {
-        if (r6.hasAttributes()) for (const t6 of r6.getAttributeNames()) if (t6.endsWith(h2)) {
-          const i8 = v3[a3++], s5 = r6.getAttribute(t6).split(o3), e6 = /([.?@])?(.*)/.exec(i8);
-          d3.push({ type: 1, index: l3, name: e6[2], strings: s5, ctor: "." === e6[1] ? I : "?" === e6[1] ? L : "@" === e6[1] ? z : H }), r6.removeAttribute(t6);
-        } else t6.startsWith(o3) && (d3.push({ type: 6, index: l3 }), r6.removeAttribute(t6));
+        if (r6.hasAttributes()) for (const t8 of r6.getAttributeNames()) if (t8.endsWith(h2)) {
+          const i8 = v3[a3++], s5 = r6.getAttribute(t8).split(o3), e6 = /([.?@])?(.*)/.exec(i8);
+          d3.push({ type: 1, index: l3, name: e6[2], strings: s5, ctor: "." === e6[1] ? I : "?" === e6[1] ? L : "@" === e6[1] ? z : H }), r6.removeAttribute(t8);
+        } else t8.startsWith(o3) && (d3.push({ type: 6, index: l3 }), r6.removeAttribute(t8));
         if (y2.test(r6.tagName)) {
-          const t6 = r6.textContent.split(o3), i8 = t6.length - 1;
+          const t8 = r6.textContent.split(o3), i8 = t8.length - 1;
           if (i8 > 0) {
             r6.textContent = s2 ? s2.emptyScript : "";
-            for (let s5 = 0; s5 < i8; s5++) r6.append(t6[s5], c3()), P.nextNode(), d3.push({ type: 2, index: ++l3 });
-            r6.append(t6[i8], c3());
+            for (let s5 = 0; s5 < i8; s5++) r6.append(t8[s5], c3()), P.nextNode(), d3.push({ type: 2, index: ++l3 });
+            r6.append(t8[i8], c3());
           }
         }
       } else if (8 === r6.nodeType) if (r6.data === n3) d3.push({ type: 2, index: l3 });
       else {
-        let t6 = -1;
-        for (; -1 !== (t6 = r6.data.indexOf(o3, t6 + 1)); ) d3.push({ type: 7, index: l3 }), t6 += o3.length - 1;
+        let t8 = -1;
+        for (; -1 !== (t8 = r6.data.indexOf(o3, t8 + 1)); ) d3.push({ type: 7, index: l3 }), t8 += o3.length - 1;
       }
       l3++;
     }
   }
-  static createElement(t5, i7) {
+  static createElement(t7, i7) {
     const s5 = l2.createElement("template");
-    return s5.innerHTML = t5, s5;
+    return s5.innerHTML = t7, s5;
   }
 };
-function M(t5, i7, s5 = t5, e5) {
+function M(t7, i7, s5 = t7, e5) {
   if (i7 === E) return i7;
   let h4 = void 0 !== e5 ? s5._$Co?.[e5] : s5._$Cl;
   const o7 = a2(i7) ? void 0 : i7._$litDirective$;
-  return h4?.constructor !== o7 && (h4?._$AO?.(false), void 0 === o7 ? h4 = void 0 : (h4 = new o7(t5), h4._$AT(t5, s5, e5)), void 0 !== e5 ? (s5._$Co ??= [])[e5] = h4 : s5._$Cl = h4), void 0 !== h4 && (i7 = M(t5, h4._$AS(t5, i7.values), h4, e5)), i7;
+  return h4?.constructor !== o7 && (h4?._$AO?.(false), void 0 === o7 ? h4 = void 0 : (h4 = new o7(t7), h4._$AT(t7, s5, e5)), void 0 !== e5 ? (s5._$Co ??= [])[e5] = h4 : s5._$Cl = h4), void 0 !== h4 && (i7 = M(t7, h4._$AS(t7, i7.values), h4, e5)), i7;
 }
 var R = class {
-  constructor(t5, i7) {
-    this._$AV = [], this._$AN = void 0, this._$AD = t5, this._$AM = i7;
+  constructor(t7, i7) {
+    this._$AV = [], this._$AN = void 0, this._$AD = t7, this._$AM = i7;
   }
   get parentNode() {
     return this._$AM.parentNode;
@@ -1042,35 +1042,35 @@ var R = class {
   get _$AU() {
     return this._$AM._$AU;
   }
-  u(t5) {
-    const { el: { content: i7 }, parts: s5 } = this._$AD, e5 = (t5?.creationScope ?? l2).importNode(i7, true);
+  u(t7) {
+    const { el: { content: i7 }, parts: s5 } = this._$AD, e5 = (t7?.creationScope ?? l2).importNode(i7, true);
     P.currentNode = e5;
     let h4 = P.nextNode(), o7 = 0, n6 = 0, r6 = s5[0];
     for (; void 0 !== r6; ) {
       if (o7 === r6.index) {
         let i8;
-        2 === r6.type ? i8 = new k(h4, h4.nextSibling, this, t5) : 1 === r6.type ? i8 = new r6.ctor(h4, r6.name, r6.strings, this, t5) : 6 === r6.type && (i8 = new Z(h4, this, t5)), this._$AV.push(i8), r6 = s5[++n6];
+        2 === r6.type ? i8 = new k(h4, h4.nextSibling, this, t7) : 1 === r6.type ? i8 = new r6.ctor(h4, r6.name, r6.strings, this, t7) : 6 === r6.type && (i8 = new Z(h4, this, t7)), this._$AV.push(i8), r6 = s5[++n6];
       }
       o7 !== r6?.index && (h4 = P.nextNode(), o7++);
     }
     return P.currentNode = l2, e5;
   }
-  p(t5) {
+  p(t7) {
     let i7 = 0;
-    for (const s5 of this._$AV) void 0 !== s5 && (void 0 !== s5.strings ? (s5._$AI(t5, s5, i7), i7 += s5.strings.length - 2) : s5._$AI(t5[i7])), i7++;
+    for (const s5 of this._$AV) void 0 !== s5 && (void 0 !== s5.strings ? (s5._$AI(t7, s5, i7), i7 += s5.strings.length - 2) : s5._$AI(t7[i7])), i7++;
   }
 };
 var k = class _k {
   get _$AU() {
     return this._$AM?._$AU ?? this._$Cv;
   }
-  constructor(t5, i7, s5, e5) {
-    this.type = 2, this._$AH = A, this._$AN = void 0, this._$AA = t5, this._$AB = i7, this._$AM = s5, this.options = e5, this._$Cv = e5?.isConnected ?? true;
+  constructor(t7, i7, s5, e5) {
+    this.type = 2, this._$AH = A, this._$AN = void 0, this._$AA = t7, this._$AB = i7, this._$AM = s5, this.options = e5, this._$Cv = e5?.isConnected ?? true;
   }
   get parentNode() {
-    let t5 = this._$AA.parentNode;
+    let t7 = this._$AA.parentNode;
     const i7 = this._$AM;
-    return void 0 !== i7 && 11 === t5?.nodeType && (t5 = i7.parentNode), t5;
+    return void 0 !== i7 && 11 === t7?.nodeType && (t7 = i7.parentNode), t7;
   }
   get startNode() {
     return this._$AA;
@@ -1078,45 +1078,45 @@ var k = class _k {
   get endNode() {
     return this._$AB;
   }
-  _$AI(t5, i7 = this) {
-    t5 = M(this, t5, i7), a2(t5) ? t5 === A || null == t5 || "" === t5 ? (this._$AH !== A && this._$AR(), this._$AH = A) : t5 !== this._$AH && t5 !== E && this._(t5) : void 0 !== t5._$litType$ ? this.$(t5) : void 0 !== t5.nodeType ? this.T(t5) : d2(t5) ? this.k(t5) : this._(t5);
+  _$AI(t7, i7 = this) {
+    t7 = M(this, t7, i7), a2(t7) ? t7 === A || null == t7 || "" === t7 ? (this._$AH !== A && this._$AR(), this._$AH = A) : t7 !== this._$AH && t7 !== E && this._(t7) : void 0 !== t7._$litType$ ? this.$(t7) : void 0 !== t7.nodeType ? this.T(t7) : d2(t7) ? this.k(t7) : this._(t7);
   }
-  O(t5) {
-    return this._$AA.parentNode.insertBefore(t5, this._$AB);
+  O(t7) {
+    return this._$AA.parentNode.insertBefore(t7, this._$AB);
   }
-  T(t5) {
-    this._$AH !== t5 && (this._$AR(), this._$AH = this.O(t5));
+  T(t7) {
+    this._$AH !== t7 && (this._$AR(), this._$AH = this.O(t7));
   }
-  _(t5) {
-    this._$AH !== A && a2(this._$AH) ? this._$AA.nextSibling.data = t5 : this.T(l2.createTextNode(t5)), this._$AH = t5;
+  _(t7) {
+    this._$AH !== A && a2(this._$AH) ? this._$AA.nextSibling.data = t7 : this.T(l2.createTextNode(t7)), this._$AH = t7;
   }
-  $(t5) {
-    const { values: i7, _$litType$: s5 } = t5, e5 = "number" == typeof s5 ? this._$AC(t5) : (void 0 === s5.el && (s5.el = S2.createElement(V(s5.h, s5.h[0]), this.options)), s5);
+  $(t7) {
+    const { values: i7, _$litType$: s5 } = t7, e5 = "number" == typeof s5 ? this._$AC(t7) : (void 0 === s5.el && (s5.el = S2.createElement(V(s5.h, s5.h[0]), this.options)), s5);
     if (this._$AH?._$AD === e5) this._$AH.p(i7);
     else {
-      const t6 = new R(e5, this), s6 = t6.u(this.options);
-      t6.p(i7), this.T(s6), this._$AH = t6;
+      const t8 = new R(e5, this), s6 = t8.u(this.options);
+      t8.p(i7), this.T(s6), this._$AH = t8;
     }
   }
-  _$AC(t5) {
-    let i7 = C.get(t5.strings);
-    return void 0 === i7 && C.set(t5.strings, i7 = new S2(t5)), i7;
+  _$AC(t7) {
+    let i7 = C.get(t7.strings);
+    return void 0 === i7 && C.set(t7.strings, i7 = new S2(t7)), i7;
   }
-  k(t5) {
+  k(t7) {
     u2(this._$AH) || (this._$AH = [], this._$AR());
     const i7 = this._$AH;
     let s5, e5 = 0;
-    for (const h4 of t5) e5 === i7.length ? i7.push(s5 = new _k(this.O(c3()), this.O(c3()), this, this.options)) : s5 = i7[e5], s5._$AI(h4), e5++;
+    for (const h4 of t7) e5 === i7.length ? i7.push(s5 = new _k(this.O(c3()), this.O(c3()), this, this.options)) : s5 = i7[e5], s5._$AI(h4), e5++;
     e5 < i7.length && (this._$AR(s5 && s5._$AB.nextSibling, e5), i7.length = e5);
   }
-  _$AR(t5 = this._$AA.nextSibling, s5) {
-    for (this._$AP?.(false, true, s5); t5 !== this._$AB; ) {
-      const s6 = i2(t5).nextSibling;
-      i2(t5).remove(), t5 = s6;
+  _$AR(t7 = this._$AA.nextSibling, s5) {
+    for (this._$AP?.(false, true, s5); t7 !== this._$AB; ) {
+      const s6 = i2(t7).nextSibling;
+      i2(t7).remove(), t7 = s6;
     }
   }
-  setConnected(t5) {
-    void 0 === this._$AM && (this._$Cv = t5, this._$AP?.(t5));
+  setConnected(t7) {
+    void 0 === this._$AM && (this._$Cv = t7, this._$AP?.(t7));
   }
 };
 var H = class {
@@ -1126,75 +1126,75 @@ var H = class {
   get _$AU() {
     return this._$AM._$AU;
   }
-  constructor(t5, i7, s5, e5, h4) {
-    this.type = 1, this._$AH = A, this._$AN = void 0, this.element = t5, this.name = i7, this._$AM = e5, this.options = h4, s5.length > 2 || "" !== s5[0] || "" !== s5[1] ? (this._$AH = Array(s5.length - 1).fill(new String()), this.strings = s5) : this._$AH = A;
+  constructor(t7, i7, s5, e5, h4) {
+    this.type = 1, this._$AH = A, this._$AN = void 0, this.element = t7, this.name = i7, this._$AM = e5, this.options = h4, s5.length > 2 || "" !== s5[0] || "" !== s5[1] ? (this._$AH = Array(s5.length - 1).fill(new String()), this.strings = s5) : this._$AH = A;
   }
-  _$AI(t5, i7 = this, s5, e5) {
+  _$AI(t7, i7 = this, s5, e5) {
     const h4 = this.strings;
     let o7 = false;
-    if (void 0 === h4) t5 = M(this, t5, i7, 0), o7 = !a2(t5) || t5 !== this._$AH && t5 !== E, o7 && (this._$AH = t5);
+    if (void 0 === h4) t7 = M(this, t7, i7, 0), o7 = !a2(t7) || t7 !== this._$AH && t7 !== E, o7 && (this._$AH = t7);
     else {
-      const e6 = t5;
+      const e6 = t7;
       let n6, r6;
-      for (t5 = h4[0], n6 = 0; n6 < h4.length - 1; n6++) r6 = M(this, e6[s5 + n6], i7, n6), r6 === E && (r6 = this._$AH[n6]), o7 ||= !a2(r6) || r6 !== this._$AH[n6], r6 === A ? t5 = A : t5 !== A && (t5 += (r6 ?? "") + h4[n6 + 1]), this._$AH[n6] = r6;
+      for (t7 = h4[0], n6 = 0; n6 < h4.length - 1; n6++) r6 = M(this, e6[s5 + n6], i7, n6), r6 === E && (r6 = this._$AH[n6]), o7 ||= !a2(r6) || r6 !== this._$AH[n6], r6 === A ? t7 = A : t7 !== A && (t7 += (r6 ?? "") + h4[n6 + 1]), this._$AH[n6] = r6;
     }
-    o7 && !e5 && this.j(t5);
+    o7 && !e5 && this.j(t7);
   }
-  j(t5) {
-    t5 === A ? this.element.removeAttribute(this.name) : this.element.setAttribute(this.name, t5 ?? "");
+  j(t7) {
+    t7 === A ? this.element.removeAttribute(this.name) : this.element.setAttribute(this.name, t7 ?? "");
   }
 };
 var I = class extends H {
   constructor() {
     super(...arguments), this.type = 3;
   }
-  j(t5) {
-    this.element[this.name] = t5 === A ? void 0 : t5;
+  j(t7) {
+    this.element[this.name] = t7 === A ? void 0 : t7;
   }
 };
 var L = class extends H {
   constructor() {
     super(...arguments), this.type = 4;
   }
-  j(t5) {
-    this.element.toggleAttribute(this.name, !!t5 && t5 !== A);
+  j(t7) {
+    this.element.toggleAttribute(this.name, !!t7 && t7 !== A);
   }
 };
 var z = class extends H {
-  constructor(t5, i7, s5, e5, h4) {
-    super(t5, i7, s5, e5, h4), this.type = 5;
+  constructor(t7, i7, s5, e5, h4) {
+    super(t7, i7, s5, e5, h4), this.type = 5;
   }
-  _$AI(t5, i7 = this) {
-    if ((t5 = M(this, t5, i7, 0) ?? A) === E) return;
-    const s5 = this._$AH, e5 = t5 === A && s5 !== A || t5.capture !== s5.capture || t5.once !== s5.once || t5.passive !== s5.passive, h4 = t5 !== A && (s5 === A || e5);
-    e5 && this.element.removeEventListener(this.name, this, s5), h4 && this.element.addEventListener(this.name, this, t5), this._$AH = t5;
+  _$AI(t7, i7 = this) {
+    if ((t7 = M(this, t7, i7, 0) ?? A) === E) return;
+    const s5 = this._$AH, e5 = t7 === A && s5 !== A || t7.capture !== s5.capture || t7.once !== s5.once || t7.passive !== s5.passive, h4 = t7 !== A && (s5 === A || e5);
+    e5 && this.element.removeEventListener(this.name, this, s5), h4 && this.element.addEventListener(this.name, this, t7), this._$AH = t7;
   }
-  handleEvent(t5) {
-    "function" == typeof this._$AH ? this._$AH.call(this.options?.host ?? this.element, t5) : this._$AH.handleEvent(t5);
+  handleEvent(t7) {
+    "function" == typeof this._$AH ? this._$AH.call(this.options?.host ?? this.element, t7) : this._$AH.handleEvent(t7);
   }
 };
 var Z = class {
-  constructor(t5, i7, s5) {
-    this.element = t5, this.type = 6, this._$AN = void 0, this._$AM = i7, this.options = s5;
+  constructor(t7, i7, s5) {
+    this.element = t7, this.type = 6, this._$AN = void 0, this._$AM = i7, this.options = s5;
   }
   get _$AU() {
     return this._$AM._$AU;
   }
-  _$AI(t5) {
-    M(this, t5);
+  _$AI(t7) {
+    M(this, t7);
   }
 };
 var j = { M: h2, P: o3, A: n3, C: 1, L: N, R, D: d2, V: M, I: k, H, N: L, U: z, B: I, F: Z };
 var B = t2.litHtmlPolyfillSupport;
 B?.(S2, k), (t2.litHtmlVersions ??= []).push("3.3.3");
-var D = (t5, i7, s5) => {
+var D = (t7, i7, s5) => {
   const e5 = s5?.renderBefore ?? i7;
   let h4 = e5._$litPart$;
   if (void 0 === h4) {
-    const t6 = s5?.renderBefore ?? null;
-    e5._$litPart$ = h4 = new k(i7.insertBefore(c3(), t6), t6, void 0, s5 ?? {});
+    const t8 = s5?.renderBefore ?? null;
+    e5._$litPart$ = h4 = new k(i7.insertBefore(c3(), t8), t8, void 0, s5 ?? {});
   }
-  return h4._$AI(t5), h4;
+  return h4._$AI(t7), h4;
 };
 
 // node_modules/.pnpm/lit-element@4.2.2/node_modules/lit-element/lit-element.js
@@ -1204,12 +1204,12 @@ var i3 = class extends g {
     super(...arguments), this.renderOptions = { host: this }, this._$Do = void 0;
   }
   createRenderRoot() {
-    const t5 = super.createRenderRoot();
-    return this.renderOptions.renderBefore ??= t5.firstChild, t5;
+    const t7 = super.createRenderRoot();
+    return this.renderOptions.renderBefore ??= t7.firstChild, t7;
   }
-  update(t5) {
+  update(t7) {
     const r6 = this.render();
-    this.hasUpdated || (this.renderOptions.isConnected = this.isConnected), super.update(t5), this._$Do = D(r6, this.renderRoot, this.renderOptions);
+    this.hasUpdated || (this.renderOptions.isConnected = this.isConnected), super.update(t7), this._$Do = D(r6, this.renderRoot, this.renderOptions);
   }
   connectedCallback() {
     super.connectedCallback(), this._$Do?.setConnected(true);
@@ -1228,32 +1228,32 @@ o4?.({ LitElement: i3 });
 
 // node_modules/.pnpm/@lit+reactive-element@2.1.2/node_modules/@lit/reactive-element/node/decorators/property.js
 var o5 = { attribute: true, type: String, converter: b, reflect: false, hasChanged: m };
-var r4 = (t5 = o5, e5, r6) => {
+var r4 = (t7 = o5, e5, r6) => {
   const { kind: n6, metadata: i7 } = r6;
   let s5 = globalThis.litPropertyMetadata.get(i7);
-  if (void 0 === s5 && globalThis.litPropertyMetadata.set(i7, s5 = /* @__PURE__ */ new Map()), "setter" === n6 && ((t5 = Object.create(t5)).wrapped = true), s5.set(r6.name, t5), "accessor" === n6) {
+  if (void 0 === s5 && globalThis.litPropertyMetadata.set(i7, s5 = /* @__PURE__ */ new Map()), "setter" === n6 && ((t7 = Object.create(t7)).wrapped = true), s5.set(r6.name, t7), "accessor" === n6) {
     const { name: o7 } = r6;
     return { set(r7) {
       const n7 = e5.get.call(this);
-      e5.set.call(this, r7), this.requestUpdate(o7, n7, t5, true, r7);
+      e5.set.call(this, r7), this.requestUpdate(o7, n7, t7, true, r7);
     }, init(e6) {
-      return void 0 !== e6 && this.C(o7, void 0, t5, e6), e6;
+      return void 0 !== e6 && this.C(o7, void 0, t7, e6), e6;
     } };
   }
   if ("setter" === n6) {
     const { name: o7 } = r6;
     return function(r7) {
       const n7 = this[o7];
-      e5.call(this, r7), this.requestUpdate(o7, n7, t5, true, r7);
+      e5.call(this, r7), this.requestUpdate(o7, n7, t7, true, r7);
     };
   }
   throw Error("Unsupported decorator location: " + n6);
 };
-function n4(t5) {
-  return (e5, o7) => "object" == typeof o7 ? r4(t5, e5, o7) : ((t6, e6, o8) => {
+function n4(t7) {
+  return (e5, o7) => "object" == typeof o7 ? r4(t7, e5, o7) : ((t8, e6, o8) => {
     const r6 = e6.hasOwnProperty(o8);
-    return e6.constructor.createProperty(o8, t6), r6 ? Object.getOwnPropertyDescriptor(e6, o8) : void 0;
-  })(t5, e5, o7);
+    return e6.constructor.createProperty(o8, t8), r6 ? Object.getOwnPropertyDescriptor(e6, o8) : void 0;
+  })(t7, e5, o7);
 }
 
 // node_modules/.pnpm/@lit+reactive-element@2.1.2/node_modules/@lit/reactive-element/node/decorators/state.js
@@ -1270,20 +1270,20 @@ function define(tag, ctor) {
 
 // node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directive.js
 var t3 = { ATTRIBUTE: 1, CHILD: 2, PROPERTY: 3, BOOLEAN_ATTRIBUTE: 4, EVENT: 5, ELEMENT: 6 };
-var e4 = (t5) => (...e5) => ({ _$litDirective$: t5, values: e5 });
+var e4 = (t7) => (...e5) => ({ _$litDirective$: t7, values: e5 });
 var i4 = class {
-  constructor(t5) {
+  constructor(t7) {
   }
   get _$AU() {
     return this._$AM._$AU;
   }
-  _$AT(t5, e5, i7) {
-    this._$Ct = t5, this._$AM = e5, this._$Ci = i7;
+  _$AT(t7, e5, i7) {
+    this._$Ct = t7, this._$AM = e5, this._$Ci = i7;
   }
-  _$AS(t5, e5) {
-    return this.update(t5, e5);
+  _$AS(t7, e5) {
+    return this.update(t7, e5);
   }
-  update(t5, e5) {
+  update(t7, e5) {
     return this.render(...e5);
   }
 };
@@ -1298,52 +1298,52 @@ var v2 = (o7, n6, e5) => {
     const i7 = l3.insertBefore(s4(), d3), n7 = l3.insertBefore(s4(), d3);
     e5 = new t4(i7, n7, o7, o7.options);
   } else {
-    const t5 = e5._$AB.nextSibling, n7 = e5._$AM, c5 = n7 !== o7;
+    const t7 = e5._$AB.nextSibling, n7 = e5._$AM, c5 = n7 !== o7;
     if (c5) {
-      let t6;
-      e5._$AQ?.(o7), e5._$AM = o7, void 0 !== e5._$AP && (t6 = o7._$AU) !== n7._$AU && e5._$AP(t6);
+      let t8;
+      e5._$AQ?.(o7), e5._$AM = o7, void 0 !== e5._$AP && (t8 = o7._$AU) !== n7._$AU && e5._$AP(t8);
     }
-    if (t5 !== d3 || c5) {
+    if (t7 !== d3 || c5) {
       let o8 = e5._$AA;
-      for (; o8 !== t5; ) {
-        const t6 = i5(o8).nextSibling;
-        i5(l3).insertBefore(o8, d3), o8 = t6;
+      for (; o8 !== t7; ) {
+        const t8 = i5(o8).nextSibling;
+        i5(l3).insertBefore(o8, d3), o8 = t8;
       }
     }
   }
   return e5;
 };
-var u3 = (o7, t5, i7 = o7) => (o7._$AI(t5, i7), o7);
+var u3 = (o7, t7, i7 = o7) => (o7._$AI(t7, i7), o7);
 var m3 = {};
-var p3 = (o7, t5 = m3) => o7._$AH = t5;
+var p3 = (o7, t7 = m3) => o7._$AH = t7;
 var M2 = (o7) => o7._$AH;
 var h3 = (o7) => {
   o7._$AR(), o7._$AA.remove();
 };
 
 // node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directives/repeat.js
-var u4 = (e5, s5, t5) => {
+var u4 = (e5, s5, t7) => {
   const r6 = /* @__PURE__ */ new Map();
-  for (let l3 = s5; l3 <= t5; l3++) r6.set(e5[l3], l3);
+  for (let l3 = s5; l3 <= t7; l3++) r6.set(e5[l3], l3);
   return r6;
 };
 var c4 = e4(class extends i4 {
   constructor(e5) {
     if (super(e5), e5.type !== t3.CHILD) throw Error("repeat() can only be used in text expressions");
   }
-  dt(e5, s5, t5) {
+  dt(e5, s5, t7) {
     let r6;
-    void 0 === t5 ? t5 = s5 : void 0 !== s5 && (r6 = s5);
+    void 0 === t7 ? t7 = s5 : void 0 !== s5 && (r6 = s5);
     const l3 = [], o7 = [];
     let i7 = 0;
-    for (const s6 of e5) l3[i7] = r6 ? r6(s6, i7) : i7, o7[i7] = t5(s6, i7), i7++;
+    for (const s6 of e5) l3[i7] = r6 ? r6(s6, i7) : i7, o7[i7] = t7(s6, i7), i7++;
     return { values: o7, keys: l3 };
   }
-  render(e5, s5, t5) {
-    return this.dt(e5, s5, t5).values;
+  render(e5, s5, t7) {
+    return this.dt(e5, s5, t7).values;
   }
-  update(s5, [t5, r6, c5]) {
-    const d3 = M2(s5), { values: p4, keys: a3 } = this.dt(t5, r6, c5);
+  update(s5, [t7, r6, c5]) {
+    const d3 = M2(s5), { values: p4, keys: a3 } = this.dt(t7, r6, c5);
     if (!Array.isArray(d3)) return this.ut = a3, p4;
     const h4 = this.ut ??= [], v3 = [];
     let m4, y3, x2 = 0, j2 = d3.length - 1, k2 = 0, w2 = p4.length - 1;
@@ -1354,11 +1354,11 @@ var c4 = e4(class extends i4 {
     else if (h4[x2] === a3[w2]) v3[w2] = u3(d3[x2], p4[w2]), v2(s5, v3[w2 + 1], d3[x2]), x2++, w2--;
     else if (h4[j2] === a3[k2]) v3[k2] = u3(d3[j2], p4[k2]), v2(s5, d3[x2], d3[j2]), j2--, k2++;
     else if (void 0 === m4 && (m4 = u4(a3, k2, w2), y3 = u4(h4, x2, j2)), m4.has(h4[x2])) if (m4.has(h4[j2])) {
-      const e5 = y3.get(a3[k2]), t6 = void 0 !== e5 ? d3[e5] : null;
-      if (null === t6) {
+      const e5 = y3.get(a3[k2]), t8 = void 0 !== e5 ? d3[e5] : null;
+      if (null === t8) {
         const e6 = v2(s5, d3[x2]);
         u3(e6, p4[k2]), v3[k2] = e6;
-      } else v3[k2] = u3(t6, p4[k2]), v2(s5, d3[x2], t6), d3[e5] = null;
+      } else v3[k2] = u3(t8, p4[k2]), v2(s5, d3[x2], t8), d3[e5] = null;
       k2++;
     } else h3(d3[j2]), j2--;
     else h3(d3[x2]), x2++;
@@ -1378,25 +1378,25 @@ var c4 = e4(class extends i4 {
 var n5 = "important";
 var i6 = " !" + n5;
 var o6 = e4(class extends i4 {
-  constructor(t5) {
-    if (super(t5), t5.type !== t3.ATTRIBUTE || "style" !== t5.name || t5.strings?.length > 2) throw Error("The `styleMap` directive must be used in the `style` attribute and must be the only part in the attribute.");
+  constructor(t7) {
+    if (super(t7), t7.type !== t3.ATTRIBUTE || "style" !== t7.name || t7.strings?.length > 2) throw Error("The `styleMap` directive must be used in the `style` attribute and must be the only part in the attribute.");
   }
-  render(t5) {
-    return Object.keys(t5).reduce((e5, r6) => {
-      const s5 = t5[r6];
+  render(t7) {
+    return Object.keys(t7).reduce((e5, r6) => {
+      const s5 = t7[r6];
       return null == s5 ? e5 : e5 + `${r6 = r6.includes("-") ? r6 : r6.replace(/(?:^(webkit|moz|ms|o)|)(?=[A-Z])/g, "-$&").toLowerCase()}:${s5};`;
     }, "");
   }
   update(e5, [r6]) {
     const { style: s5 } = e5.element;
     if (void 0 === this.ft) return this.ft = new Set(Object.keys(r6)), this.render(r6);
-    for (const t5 of this.ft) null == r6[t5] && (this.ft.delete(t5), t5.includes("-") ? s5.removeProperty(t5) : s5[t5] = null);
-    for (const t5 in r6) {
-      const e6 = r6[t5];
+    for (const t7 of this.ft) null == r6[t7] && (this.ft.delete(t7), t7.includes("-") ? s5.removeProperty(t7) : s5[t7] = null);
+    for (const t7 in r6) {
+      const e6 = r6[t7];
       if (null != e6) {
-        this.ft.add(t5);
+        this.ft.add(t7);
         const r7 = "string" == typeof e6 && e6.endsWith(i6);
-        t5.includes("-") || r7 ? s5.setProperty(t5, r7 ? e6.slice(0, -11) : e6, r7 ? n5 : "") : s5[t5] = e6;
+        t7.includes("-") || r7 ? s5.setProperty(t7, r7 ? e6.slice(0, -11) : e6, r7 ? n5 : "") : s5[t7] = e6;
       }
     }
     return E;
@@ -1699,7 +1699,7 @@ var OkDataTable = class extends i3 {
     .tk-scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.18); z-index: 19; }
     .drawer { position: absolute; top: 0; right: 0; height: 100%; width: 340px; max-width: 88%;
       background: var(--background); border-left: 1px solid var(--border-color);
-      box-shadow: -10px 0 28px rgba(0, 0, 0, 0.10); display: flex; flex-direction: column; z-index: 20;
+      display: flex; flex-direction: column; z-index: 20;
       animation: tk-slide-in 0.18s ease; }
     @keyframes tk-slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
     .drawer .dh { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
@@ -2007,17 +2007,17 @@ var OkDataTable = class extends i3 {
       out.push(row);
     }
     const headers = out.shift() ?? [];
-    const rows = out.map((r6) => Object.fromEntries(headers.map((h4, i7) => [h4, r6[i7] ?? ""])));
-    return { headers, rows };
+    const rows2 = out.map((r6) => Object.fromEntries(headers.map((h4, i7) => [h4, r6[i7] ?? ""])));
+    return { headers, rows: rows2 };
   }
   async onImportFile(ev) {
     const input = ev.target;
     const file = input.files?.[0];
     if (!file) return;
     const text = decodeCsvBuffer(await file.arrayBuffer());
-    const { headers, rows } = this.parseCsv(text);
-    this.emit("csvImport", { headers, rows });
-    this.emit("import", { headers, rows });
+    const { headers, rows: rows2 } = this.parseCsv(text);
+    this.emit("csvImport", { headers, rows: rows2 });
+    this.emit("import", { headers, rows: rows2 });
     input.value = "";
   }
   toggle(p4) {
@@ -2131,10 +2131,10 @@ var OkDataTable = class extends i3 {
           }
           if (f3.from || f3.to) {
             const raw = this.rawValue(col, row);
-            const t5 = raw == null ? NaN : new Date(raw).getTime();
+            const t7 = raw == null ? NaN : new Date(raw).getTime();
             const from = f3.from ? new Date(f3.from).getTime() : -Infinity;
             const to = f3.to ? new Date(f3.to).getTime() + 864e5 - 1 : Infinity;
-            return !Number.isNaN(t5) && t5 >= from && t5 <= to;
+            return !Number.isNaN(t7) && t7 >= from && t7 <= to;
           }
           return true;
         })
@@ -2270,15 +2270,15 @@ var OkDataTable = class extends i3 {
       `;
     }
     if (type === "range" || type === "daterange") {
-      const t5 = type === "daterange" ? "date" : "number";
+      const t7 = type === "daterange" ? "date" : "number";
       const onEdge = type === "daterange" ? this.onDateRangeInput.bind(this) : this.onRangeInput.bind(this);
       return b2`
         <div class="fblock">
           <span class="flabel">${col.header}</span>
           <div class="frange">
-            <ion-input type=${t5} fill="outline" placeholder=${type === "daterange" ? this.t.from : this.t.gte}
+            <ion-input type=${t7} fill="outline" placeholder=${type === "daterange" ? this.t.from : this.t.gte}
               @ionInput=${(e5) => onEdge(col, "from", e5)}></ion-input>
-            <ion-input type=${t5} fill="outline" placeholder=${type === "daterange" ? this.t.to : this.t.lte}
+            <ion-input type=${t7} fill="outline" placeholder=${type === "daterange" ? this.t.to : this.t.lte}
               @ionInput=${(e5) => onEdge(col, "to", e5)}></ion-input>
           </div>
         </div>
@@ -2301,8 +2301,8 @@ var OkDataTable = class extends i3 {
   // `inlineFilters`. Look: «Todos los Estados» (placeholder) / «01/10/25 → 18/10/25».
   renderInlineFilters() {
     const cols = this.filterColumns.filter((c5) => {
-      const t5 = c5.filterType ?? "text";
-      return t5 === "select" || t5 === "multiselect" || t5 === "date" || t5 === "daterange";
+      const t7 = c5.filterType ?? "text";
+      return t7 === "select" || t7 === "multiselect" || t7 === "date" || t7 === "daterange";
     });
     if (!cols.length) return A;
     return b2`${cols.map((c5) => this.renderInlineFilter(c5))}`;
@@ -3100,7 +3100,18 @@ var es_default = {
     deleteStationError: "No se pudo eliminar la estaci\xF3n",
     searchStations: "Buscar estaci\xF3n\u2026",
     emptyStations: "Sin estaciones.",
-    colLabel: "Destino"
+    colLabel: "Destino",
+    fireToKitchen: "Enviar comanda",
+    posComandas: "Comandas",
+    posComandasTitle: "Comandas de la cuenta",
+    comandaN: "Comanda {n}",
+    stQueued: "En cola",
+    stPreparing: "Preparando",
+    stReady: "Lista",
+    stServed: "Servida",
+    stPaid: "Pagada",
+    stCancelled: "Anulada",
+    close: "Cerrar"
   }
 };
 
@@ -3218,7 +3229,18 @@ var en_default = {
     deleteStationError: "Could not delete station",
     searchStations: "Search station\u2026",
     emptyStations: "No stations.",
-    colLabel: "Where"
+    colLabel: "Where",
+    fireToKitchen: "Send order",
+    posComandas: "Tickets",
+    posComandasTitle: "Order tickets",
+    comandaN: "Order ticket {n}",
+    stQueued: "Queued",
+    stPreparing: "Preparing",
+    stReady: "Ready",
+    stServed: "Served",
+    stPaid: "Paid",
+    stCancelled: "Cancelled",
+    close: "Close"
   }
 };
 
@@ -3295,26 +3317,26 @@ var ErpKitchenDisplay = class extends i3 {
   }
   // Getter (no campo): se re-evalúa en cada render → los textos cambian con el idioma activo (ADR-0055).
   get columns() {
-    const t5 = (k2) => erplora().t(CATALOG, k2);
+    const t7 = (k2) => erplora().t(CATALOG, k2);
     return [
       {
         key: "action",
-        header: t5("ui.colAction"),
+        header: t7("ui.colAction"),
         sortable: true,
         filterable: true,
         filterType: "select",
         options: [
-          { value: "received", label: t5("ui.actionReceived") },
-          { value: "started", label: t5("ui.actionStarted") },
-          { value: "bumped", label: t5("ui.actionBumped") },
-          { value: "served", label: t5("ui.actionServed") },
-          { value: "recalled", label: t5("ui.actionRecalled") },
-          { value: "cancelled", label: t5("ui.actionCancelled") }
+          { value: "received", label: t7("ui.actionReceived") },
+          { value: "started", label: t7("ui.actionStarted") },
+          { value: "bumped", label: t7("ui.actionBumped") },
+          { value: "served", label: t7("ui.actionServed") },
+          { value: "recalled", label: t7("ui.actionRecalled") },
+          { value: "cancelled", label: t7("ui.actionCancelled") }
         ]
       },
-      { key: "order_id", header: t5("ui.colOrder"), sortable: true, filterable: true, filterType: "text" },
-      { key: "notes", header: t5("ui.colNotes"), sortable: true, filterable: true, filterType: "text" },
-      { key: "created_at", header: t5("ui.colWhen"), sortable: true, filterable: true, filterType: "daterange" }
+      { key: "order_id", header: t7("ui.colOrder"), sortable: true, filterable: true, filterType: "text" },
+      { key: "notes", header: t7("ui.colNotes"), sortable: true, filterable: true, filterType: "text" },
+      { key: "created_at", header: t7("ui.colWhen"), sortable: true, filterable: true, filterType: "daterange" }
     ];
   }
   async connectedCallback() {
@@ -3350,8 +3372,8 @@ var ErpKitchenDisplay = class extends i3 {
     this.settingsErr = "";
     if (!this.showSettings) return;
     try {
-      const rows = await erplora().query("kitchen.settings.get");
-      const row = Array.isArray(rows) ? rows[0] : rows;
+      const rows2 = await erplora().query("kitchen.settings.get");
+      const row = Array.isArray(rows2) ? rows2[0] : rows2;
       if (row) {
         const next = { ...DEFAULT_SETTINGS };
         for (const k2 of Object.keys(DEFAULT_SETTINGS)) {
@@ -3385,43 +3407,43 @@ var ErpKitchenDisplay = class extends i3 {
     this.settings = { ...this.settings, [key]: n6 };
   }
   renderSettings() {
-    const t5 = (k2) => erplora().t(CATALOG, k2);
+    const t7 = (k2) => erplora().t(CATALOG, k2);
     return b2`<section class="settings">
-      <h3>${t5("ui.settingsTitle")}</h3>
+      <h3>${t7("ui.settingsTitle")}</h3>
       <div class="grid">
         ${BOOL_FIELDS.map(
       (f3) => b2`<ion-item lines="none">
-            <ion-toggle .checked=${Boolean(this.settings[f3.key])} @ionChange=${(e5) => this.setBool(f3.key, e5.detail.checked)}>${t5(f3.labelKey)}</ion-toggle>
+            <ion-toggle .checked=${Boolean(this.settings[f3.key])} @ionChange=${(e5) => this.setBool(f3.key, e5.detail.checked)}>${t7(f3.labelKey)}</ion-toggle>
           </ion-item>`
     )}
       </div>
       <div class="nums">
         ${INT_FIELDS.map(
-      (f3) => b2`<ion-input fill="outline" type="number" label=${t5(f3.labelKey)} label-placement="floating" min=${f3.min} max=${f3.max} .value=${String(this.settings[f3.key])} @ionInput=${(e5) => this.setInt(f3.key, e5.target.value, f3.min, f3.max)}></ion-input>`
+      (f3) => b2`<ion-input fill="outline" type="number" label=${t7(f3.labelKey)} label-placement="floating" min=${f3.min} max=${f3.max} .value=${String(this.settings[f3.key])} @ionInput=${(e5) => this.setInt(f3.key, e5.target.value, f3.min, f3.max)}></ion-input>`
     )}
-        <ion-select fill="outline" label=${t5("ui.defaultOrderType")} label-placement="floating" .value=${this.settings.default_order_type} @ionChange=${(e5) => this.settings = { ...this.settings, default_order_type: e5.target.value }}>
-          <ion-select-option value="dine_in">${t5("ui.orderTypeDineIn")}</ion-select-option>
-          <ion-select-option value="takeaway">${t5("ui.orderTypeTakeaway")}</ion-select-option>
-          <ion-select-option value="delivery">${t5("ui.orderTypeDelivery")}</ion-select-option>
+        <ion-select fill="outline" label=${t7("ui.defaultOrderType")} label-placement="floating" .value=${this.settings.default_order_type} @ionChange=${(e5) => this.settings = { ...this.settings, default_order_type: e5.target.value }}>
+          <ion-select-option value="dine_in">${t7("ui.orderTypeDineIn")}</ion-select-option>
+          <ion-select-option value="takeaway">${t7("ui.orderTypeTakeaway")}</ion-select-option>
+          <ion-select-option value="delivery">${t7("ui.orderTypeDelivery")}</ion-select-option>
         </ion-select>
       </div>
       <footer>
-        <ion-button size="small" ?disabled=${this.savingSettings} @click=${() => this.saveSettings()}>${this.savingSettings ? t5("ui.savingSettings") : t5("ui.saveSettings")}</ion-button>
+        <ion-button size="small" ?disabled=${this.savingSettings} @click=${() => this.saveSettings()}>${this.savingSettings ? t7("ui.savingSettings") : t7("ui.saveSettings")}</ion-button>
         ${this.settingsMsg ? b2`<span class="ok">${this.settingsMsg}</span>` : A}
         ${this.settingsErr ? b2`<span class="err">${this.settingsErr}</span>` : A}
       </footer>
     </section>`;
   }
   render() {
-    const t5 = (k2) => erplora().t(CATALOG, k2);
+    const t7 = (k2) => erplora().t(CATALOG, k2);
     return b2`<div>
         <header>
-          <h2>${t5("ui.displayTitle")}</h2>
-          <ion-button size="small" fill="outline" @click=${() => this.toggleSettings()}>${this.showSettings ? t5("ui.settingsToggleClose") : t5("ui.settingsToggleOpen")}</ion-button>
+          <h2>${t7("ui.displayTitle")}</h2>
+          <ion-button size="small" fill="outline" @click=${() => this.toggleSettings()}>${this.showSettings ? t7("ui.settingsToggleClose") : t7("ui.settingsToggleOpen")}</ion-button>
         </header>
         ${this.showSettings ? this.renderSettings() : A}
         ${this.ctrl?.error ? b2`<p class="err">${this.ctrl.error}</p>` : A}
-        <ok-data-table .serverSide=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => `#${String(r6.order_id ?? "\u2014")}`} .cardIcon=${() => "restaurant-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "desc"} .searchable=${true} .searchPlaceholder=${t5("ui.searchLogs")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyLogs")} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}></ok-data-table>
+        <ok-data-table .serverSide=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => `#${String(r6.order_id ?? "\u2014")}`} .cardIcon=${() => "restaurant-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "desc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchLogs")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyLogs")} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}></ok-data-table>
       </div>`;
   }
 };
@@ -3475,31 +3497,31 @@ var ErpKitchenOrdersActive = class extends i3 {
   }
   // Getters (no campos): se re-evalúan en cada render → los textos cambian con el idioma activo (ADR-0055).
   get columns() {
-    const t5 = (k2) => erplora2().t(CATALOG2, k2);
+    const t7 = (k2) => erplora2().t(CATALOG2, k2);
     return [
-      { key: "order_number", header: t5("ui.colOrder"), sortable: true, filterable: true, filterType: "text" },
+      { key: "order_number", header: t7("ui.colOrder"), sortable: true, filterable: true, filterType: "text" },
       // ADR-0141: a dónde va el plato. Es una ETIQUETA OPACA que manda quien dispara ("Mesa 4",
       // "Barra", "Recogida Ana"): cocina la imprime tal cual y no depende de `tables`.
-      { key: "label", header: t5("ui.colLabel"), width: "140px", sortable: true, filterable: true, filterType: "text" },
-      { key: "order_type", header: t5("ui.colType"), sortable: true, filterable: true, filterType: "text" },
-      { key: "priority", header: t5("ui.colPriority"), sortable: true, filterable: true, filterType: "text" },
+      { key: "label", header: t7("ui.colLabel"), width: "140px", sortable: true, filterable: true, filterType: "text" },
+      { key: "order_type", header: t7("ui.colType"), sortable: true, filterable: true, filterType: "text" },
+      { key: "priority", header: t7("ui.colPriority"), sortable: true, filterable: true, filterType: "text" },
       {
         key: "status",
-        header: t5("ui.colStatus"),
+        header: t7("ui.colStatus"),
         sortable: true,
         filterable: true,
         filterType: "select",
         options: [
-          { value: "pending", label: t5("ui.statusPending") },
-          { value: "preparing", label: t5("ui.statusPreparing") },
-          { value: "ready", label: t5("ui.statusReady") },
-          { value: "served", label: t5("ui.statusServed") },
-          { value: "cancelled", label: t5("ui.statusCancelled") }
+          { value: "pending", label: t7("ui.statusPending") },
+          { value: "preparing", label: t7("ui.statusPreparing") },
+          { value: "ready", label: t7("ui.statusReady") },
+          { value: "served", label: t7("ui.statusServed") },
+          { value: "cancelled", label: t7("ui.statusCancelled") }
         ]
       },
       {
         key: "total",
-        header: t5("ui.colTotal"),
+        header: t7("ui.colTotal"),
         align: "right",
         sortable: true,
         filterable: true,
@@ -3511,14 +3533,14 @@ var ErpKitchenOrdersActive = class extends i3 {
     ];
   }
   get rowActions() {
-    const t5 = (k2) => erplora2().t(CATALOG2, k2);
+    const t7 = (k2) => erplora2().t(CATALOG2, k2);
     return [
       // Solo icono (ADR-0133): el `label` viaja como title + aria-label del botón, no como texto.
-      { id: "fire", label: t5("ui.rowFire"), icon: "flame-outline" },
-      { id: "mark_ready", label: t5("ui.rowMarkReady"), icon: "checkmark-done-outline" },
-      { id: "mark_served", label: t5("ui.rowMarkServed"), icon: "restaurant-outline" },
-      { id: "recall", label: t5("ui.rowRecall"), icon: "arrow-undo-outline" },
-      { id: "cancel", label: t5("ui.rowCancel"), icon: "close-circle-outline", color: "danger" }
+      { id: "fire", label: t7("ui.rowFire"), icon: "flame-outline" },
+      { id: "mark_ready", label: t7("ui.rowMarkReady"), icon: "checkmark-done-outline" },
+      { id: "mark_served", label: t7("ui.rowMarkServed"), icon: "restaurant-outline" },
+      { id: "recall", label: t7("ui.rowRecall"), icon: "arrow-undo-outline" },
+      { id: "cancel", label: t7("ui.rowCancel"), icon: "close-circle-outline", color: "danger" }
     ];
   }
   async connectedCallback() {
@@ -3583,23 +3605,23 @@ var ErpKitchenOrdersActive = class extends i3 {
     }
   }
   render() {
-    const t5 = (k2) => erplora2().t(CATALOG2, k2);
+    const t7 = (k2) => erplora2().t(CATALOG2, k2);
     return b2`<div>
         <header>
-          <h2>${t5("ui.ordersTitle")}</h2>
+          <h2>${t7("ui.ordersTitle")}</h2>
         </header>
         <form class="form" @submit=${(e5) => this.createOrder(e5)}>
-          <ion-select fill="outline" label-placement="floating" label=${t5("ui.colType")} .value=${this.newType} @ionChange=${(e5) => this.newType = e5.target.value}>
-            <ion-select-option value="dine_in">${t5("ui.orderTypeDineIn")}</ion-select-option>
-            <ion-select-option value="takeaway">${t5("ui.orderTypeTakeaway")}</ion-select-option>
-            <ion-select-option value="delivery">${t5("ui.orderTypeDelivery")}</ion-select-option>
+          <ion-select fill="outline" label-placement="floating" label=${t7("ui.colType")} .value=${this.newType} @ionChange=${(e5) => this.newType = e5.target.value}>
+            <ion-select-option value="dine_in">${t7("ui.orderTypeDineIn")}</ion-select-option>
+            <ion-select-option value="takeaway">${t7("ui.orderTypeTakeaway")}</ion-select-option>
+            <ion-select-option value="delivery">${t7("ui.orderTypeDelivery")}</ion-select-option>
           </ion-select>
-          <ion-input fill="outline" label-placement="floating" label=${t5("ui.colNotes")} .value=${this.newNotes} @ionInput=${(e5) => this.newNotes = e5.target.value}></ion-input>
-          <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t5("ui.creatingOrder") : t5("ui.newOrder")}</ion-button>
+          <ion-input fill="outline" label-placement="floating" label=${t7("ui.colNotes")} .value=${this.newNotes} @ionInput=${(e5) => this.newNotes = e5.target.value}></ion-input>
+          <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t7("ui.creatingOrder") : t7("ui.newOrder")}</ion-button>
         </form>
         ${this.formError ? b2`<p class="err">${this.formError}</p>` : A}
         ${this.ctrl?.error ? b2`<p class="err">${this.ctrl.error}</p>` : A}
-        <ok-data-table .serverSide=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.order_number ?? "\u2014")} .cardIcon=${() => "restaurant-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "desc"} .searchable=${true} .searchPlaceholder=${t5("ui.searchOrders")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyOrders")} .actions=${this.rowActions} @rowAction=${(e5) => this.onRowAction(e5)} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}></ok-data-table>
+        <ok-data-table .serverSide=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.order_number ?? "\u2014")} .cardIcon=${() => "restaurant-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "desc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchOrders")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyOrders")} .actions=${this.rowActions} @rowAction=${(e5) => this.onRowAction(e5)} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}></ok-data-table>
       </div>`;
   }
 };
@@ -3667,39 +3689,39 @@ var ErpKitchenOrdersStations = class extends i3 {
   }
   // Getters (no campos): se re-evalúan en cada render → los textos cambian con el idioma activo (ADR-0055).
   get columns() {
-    const t5 = (k2) => erplora3().t(CATALOG3, k2);
+    const t7 = (k2) => erplora3().t(CATALOG3, k2);
     return [
-      { key: "name", header: t5("ui.colStation"), sortable: true, filterable: true, filterType: "text" },
+      { key: "name", header: t7("ui.colStation"), sortable: true, filterable: true, filterType: "text" },
       {
         key: "printer_name",
-        header: t5("ui.colPrinter"),
+        header: t7("ui.colPrinter"),
         sortable: true,
         filterable: true,
         filterType: "text",
         format: (r6) => r6.printer_name || "\u2014"
       },
-      { key: "pending_count", header: t5("ui.colInProgress"), align: "right", format: (r6) => String(this.pendingCounts.get(String(r6.id)) ?? 0) },
+      { key: "pending_count", header: t7("ui.colInProgress"), align: "right", format: (r6) => String(this.pendingCounts.get(String(r6.id)) ?? 0) },
       {
         key: "is_active",
-        header: t5("ui.colActive"),
+        header: t7("ui.colActive"),
         sortable: true,
         filterable: true,
         filterType: "select",
         options: [
-          { value: "1", label: t5("ui.yes") },
-          { value: "0", label: t5("ui.no") }
+          { value: "1", label: t7("ui.yes") },
+          { value: "0", label: t7("ui.no") }
         ],
-        format: (r6) => Number(r6.is_active) ? t5("ui.yes") : t5("ui.no")
+        format: (r6) => Number(r6.is_active) ? t7("ui.yes") : t7("ui.no")
       }
     ];
   }
   get rowActions() {
-    const t5 = (k2) => erplora3().t(CATALOG3, k2);
+    const t7 = (k2) => erplora3().t(CATALOG3, k2);
     return [
       // Solo icono (ADR-0133): el `label` viaja como title + aria-label del botón, no como texto.
-      { id: "edit", label: t5("ui.rowEdit"), icon: "create-outline" },
-      { id: "route", label: t5("ui.rowRoute"), icon: "git-branch-outline" },
-      { id: "delete", label: t5("ui.rowDelete"), icon: "trash-outline", color: "danger" }
+      { id: "edit", label: t7("ui.rowEdit"), icon: "create-outline" },
+      { id: "route", label: t7("ui.rowRoute"), icon: "git-branch-outline" },
+      { id: "delete", label: t7("ui.rowDelete"), icon: "trash-outline", color: "danger" }
     ];
   }
   async connectedCallback() {
@@ -3841,31 +3863,31 @@ var ErpKitchenOrdersStations = class extends i3 {
   }
   renderEditPanel() {
     if (!this.editing) return A;
-    const t5 = (k2) => erplora3().t(CATALOG3, k2);
+    const t7 = (k2) => erplora3().t(CATALOG3, k2);
     return b2`<section class="panel">
-      <h3>${t5("ui.editStationTitle")} · ${this.editing.name}</h3>
+      <h3>${t7("ui.editStationTitle")} · ${this.editing.name}</h3>
       <form class="form" @submit=${(e5) => this.saveEdit(e5)}>
-        <ion-input fill="outline" label=${t5("ui.labelName")} label-placement="floating" .value=${this.editName} @ionInput=${(e5) => this.editName = e5.target.value}></ion-input>
-        <ion-input fill="outline" label=${t5("ui.labelColor")} label-placement="floating" placeholder="#F97316" .value=${this.editColor} @ionInput=${(e5) => this.editColor = e5.target.value}></ion-input>
-        <ion-input fill="outline" label=${t5("ui.labelPrinter")} label-placement="floating" .value=${this.editPrinter} @ionInput=${(e5) => this.editPrinter = e5.target.value}></ion-input>
-        <ion-toggle .checked=${this.editActive} @ionChange=${(e5) => this.editActive = e5.detail.checked}>${t5("ui.labelActive")}</ion-toggle>
-        <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t5("ui.saving") : t5("ui.save")}</ion-button>
-        <ion-button size="small" fill="outline" @click=${() => this.editing = null}>${t5("ui.cancel")}</ion-button>
+        <ion-input fill="outline" label=${t7("ui.labelName")} label-placement="floating" .value=${this.editName} @ionInput=${(e5) => this.editName = e5.target.value}></ion-input>
+        <ion-input fill="outline" label=${t7("ui.labelColor")} label-placement="floating" placeholder="#F97316" .value=${this.editColor} @ionInput=${(e5) => this.editColor = e5.target.value}></ion-input>
+        <ion-input fill="outline" label=${t7("ui.labelPrinter")} label-placement="floating" .value=${this.editPrinter} @ionInput=${(e5) => this.editPrinter = e5.target.value}></ion-input>
+        <ion-toggle .checked=${this.editActive} @ionChange=${(e5) => this.editActive = e5.detail.checked}>${t7("ui.labelActive")}</ion-toggle>
+        <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t7("ui.saving") : t7("ui.save")}</ion-button>
+        <ion-button size="small" fill="outline" @click=${() => this.editing = null}>${t7("ui.cancel")}</ion-button>
       </form>
     </section>`;
   }
   renderRoutingPanel() {
-    const t5 = (k2) => erplora3().t(CATALOG3, k2);
+    const t7 = (k2) => erplora3().t(CATALOG3, k2);
     const stations = this.ctrl?.rows ?? [];
     return b2`<section class="panel">
-      <h3>${t5("ui.routingTitle")}</h3>
+      <h3>${t7("ui.routingTitle")}</h3>
       <form class="form" @submit=${(e5) => this.saveRouting(e5)}>
-        <ion-select fill="outline" label-placement="floating" label=${t5("ui.colStation")} .value=${this.routeStationId} @ionChange=${(e5) => this.routeStationId = e5.target.value}>
+        <ion-select fill="outline" label-placement="floating" label=${t7("ui.colStation")} .value=${this.routeStationId} @ionChange=${(e5) => this.routeStationId = e5.target.value}>
           ${stations.map((s5) => b2`<ion-select-option value=${s5.id}>${s5.name}</ion-select-option>`)}
         </ion-select>
-        <ion-input fill="outline" label=${t5("ui.labelProductId")} label-placement="floating" placeholder=${t5("ui.placeholderOptional")} .value=${this.routeProductId} @ionInput=${(e5) => this.routeProductId = e5.target.value}></ion-input>
-        <ion-input fill="outline" label=${t5("ui.labelCategoryId")} label-placement="floating" placeholder=${t5("ui.placeholderOptional")} .value=${this.routeCategoryId} @ionInput=${(e5) => this.routeCategoryId = e5.target.value}></ion-input>
-        <ion-button type="submit" size="small" ?disabled=${this.saving || !this.routeStationId || !this.routeProductId.trim() && !this.routeCategoryId.trim()}>${this.saving ? t5("ui.saving") : t5("ui.saveRouting")}</ion-button>
+        <ion-input fill="outline" label=${t7("ui.labelProductId")} label-placement="floating" placeholder=${t7("ui.placeholderOptional")} .value=${this.routeProductId} @ionInput=${(e5) => this.routeProductId = e5.target.value}></ion-input>
+        <ion-input fill="outline" label=${t7("ui.labelCategoryId")} label-placement="floating" placeholder=${t7("ui.placeholderOptional")} .value=${this.routeCategoryId} @ionInput=${(e5) => this.routeCategoryId = e5.target.value}></ion-input>
+        <ion-button type="submit" size="small" ?disabled=${this.saving || !this.routeStationId || !this.routeProductId.trim() && !this.routeCategoryId.trim()}>${this.saving ? t7("ui.saving") : t7("ui.saveRouting")}</ion-button>
       </form>
     </section>`;
   }
@@ -3873,20 +3895,20 @@ var ErpKitchenOrdersStations = class extends i3 {
   // Los paneles de EDICIÓN y ENRUTADO se quedan fuera de la tabla: no dan de alta una fila, son
   // configuración (el enrutado producto/categoría → estación ni siquiera vive en la fila).
   render() {
-    const t5 = (k2) => erplora3().t(CATALOG3, k2);
+    const t7 = (k2) => erplora3().t(CATALOG3, k2);
     return b2`<div class="page">
         ${this.renderEditPanel()}
         ${this.renderRoutingPanel()}
         ${this.formMsg ? b2`<p class="ok">${this.formMsg}</p>` : A}
         ${this.formError ? b2`<p class="err">${this.formError}</p>` : A}
         ${this.ctrl?.error ? b2`<p class="err">${this.ctrl.error}</p>` : A}
-        <ok-data-table .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.name ?? "\u2014")} .cardIcon=${() => "flame-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t5("ui.searchStations")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyStations")} .actions=${this.rowActions} @rowAction=${(e5) => this.onRowAction(e5)} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @pageSizeChange=${(e5) => this.ctrl.setPageSize(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}>
+        <ok-data-table .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.name ?? "\u2014")} .cardIcon=${() => "flame-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchStations")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyStations")} .actions=${this.rowActions} @rowAction=${(e5) => this.onRowAction(e5)} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @pageSizeChange=${(e5) => this.ctrl.setPageSize(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}>
           <!-- Alta de estación: se proyecta SIEMPRE (aunque el panel esté cerrado); si se renderizara
                solo con el panel abierto, el «+» de la barra abriría un panel vacío. -->
           <form slot="create" class="create-form" @submit=${(e5) => this.createStation(e5)}>
-            <ion-input fill="outline" label-placement="floating" label=${t5("ui.labelName")} placeholder=${t5("ui.placeholderStationName")} .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
-            <ion-input fill="outline" label-placement="floating" label=${t5("ui.labelPrinter")} placeholder=${t5("ui.placeholderPrinterOptional")} .value=${this.newPrinter} @ionInput=${(e5) => this.newPrinter = e5.target.value}></ion-input>
-            <ion-button type="submit" ?disabled=${this.saving || !this.newName}>${this.saving ? t5("ui.saving") : t5("ui.addStation")}</ion-button>
+            <ion-input fill="outline" label-placement="floating" label=${t7("ui.labelName")} placeholder=${t7("ui.placeholderStationName")} .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
+            <ion-input fill="outline" label-placement="floating" label=${t7("ui.labelPrinter")} placeholder=${t7("ui.placeholderPrinterOptional")} .value=${this.newPrinter} @ionInput=${(e5) => this.newPrinter = e5.target.value}></ion-input>
+            <ion-button type="submit" ?disabled=${this.saving || !this.newName}>${this.saving ? t7("ui.saving") : t7("ui.addStation")}</ion-button>
           </form>
         </ok-data-table>
       </div>`;
@@ -3935,3 +3957,264 @@ __decorateClass([
   r5()
 ], ErpKitchenOrdersStations.prototype, "routeCategoryId", 2);
 define("erp-kitchen-orders-stations", ErpKitchenOrdersStations);
+
+// modules/kitchen/ui/components/erp-kitchen-pos-comandas/erp-kitchen-pos-comandas.ts
+var CATALOG4 = { es: es_default, en: en_default };
+function rows(r6) {
+  if (Array.isArray(r6)) return r6;
+  if (r6 && typeof r6 === "object" && Array.isArray(r6.rows)) return r6.rows;
+  return [];
+}
+function erplora4() {
+  const c5 = globalThis.erplora;
+  if (!c5) throw new Error("erplora SDK no inicializado por el shell");
+  return c5;
+}
+function t5(key, params) {
+  const c5 = globalThis.erplora;
+  return c5?.t ? c5.t(CATALOG4, key, params) : key;
+}
+var STATUS_KEY = {
+  pending: "ui.stQueued",
+  preparing: "ui.stPreparing",
+  ready: "ui.stReady",
+  served: "ui.stServed",
+  paid: "ui.stPaid",
+  cancelled: "ui.stCancelled"
+};
+var KDS_EVENTS = [
+  "kitchen.order.created",
+  "kitchen.order.fired",
+  "kitchen.order.ready",
+  "kitchen.order.served",
+  "kitchen.order.recalled",
+  "kitchen.order.cancelled",
+  "kitchen.order.deleted"
+];
+var ErpKitchenPosComandas = class extends i3 {
+  constructor() {
+    super(...arguments);
+    this.comandas = [];
+    this.items = /* @__PURE__ */ new Map();
+    this.open = false;
+    this.offs = [];
+    this.onPosState = (e5) => {
+      const next = e5.detail?.order_id;
+      if (next === this.orderId) return;
+      this.orderId = next;
+      void this.refresh();
+    };
+  }
+  static {
+    this.styles = i`
+    :host { display: inline-flex; }
+    .chip { display: inline-flex; align-items: center; gap: .3rem; border: 1px solid
+      var(--ion-color-primary, #0091ce); color: var(--ion-color-primary, #0091ce);
+      background: none; border-radius: 999px; padding: .15rem .6rem; font-size: .72rem;
+      font-weight: 800; cursor: pointer; }
+    .chip ion-icon { font-size: .9rem; }
+    dialog.sheet { border: none; border-radius: 16px; padding: 1rem; width: min(94vw, 26rem);
+      max-height: 85vh; overflow: auto; background: var(--ion-background-color, #fff);
+      color: var(--ion-text-color, #1c1b18); box-shadow: 0 12px 48px rgba(0,0,0,.35); }
+    dialog.sheet::backdrop { background: rgba(0,0,0,.45); }
+    @media (max-width: 820px) {
+      dialog.sheet { width: 100vw; max-width: 100vw; margin: auto 0 0;
+        border-radius: 18px 18px 0 0; padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+      dialog.sheet::before { content: ''; display: block; width: 2.4rem; height: .3rem;
+        border-radius: 999px; background: rgba(0,0,0,.15); margin: 0 auto .7rem; }
+    }
+    .sheet-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: .6rem; }
+    .sheet-h .t { font-size: 1.1rem; font-weight: 700; }
+    .x { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #8b897f; }
+    .krow { border: 1px solid rgba(0,0,0,.12); border-radius: 12px; margin-bottom: .5rem; overflow: hidden; }
+    .krow-h { display: flex; align-items: center; gap: .4rem; padding: .5rem .7rem;
+      font-weight: 700; font-size: .82rem; text-transform: uppercase; letter-spacing: .04em;
+      background: rgba(0,0,0,.04); }
+    .krow-h .ktime { color: #8b897f; font-weight: 400; text-transform: none; letter-spacing: 0; }
+    .kstate { margin-left: auto; font-size: .62rem; font-weight: 800; padding: .1rem .45rem;
+      border-radius: 999px; background: #e9ecef; color: #1c1b18; }
+    .kstate[data-st='preparing'] { background: var(--ion-color-warning, #f5a623); }
+    .kstate[data-st='ready'] { background: var(--ion-color-success, #2f9e44); color: #fff; }
+    .kstate[data-st='served'] { background: #dee2e6; }
+    .kstate[data-st='cancelled'] { background: var(--ion-color-danger, #d9480f); color: #fff; }
+    .kitem { display: flex; gap: .5rem; padding: .35rem .7rem; font-size: .9rem; }
+    .kitem .q { color: #8b897f; min-width: 2.2rem; }
+  `;
+  }
+  connectedCallback() {
+    super.connectedCallback();
+    this.addEventListener("erp:pos-state", this.onPosState);
+    const c5 = erplora4();
+    if (typeof c5.on === "function") {
+      this.offs = KDS_EVENTS.map((ev) => c5.on(ev, () => void this.refresh()));
+    }
+  }
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.removeEventListener("erp:pos-state", this.onPosState);
+    for (const off of this.offs) off();
+    this.offs = [];
+  }
+  async refresh() {
+    if (!this.orderId) {
+      this.comandas = [];
+      return;
+    }
+    try {
+      const rows2 = await erplora4().queryAll("kitchen.orders.list", {
+        filters: { source_order_id: this.orderId },
+        sort: "round_number",
+        dir: "desc"
+      });
+      this.comandas = [...rows2].sort((a3, b3) => (b3.round_number ?? 0) - (a3.round_number ?? 0));
+    } catch {
+      this.comandas = [];
+    }
+  }
+  async openModal() {
+    this.open = true;
+    await this.updateComplete;
+    const d3 = this.renderRoot.querySelector("dialog.sheet");
+    if (d3 && !d3.open) {
+      try {
+        d3.showModal();
+      } catch {
+        d3.setAttribute("open", "");
+      }
+    }
+    for (const c5 of this.comandas) {
+      if (this.items.has(c5.id)) continue;
+      try {
+        const its = rows(await erplora4().query("kitchen.orders.items", { order_id: c5.id }));
+        this.items = new Map(this.items).set(c5.id, its);
+      } catch {
+      }
+    }
+  }
+  closeModal() {
+    const d3 = this.renderRoot.querySelector("dialog.sheet");
+    try {
+      d3?.close();
+    } catch {
+    }
+    this.open = false;
+  }
+  /** µ → texto legible (2, 0.5…) sin arrastrar ceros. La cocina habla punto fijo 10⁶ (ADR-0147). */
+  qty(raw) {
+    return String((Number(raw) || 0) / 1e6);
+  }
+  render() {
+    if (!this.orderId || !this.comandas.length) return b2``;
+    return b2`
+      <button class="chip" title=${t5("ui.posComandasTitle")} aria-label=${t5("ui.posComandasTitle")}
+              @click=${() => void this.openModal()}>
+        <ion-icon name="receipt-outline"></ion-icon>
+        ${t5("ui.posComandas")} · ${this.comandas.length}
+      </button>
+      ${this.open ? b2`
+        <dialog class="sheet" aria-label=${t5("ui.posComandasTitle")}
+                @click=${(e5) => {
+      if (e5.target === e5.currentTarget) this.closeModal();
+    }}
+                @close=${() => {
+      this.open = false;
+    }}>
+          <div class="sheet-h">
+            <span class="t">${t5("ui.posComandasTitle")}</span>
+            <button class="x" aria-label=${t5("ui.close")} @click=${() => this.closeModal()}>✕</button>
+          </div>
+          ${this.comandas.map((c5) => b2`
+            <div class="krow">
+              <div class="krow-h">
+                <ion-icon name="flame" color="warning"></ion-icon>
+                <span>${t5("ui.comandaN", { n: String(c5.round_number) })}</span>
+                <span class="ktime">· ${(c5.fired_at ?? c5.created_at ?? "").replace("T", " ").slice(11, 16)}</span>
+                <span class="kstate" data-st=${c5.status}>${t5(STATUS_KEY[c5.status] ?? c5.status)}</span>
+              </div>
+              ${(this.items.get(c5.id) ?? []).map((i7) => b2`
+                <div class="kitem"><span class="q">${this.qty(i7.quantity)}×</span><span>${i7.product_name}</span></div>`)}
+            </div>`)}
+        </dialog>` : A}`;
+  }
+};
+__decorateClass([
+  r5()
+], ErpKitchenPosComandas.prototype, "orderId", 2);
+__decorateClass([
+  r5()
+], ErpKitchenPosComandas.prototype, "comandas", 2);
+__decorateClass([
+  r5()
+], ErpKitchenPosComandas.prototype, "items", 2);
+__decorateClass([
+  r5()
+], ErpKitchenPosComandas.prototype, "open", 2);
+define("erp-kitchen-pos-comandas", ErpKitchenPosComandas);
+
+// modules/kitchen/ui/lib/pos-fire.ts
+function pendingCount(state) {
+  if (!state) return 0;
+  return state.pending_count ?? state.items_count;
+}
+function canFire(state) {
+  return pendingCount(state) > 0;
+}
+
+// modules/kitchen/ui/components/erp-kitchen-pos-fire/erp-kitchen-pos-fire.ts
+var CATALOG5 = { es: es_default, en: en_default };
+function t6(key) {
+  const c5 = globalThis.erplora;
+  return c5?.t ? c5.t(CATALOG5, key) : key;
+}
+var ErpKitchenPosFire = class extends i3 {
+  constructor() {
+    super(...arguments);
+    this.onPosState = (e5) => {
+      this.posState = e5.detail;
+    };
+  }
+  static {
+    this.styles = i`
+    :host { display:block; flex:1; min-width:0; }
+    /* Dentro de la vista temporal la acción ocupa todo el ancho: es la validación operativa de
+       la comanda, no un icono secundario junto a Cobrar. El host decide dónde vive; kitchen sigue
+       siendo dueño del control y de su disponibilidad (ADR-0043). */
+    ion-button.fire { width:100%; min-height:3rem; margin:0; position:relative;
+      font-weight:800; --border-radius:11px; }
+    ion-button.fire ion-icon { font-size:1.15rem; }
+    /* Badge de PENDIENTES: cuánto queda sin marchar, de un vistazo. */
+    .badge { position: absolute; top: -0.3rem; right: -0.3rem; z-index: 1; min-width: 1.1rem;
+      height: 1.1rem; padding: 0 0.2rem; border-radius: 999px;
+      background: var(--ion-color-warning, #f5a623); color: #1c1b18; font-size: 0.68rem;
+      font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+  `;
+  }
+  connectedCallback() {
+    super.connectedCallback();
+    this.addEventListener("erp:pos-state", this.onPosState);
+  }
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.removeEventListener("erp:pos-state", this.onPosState);
+  }
+  fire() {
+    if (!canFire(this.posState)) return;
+    this.dispatchEvent(new CustomEvent("erp:order-fire", { detail: {}, bubbles: true, composed: true }));
+  }
+  render() {
+    const label = t6("ui.fireToKitchen");
+    const pendientes = pendingCount(this.posState);
+    return b2`
+      <ion-button class="fire" fill="outline" ?disabled=${!canFire(this.posState)}
+                  title=${label} aria-label=${label}
+                  @click=${() => this.fire()}>
+        <ion-icon slot="start" name="send-outline"></ion-icon>
+        <span>${label}</span>
+        ${pendientes > 0 && this.posState?.pending_count !== void 0 ? b2`<span class="badge">${pendientes}</span>` : A}
+      </ion-button>`;
+  }
+};
+__decorateClass([
+  r5()
+], ErpKitchenPosFire.prototype, "posState", 2);
+define("erp-kitchen-pos-fire", ErpKitchenPosFire);

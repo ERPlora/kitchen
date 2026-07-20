@@ -111,6 +111,17 @@
     "deleteStationError": "Could not delete station",
     "searchStations": "Search station…",
     "emptyStations": "No stations.",
-    "colLabel": "Where"
+    "colLabel": "Where",
+    "fireToKitchen": "Send order",
+    "posComandas": "Tickets",
+    "posComandasTitle": "Order tickets",
+    "comandaN": "Order ticket {n}",
+    "stQueued": "Queued",
+    "stPreparing": "Preparing",
+    "stReady": "Ready",
+    "stServed": "Served",
+    "stPaid": "Paid",
+    "stCancelled": "Cancelled",
+    "close": "Close"
   }
 }

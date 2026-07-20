@@ -4,6 +4,7 @@
   "consumes": {
     "queries": [
       "kitchen.logs.list",
+      "kitchen.orders.items",
       "kitchen.orders.list",
       "kitchen.settings.get",
       "kitchen.stations.list",

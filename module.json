@@ -1,7 +1,7 @@
 {
   "id": "kitchen",
   "name": "Kitchen",
-  "version": "2.2.14",
+  "version": "2.3.0",
   "agent": {
     "description": "Single kitchen module: kitchen display system (KDS), production orders (create, track and transition status from firing to serving), stations with product/category routing, and an audit log of kitchen actions.",
     "keywords": [
@@ -77,6 +77,27 @@
       "label": "Stations",
       "icon": "flame-outline",
       "component": "erp-kitchen-orders-stations"
+    }
+  ],
+  "settings": {
+    "title": "Kitchen",
+    "icon": "restaurant-outline",
+    "schema": "schemas/settings_update.json",
+    "get": "kitchen.settings.get",
+    "set": "kitchen.settings.update"
+  },
+  "provides_slots": [
+    {
+      "slot": "sales.pos.actions",
+      "component": "erp-kitchen-pos-fire",
+      "permission": "kitchen.add_order",
+      "priority": 100
+    },
+    {
+      "slot": "sales.pos.order_info",
+      "component": "erp-kitchen-pos-comandas",
+      "permission": "kitchen.view_order",
+      "priority": 100
     }
   ],
   "migrations": {
@@ -182,6 +203,9 @@
           },
           "created_at": {
             "op": "range"
+          },
+          "source_order_id": {
+            "op": "eq"
           }
         },
         "page_size": 50
