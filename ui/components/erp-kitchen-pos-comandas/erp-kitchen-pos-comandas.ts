@@ -78,29 +78,29 @@ export class ErpKitchenPosComandas extends LitElement {
     :host { display: inline-flex; }
     .chip { display: inline-flex; align-items: center; gap: .3rem; border: 1px solid
       var(--ion-color-primary, #0091ce); color: var(--ion-color-primary, #0091ce);
-      background: none; border-radius: 999px; padding: .15rem .6rem; font-size: .72rem;
+      background: none; border-radius: var(--ok-radius-pill, 999px); padding: .15rem .6rem; font-size: .72rem;
       font-weight: 800; cursor: pointer; }
     .chip ion-icon { font-size: .9rem; }
-    dialog.sheet { border: none; border-radius: 16px; padding: 1rem; width: min(94vw, 26rem);
+    dialog.sheet { border: none; border-radius: var(--ok-radius-lg, 16px); padding: 1rem; width: min(94vw, 26rem);
       max-height: 85vh; overflow: auto; background: var(--ion-background-color, #fff);
       color: var(--ion-text-color, #1c1b18); box-shadow: 0 12px 48px rgba(0,0,0,.35); }
     dialog.sheet::backdrop { background: rgba(0,0,0,.45); }
     @media (max-width: 820px) {
       dialog.sheet { width: 100vw; max-width: 100vw; margin: auto 0 0;
-        border-radius: 18px 18px 0 0; padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+        border-radius: var(--ok-radius-sheet-top, 18px 18px 0 0); padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
       dialog.sheet::before { content: ''; display: block; width: 2.4rem; height: .3rem;
-        border-radius: 999px; background: rgba(0,0,0,.15); margin: 0 auto .7rem; }
+        border-radius: var(--ok-radius-pill, 999px); background: rgba(0,0,0,.15); margin: 0 auto .7rem; }
     }
     .sheet-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: .6rem; }
     .sheet-h .t { font-size: 1.1rem; font-weight: 700; }
     .x { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #8b897f; }
-    .krow { border: 1px solid rgba(0,0,0,.12); border-radius: 12px; margin-bottom: .5rem; overflow: hidden; }
+    .krow { border: 1px solid rgba(0,0,0,.12); border-radius: var(--ok-radius, 12px); margin-bottom: .5rem; overflow: hidden; }
     .krow-h { display: flex; align-items: center; gap: .4rem; padding: .5rem .7rem;
       font-weight: 700; font-size: .82rem; text-transform: uppercase; letter-spacing: .04em;
       background: rgba(0,0,0,.04); }
     .krow-h .ktime { color: #8b897f; font-weight: 400; text-transform: none; letter-spacing: 0; }
     .kstate { margin-left: auto; font-size: .62rem; font-weight: 800; padding: .1rem .45rem;
-      border-radius: 999px; background: #e9ecef; color: #1c1b18; }
+      border-radius: var(--ok-radius-pill, 999px); background: #e9ecef; color: #1c1b18; }
     .kstate[data-st='preparing'] { background: var(--ion-color-warning, #f5a623); }
     .kstate[data-st='ready'] { background: var(--ion-color-success, #2f9e44); color: #fff; }
     .kstate[data-st='served'] { background: #dee2e6; }

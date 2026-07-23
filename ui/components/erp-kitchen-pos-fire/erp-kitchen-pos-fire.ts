@@ -40,7 +40,7 @@ export class ErpKitchenPosFire extends LitElement {
     ion-button.fire ion-icon { font-size:1.15rem; }
     /* Badge de PENDIENTES: cuánto queda sin marchar, de un vistazo. */
     .badge { position: absolute; top: -0.3rem; right: -0.3rem; z-index: 1; min-width: 1.1rem;
-      height: 1.1rem; padding: 0 0.2rem; border-radius: 999px;
+      height: 1.1rem; padding: 0 0.2rem; border-radius: var(--ok-radius-pill, 999px);
       background: var(--ion-color-warning, #f5a623); color: #1c1b18; font-size: 0.68rem;
       font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
   `;
