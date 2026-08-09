@@ -1,7 +1,7 @@
 {
   "id": "kitchen",
   "name": "Kitchen",
-  "version": "2.3.4",
+  "version": "2.3.5",
   "description": "Kitchen display system and production orders, tracked from received to ready.",
   "agent": {
     "description": "Single kitchen module: kitchen display system (KDS), production orders (create, track and transition status from firing to serving), stations with product/category routing, and an audit log of kitchen actions.",
@@ -568,7 +568,22 @@
       "kitchen.order.cancelled": {
         "command": "kitchen.logs.create"
       }
-    }
+    },
+    "emits": [
+      "kitchen.order.cancelled",
+      "kitchen.order.created",
+      "kitchen.order.deleted",
+      "kitchen.order.fired",
+      "kitchen.order.ready",
+      "kitchen.order.recalled",
+      "kitchen.order.served",
+      "kitchen.order.updated",
+      "kitchen.routing.changed",
+      "kitchen.settings.updated",
+      "kitchen.station.created",
+      "kitchen.station.deleted",
+      "kitchen.station.updated"
+    ]
   },
   "ui": {
     "entry": "dist/kitchen.esm.js"
