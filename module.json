@@ -491,6 +491,12 @@
       "schema": "schemas/log_create.json",
       "ai": {
         "description": "Records a new order status event in the kitchen log"
+      },
+      "expect_rows": {
+        "op": "min",
+        "n": 1,
+        "error": "kitchen.order_unavailable",
+        "message": "That kitchen order is not available: it does not exist in this business or it has been deleted."
       }
     },
     "kitchen._bump_counter": {
