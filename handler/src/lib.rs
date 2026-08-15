@@ -14,8 +14,8 @@
 
 use erplora_guest_sdk::money::{self, Qty};
 use erplora_guest_sdk::units::QUANTITY_SCALE;
-use rust_decimal::Decimal;
 use erplora_guest_sdk::{Event, Operation, Output};
+use rust_decimal::Decimal;
 use serde_json::{json, Map, Value};
 
 #[cfg(feature = "guest")]
@@ -45,7 +45,9 @@ pub fn delete_order(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Outp
 #[cfg(feature = "guest")]
 #[plugin_fn]
 pub fn create_order_from_order(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
-    to_fn_result(create_order_from_order_pure(input.into_inner().into_value()))
+    to_fn_result(create_order_from_order_pure(
+        input.into_inner().into_value(),
+    ))
 }
 
 #[cfg(feature = "guest")]
@@ -76,14 +78,15 @@ fn to_fn_result(r: Result<Output, String>) -> FnResult<Json<Output>> {
 
 // ── Helpers (mismo estilo que sales-handler) ───────────────────────────────
 
-
 // El DINERO lo calcula `erplora_guest_sdk::money` (ADR-0123): una sola implementación para todos
 // los handlers, un solo modo de redondeo (HALF_UP). Este módulo tenía su propio `round_cents`
 // (half-even sobre `f64`), copiado byte a byte de otros cuatro.
 
 fn as_i64(v: &Value, d: i64) -> i64 {
     match v {
-        Value::Number(n) => n.as_i64().unwrap_or_else(|| n.as_f64().map(|f| f as i64).unwrap_or(d)),
+        Value::Number(n) => n
+            .as_i64()
+            .unwrap_or_else(|| n.as_f64().map(|f| f as i64).unwrap_or(d)),
         Value::String(s) => s.trim().parse::<i64>().unwrap_or(d),
         _ => d,
     }
@@ -109,20 +112,31 @@ fn as_bool(v: &Value) -> bool {
 
 fn str_or(p: &Value, k: &str, d: &str) -> String {
     let s = as_str(p.get(k).unwrap_or(&Value::Null));
-    if s.is_empty() { d.to_string() } else { s }
+    if s.is_empty() {
+        d.to_string()
+    } else {
+        s
+    }
 }
 
 /// String opcional: '' o ausente → NULL (refs opacas table_id/customer_id/…).
 fn opt_str(p: &Value, k: &str) -> Value {
     let s = as_str(p.get(k).unwrap_or(&Value::Null));
-    if s.is_empty() { Value::Null } else { Value::String(s) }
+    if s.is_empty() {
+        Value::Null
+    } else {
+        Value::String(s)
+    }
 }
-
 
 fn day_from_now(now: &str) -> String {
     let date = now.split('T').next().unwrap_or("");
     let digits: String = date.chars().filter(|c| c.is_ascii_digit()).collect();
-    if digits.len() >= 8 { digits[..8].to_string() } else { "00000000".to_string() }
+    if digits.len() >= 8 {
+        digits[..8].to_string()
+    } else {
+        "00000000".to_string()
+    }
 }
 
 struct Ctx {
@@ -144,7 +158,10 @@ fn split_input(input: &Value) -> (Value, Ctx) {
         .collect();
     let ctx = Ctx {
         now: context.get("now").map(as_str).unwrap_or_default(),
-        user_id: context.get("current_user_id").map(as_str).unwrap_or_default(),
+        user_id: context
+            .get("current_user_id")
+            .map(as_str)
+            .unwrap_or_default(),
         new_ids,
     };
     (payload, ctx)
@@ -156,15 +173,18 @@ const PRIORITIES: [&str; 3] = ["normal", "rush", "vip"];
 /// Payload estándar de los eventos `kitchen.order.*` que escucha `kitchen.logs.create`
 /// (el payload del evento ES el payload del listener: debe traer order_id/action/notes).
 fn order_event(name: &str, order_id: &str, action: &str, notes: &str, user_id: &str) -> Event {
-    Event::new(name, json!({
-        "sender": "kitchen",
-        "order_id": order_id,
-        "order_item_id": Value::Null,
-        "station_id": Value::Null,
-        "action": action,
-        "performed_by_id": if user_id.is_empty() { Value::Null } else { json!(user_id) },
-        "notes": notes,
-    }))
+    Event::new(
+        name,
+        json!({
+            "sender": "kitchen",
+            "order_id": order_id,
+            "order_item_id": Value::Null,
+            "station_id": Value::Null,
+            "action": action,
+            "performed_by_id": if user_id.is_empty() { Value::Null } else { json!(user_id) },
+            "notes": notes,
+        }),
+    )
 }
 
 /// Construye las intenciones `_bump_counter` + `_insert_order` + N×`_insert_item`.
@@ -214,16 +234,22 @@ fn build_order_ops(
         // De qué línea de pedido salió esto: es lo que necesita la anulación para repartir
         // cantidades entre las estaciones que recibieron cada ronda.
         p.insert("sales_order_item_id".into(), opt_str(item, "order_item_id"));
-        p.insert("product_name".into(), json!(str_or(item, "product_name", "")));
+        p.insert(
+            "product_name".into(),
+            json!(str_or(item, "product_name", "")),
+        );
         p.insert("unit_price".into(), json!(unit_price)); // céntimos
-        // Punto fijo 10⁶ TAMBIÉN en la fila (ADR-0147 §2.1: REAL prohibido para cantidades de
-        // negocio; la migración 005 reescala la columna). El lógico solo existe al pintar.
+                                                          // Punto fijo 10⁶ TAMBIÉN en la fila (ADR-0147 §2.1: REAL prohibido para cantidades de
+                                                          // negocio; la migración 005 reescala la columna). El lógico solo existe al pintar.
         p.insert("quantity".into(), json!(qty_raw));
         p.insert("total".into(), json!(line_total)); // céntimos
         p.insert("modifiers".into(), json!(str_or(item, "modifiers", "")));
         p.insert("notes".into(), json!(str_or(item, "notes", "")));
         p.insert("status".into(), json!("pending"));
-        p.insert("seat_number".into(), item.get("seat_number").cloned().unwrap_or(Value::Null));
+        p.insert(
+            "seat_number".into(),
+            item.get("seat_number").cloned().unwrap_or(Value::Null),
+        );
         ops.push(Operation::sql("kitchen._insert_item", p));
     }
 
@@ -241,10 +267,22 @@ fn build_order_ops(
     // sobreescribe con el pedido real.
     h.insert("source_order_id".into(), Value::Null);
     h.insert("label".into(), json!(""));
-    h.insert("order_type".into(), json!(str_or(header, "order_type", "dine_in")));
+    h.insert(
+        "order_type".into(),
+        json!(str_or(header, "order_type", "dine_in")),
+    );
     h.insert("status".into(), json!("pending"));
-    h.insert("priority".into(), json!(str_or(header, "priority", "normal")));
-    h.insert("round_number".into(), json!(header.get("round_number").map(|v| as_i64(v, 1)).unwrap_or(1)));
+    h.insert(
+        "priority".into(),
+        json!(str_or(header, "priority", "normal")),
+    );
+    h.insert(
+        "round_number".into(),
+        json!(header
+            .get("round_number")
+            .map(|v| as_i64(v, 1))
+            .unwrap_or(1)),
+    );
     h.insert("notes".into(), json!(str_or(header, "notes", "")));
     h.insert("subtotal".into(), json!(subtotal)); // céntimos
     h.insert("tax".into(), json!(0));
@@ -268,7 +306,10 @@ pub fn create_order_pure(input: Value) -> Result<Output, String> {
         return Err(format!("invalid_priority: {priority}"));
     }
     let empty: Vec<Value> = Vec::new();
-    let items = payload.get("items").and_then(|v| v.as_array()).unwrap_or(&empty);
+    let items = payload
+        .get("items")
+        .and_then(|v| v.as_array())
+        .unwrap_or(&empty);
     let order_id = ctx.new_ids.first().cloned().unwrap_or_default();
     if order_id.is_empty() {
         return Err("missing_new_ids".to_string());
@@ -282,14 +323,30 @@ pub fn create_order_pure(input: Value) -> Result<Output, String> {
     }
     let (ops, total) = build_order_ops(&ctx, &order_id, &day, &header, Value::Null, items);
 
-    let mut ev = order_event("kitchen.order.created", &order_id, "received", "", &ctx.user_id);
+    let mut ev = order_event(
+        "kitchen.order.created",
+        &order_id,
+        "received",
+        "",
+        &ctx.user_id,
+    );
     if let Value::Object(p) = &mut ev.payload {
         p.insert("total".into(), json!(total)); // céntimos
         p.insert("items_count".into(), json!(items.len()));
-        p.insert("order_type".into(), json!(payload.get("order_type").map(as_str).unwrap_or_else(|| "dine_in".into())));
+        p.insert(
+            "order_type".into(),
+            json!(payload
+                .get("order_type")
+                .map(as_str)
+                .unwrap_or_else(|| "dine_in".into())),
+        );
     }
 
-    Ok(Output { operations: ops, events: vec![ev] })
+    Ok(Output {
+        operations: ops,
+        events: vec![ev],
+        ..Default::default()
+    })
 }
 
 // ── update_order_status (command kitchen.orders.set_status) ────────────────
@@ -305,22 +362,79 @@ pub fn update_order_status_pure(input: Value) -> Result<Output, String> {
 
     // (status, require_status, set_fired, ready_mode, served_mode, append_note,
     //  cascade: Option<(from_status, to_status, set_fired, completed_mode)>, evento, log_action)
-    let (status, require, set_fired, ready_mode, served_mode, append_note, cascade, event, log_action) =
-        match action.as_str() {
-            "fire" => ("preparing", "", 1, "keep", "keep", String::new(),
-                Some(("pending", "preparing", 1, "keep")), "kitchen.order.fired", "started"),
-            "mark_ready" => ("ready", "", 0, "set", "keep", String::new(),
-                None, "kitchen.order.ready", "bumped"),
-            "mark_served" => ("served", "", 0, "keep", "set", String::new(),
-                None, "kitchen.order.served", "served"),
-            "cancel" => ("cancelled", "", 0, "keep", "keep",
-                if reason.is_empty() { String::new() } else { format!("Cancelled: {reason}") },
-                Some(("", "cancelled", 0, "keep")), "kitchen.order.cancelled", "cancelled"),
-            // recall: SOLO si la comanda está en ready (guarda en el WHERE del SQL).
-            "recall" => ("preparing", "ready", 0, "clear", "keep", String::new(),
-                Some(("ready", "preparing", 0, "clear")), "kitchen.order.recalled", "recalled"),
-            other => return Err(format!("unknown_action: {other}")),
-        };
+    let (
+        status,
+        require,
+        set_fired,
+        ready_mode,
+        served_mode,
+        append_note,
+        cascade,
+        event,
+        log_action,
+    ) = match action.as_str() {
+        "fire" => (
+            "preparing",
+            "",
+            1,
+            "keep",
+            "keep",
+            String::new(),
+            Some(("pending", "preparing", 1, "keep")),
+            "kitchen.order.fired",
+            "started",
+        ),
+        "mark_ready" => (
+            "ready",
+            "",
+            0,
+            "set",
+            "keep",
+            String::new(),
+            None,
+            "kitchen.order.ready",
+            "bumped",
+        ),
+        "mark_served" => (
+            "served",
+            "",
+            0,
+            "keep",
+            "set",
+            String::new(),
+            None,
+            "kitchen.order.served",
+            "served",
+        ),
+        "cancel" => (
+            "cancelled",
+            "",
+            0,
+            "keep",
+            "keep",
+            if reason.is_empty() {
+                String::new()
+            } else {
+                format!("Cancelled: {reason}")
+            },
+            Some(("", "cancelled", 0, "keep")),
+            "kitchen.order.cancelled",
+            "cancelled",
+        ),
+        // recall: SOLO si la comanda está en ready (guarda en el WHERE del SQL).
+        "recall" => (
+            "preparing",
+            "ready",
+            0,
+            "clear",
+            "keep",
+            String::new(),
+            Some(("ready", "preparing", 0, "clear")),
+            "kitchen.order.recalled",
+            "recalled",
+        ),
+        other => return Err(format!("unknown_action: {other}")),
+    };
 
     let mut ops: Vec<Operation> = Vec::new();
     let mut h = Map::new();
@@ -345,7 +459,11 @@ pub fn update_order_status_pure(input: Value) -> Result<Output, String> {
     }
 
     let ev = order_event(event, &order_id, log_action, &reason, &ctx.user_id);
-    Ok(Output { operations: ops, events: vec![ev] })
+    Ok(Output {
+        operations: ops,
+        events: vec![ev],
+        ..Default::default()
+    })
 }
 
 // ── delete_order (command kitchen.orders.delete) ───────────────────────────
@@ -359,10 +477,17 @@ pub fn delete_order_pure(input: Value) -> Result<Output, String> {
     // Guardas (status pending/cancelled, sin venta enlazada) en el WHERE de la intención.
     let mut p = Map::new();
     p.insert("order_id".into(), json!(order_id));
-    let ev = order_event("kitchen.order.deleted", &order_id, "cancelled", "deleted", &ctx.user_id);
+    let ev = order_event(
+        "kitchen.order.deleted",
+        &order_id,
+        "cancelled",
+        "deleted",
+        &ctx.user_id,
+    );
     Ok(Output {
         operations: vec![Operation::sql("kitchen._order_soft_delete", p)],
         events: vec![ev],
+        ..Default::default()
     })
 }
 
@@ -414,14 +539,24 @@ pub fn create_order_from_sale_pure(input: Value) -> Result<Output, String> {
     // bus reentrega (además del marcador _event_delivery del runtime).
     let (ops, total) = build_order_ops(&ctx, &order_id, &day, &header, json!(sale_id), &items);
 
-    let mut ev = order_event("kitchen.order.created", &order_id, "received", "", &ctx.user_id);
+    let mut ev = order_event(
+        "kitchen.order.created",
+        &order_id,
+        "received",
+        "",
+        &ctx.user_id,
+    );
     if let Value::Object(p) = &mut ev.payload {
         p.insert("sale_id".into(), json!(sale_id));
         p.insert("total".into(), json!(total)); // céntimos
         p.insert("items_count".into(), json!(items.len()));
         p.insert("order_type".into(), json!(order_type));
     }
-    Ok(Output { operations: ops, events: vec![ev] })
+    Ok(Output {
+        operations: ops,
+        events: vec![ev],
+        ..Default::default()
+    })
 }
 
 // ── delete_station (command kitchen.stations.delete) ───────────────────────
@@ -435,13 +570,17 @@ pub fn delete_station_pure(input: Value) -> Result<Output, String> {
     // Guardas (sin routings activos, sin líneas en curso) en el WHERE de la intención.
     let mut p = Map::new();
     p.insert("station_id".into(), json!(station_id));
-    let ev = Event::new("kitchen.station.deleted", json!({
-        "sender": "kitchen",
-        "station_id": station_id,
-    }));
+    let ev = Event::new(
+        "kitchen.station.deleted",
+        json!({
+            "sender": "kitchen",
+            "station_id": station_id,
+        }),
+    );
     Ok(Output {
         operations: vec![Operation::sql("kitchen._station_soft_delete", p)],
         events: vec![ev],
+        ..Default::default()
     })
 }
 
@@ -474,13 +613,20 @@ pub fn set_routing_pure(input: Value) -> Result<Output, String> {
         ops.push(Operation::sql("kitchen._category_route_set", c));
     }
 
-    let ev = Event::new("kitchen.routing.changed", json!({
-        "sender": "kitchen",
-        "station_id": station_id,
-        "product_id": if product_id.is_empty() { Value::Null } else { json!(product_id) },
-        "category_id": if category_id.is_empty() { Value::Null } else { json!(category_id) },
-    }));
-    Ok(Output { operations: ops, events: vec![ev] })
+    let ev = Event::new(
+        "kitchen.routing.changed",
+        json!({
+            "sender": "kitchen",
+            "station_id": station_id,
+            "product_id": if product_id.is_empty() { Value::Null } else { json!(product_id) },
+            "category_id": if category_id.is_empty() { Value::Null } else { json!(category_id) },
+        }),
+    );
+    Ok(Output {
+        operations: ops,
+        events: vec![ev],
+        ..Default::default()
+    })
 }
 
 // ── create_order_from_order (command kitchen.orders.create_from_order) ─────
@@ -522,7 +668,11 @@ pub fn create_order_from_order_pure(input: Value) -> Result<Output, String> {
         .collect();
 
     let channel = as_str(payload.get("channel").unwrap_or(&Value::Null));
-    let order_type = if ORDER_TYPES.contains(&channel.as_str()) { channel } else { "dine_in".to_string() };
+    let order_type = if ORDER_TYPES.contains(&channel.as_str()) {
+        channel
+    } else {
+        "dine_in".to_string()
+    };
     let label = str_or(&payload, "label", "");
 
     let header = json!({
@@ -536,20 +686,37 @@ pub fn create_order_from_order_pure(input: Value) -> Result<Output, String> {
 
     // El pedido de origen y la etiqueta se añaden a la cabecera ya construida: son lo único que
     // este flujo aporta sobre el legacy, y así `build_order_ops` sigue sirviendo a los dos.
-    if let Some(op) = ops.iter_mut().find(|o| o.command == "kitchen._insert_order") {
-        op.params.insert("source_order_id".into(), json!(source_order_id));
+    if let Some(op) = ops
+        .iter_mut()
+        .find(|o| o.command == "kitchen._insert_order")
+    {
+        op.params
+            .insert("source_order_id".into(), json!(source_order_id));
         op.params.insert("label".into(), json!(label));
     }
 
-    let mut ev = order_event("kitchen.order.created", &kitchen_order_id, "received", "", &ctx.user_id);
+    let mut ev = order_event(
+        "kitchen.order.created",
+        &kitchen_order_id,
+        "received",
+        "",
+        &ctx.user_id,
+    );
     if let Value::Object(p) = &mut ev.payload {
         p.insert("source_order_id".into(), json!(source_order_id));
         p.insert("label".into(), json!(label));
         p.insert("total".into(), json!(total)); // céntimos
         p.insert("items_count".into(), json!(items.len()));
-        p.insert("order_type".into(), json!(str_or(&header, "order_type", "dine_in")));
+        p.insert(
+            "order_type".into(),
+            json!(str_or(&header, "order_type", "dine_in")),
+        );
     }
-    Ok(Output { operations: ops, events: vec![ev] })
+    Ok(Output {
+        operations: ops,
+        events: vec![ev],
+        ..Default::default()
+    })
 }
 
 #[cfg(test)]
@@ -592,7 +759,11 @@ mod tests {
         // Ni rastro de la mesa ni del cliente: eso era lo que ataba cocina a otros dos módulos.
         assert_eq!(header.params["table_id"], Value::Null);
         assert_eq!(header.params["customer_id"], Value::Null);
-        assert_eq!(header.params["sale_id"], Value::Null, "todavía no hay venta: nadie ha pagado");
+        assert_eq!(
+            header.params["sale_id"],
+            Value::Null,
+            "todavía no hay venta: nadie ha pagado"
+        );
     }
 
     #[test]
@@ -612,8 +783,17 @@ mod tests {
             .iter()
             .find(|o| o.command == "kitchen._insert_item")
             .expect("la línea baja a cocina");
-        assert_eq!(item.params["quantity"], json!(500_000), "la fila guarda µ, no el lógico f64: {:?}", item.params);
-        assert_eq!(item.params["total"], json!(1200), "2400 × 0,5 = 1200 céntimos, un redondeo");
+        assert_eq!(
+            item.params["quantity"],
+            json!(500_000),
+            "la fila guarda µ, no el lógico f64: {:?}",
+            item.params
+        );
+        assert_eq!(
+            item.params["total"],
+            json!(1200),
+            "2400 × 0,5 = 1200 céntimos, un redondeo"
+        );
     }
 
     #[test]
@@ -627,8 +807,11 @@ mod tests {
             ]),
         ))
         .unwrap();
-        let items: Vec<_> =
-            out.operations.iter().filter(|o| o.command == "kitchen._insert_item").collect();
+        let items: Vec<_> = out
+            .operations
+            .iter()
+            .filter(|o| o.command == "kitchen._insert_item")
+            .collect();
         assert_eq!(items.len(), 1, "el servicio no baja a cocina");
         assert_eq!(items[0].params["product_name"], json!("Tarta"));
     }
