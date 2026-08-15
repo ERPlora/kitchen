@@ -13,11 +13,11 @@ WITH ruta AS (
     :station_id,
     (SELECT ps.station_id
        FROM kitchen_product_station ps
-       JOIN kitchen_station s ON s.id = ps.station_id AND s.is_active = 1 AND s.is_deleted = 0
+       JOIN kitchen_station s ON s.id = ps.station_id AND s.is_active = 1 AND s.is_deleted = 0 AND s.hub_id = :hub_id
       WHERE ps.hub_id = :hub_id AND ps.product_id = :product_id AND ps.is_deleted = 0),
     (SELECT cs.station_id
        FROM kitchen_category_station cs
-       JOIN kitchen_station s ON s.id = cs.station_id AND s.is_active = 1 AND s.is_deleted = 0
+       JOIN kitchen_station s ON s.id = cs.station_id AND s.is_active = 1 AND s.is_deleted = 0 AND s.hub_id = :hub_id
       WHERE cs.hub_id = :hub_id AND cs.category_id = :category_id AND cs.is_deleted = 0)
   ) AS station_id
 )
