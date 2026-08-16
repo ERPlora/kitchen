@@ -1,5 +1,6 @@
 {
   "name": "Cocina",
+  "description": "Pantalla de cocina y órdenes de producción, seguidas desde que entran hasta que están listas.",
   "navigation": {
     "display": {
       "label": "Pantalla"
