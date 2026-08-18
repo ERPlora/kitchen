@@ -225,6 +225,22 @@
         "description": "Lists the line items of a specific kitchen order"
       }
     },
+    "kitchen.orders.display": {
+      "permission": "kitchen.view_order",
+      "sql": "queries/orders_display.sql",
+      "schema": "schemas/orders_display.json",
+      "ai": {
+        "description": "The KDS feed: every kitchen order on the line (pending, preparing, ready) with its lines, one row per line; the display groups by order and station"
+      }
+    },
+    "kitchen.orders.all_day": {
+      "permission": "kitchen.view_order",
+      "sql": "queries/orders_all_day.sql",
+      "schema": "schemas/orders_all_day.json",
+      "ai": {
+        "description": "All-Day count: total quantity of each product still to be cooked across every ticket on the line, per station"
+      }
+    },
     "kitchen.stations.list": {
       "permission": "kitchen.view_order",
       "sql": "queries/stations_list.sql",
@@ -432,6 +448,62 @@
         "description": "Cancels a kitchen order that has not been served yet, with an optional reason; the handler emits kitchen.order.cancelled"
       }
     },
+    "kitchen.items.bump": {
+      "permission": "kitchen.change_order",
+      "schema": "schemas/items_bump.json",
+      "reads": [
+        {
+          "query": "kitchen.orders.get",
+          "params": {
+            "order_id": "payload.order_id"
+          },
+          "required": true
+        },
+        {
+          "query": "kitchen.orders.items",
+          "params": {
+            "order_id": "payload.order_id"
+          },
+          "required": true
+        }
+      ],
+      "handler": {
+        "type": "wasm",
+        "file": "dist/handler.wasm",
+        "function": "bump_items"
+      },
+      "ai": {
+        "description": "Bumps one or several lines of a kitchen order (line pending/preparing → ready); when no line is left cooking the order goes ready by itself. Emits kitchen.item.bumped per line and kitchen.order.ready / kitchen.order.fired when the order follows"
+      }
+    },
+    "kitchen.items.recall": {
+      "permission": "kitchen.change_order",
+      "schema": "schemas/items_recall.json",
+      "reads": [
+        {
+          "query": "kitchen.orders.get",
+          "params": {
+            "order_id": "payload.order_id"
+          },
+          "required": true
+        },
+        {
+          "query": "kitchen.orders.items",
+          "params": {
+            "order_id": "payload.order_id"
+          },
+          "required": true
+        }
+      ],
+      "handler": {
+        "type": "wasm",
+        "file": "dist/handler.wasm",
+        "function": "recall_items"
+      },
+      "ai": {
+        "description": "Recalls one or several ready lines of a kitchen order back to preparing (the undo of the bump); a ready order comes back to preparing. Emits kitchen.item.recalled per line and kitchen.order.recalled when the order follows"
+      }
+    },
     "kitchen.orders.delete": {
       "permission": "kitchen.delete_order",
       "schema": "schemas/order_delete.json",
@@ -581,6 +653,18 @@
         "message": "That kitchen order is no longer in the state this action requires. Refresh and try again."
       }
     },
+    "kitchen._set_item_status": {
+      "permission": "kitchen.change_order",
+      "sql": [
+        "commands/_set_item_status.sql"
+      ],
+      "expect_rows": {
+        "op": "min",
+        "n": 1,
+        "error": "kitchen.invalid_transition",
+        "message": "That kitchen line is no longer in the state this action requires. Refresh and try again."
+      }
+    },
     "kitchen._cascade_item_status": {
       "permission": "kitchen.change_order",
       "sql": [
@@ -631,9 +715,17 @@
       },
       "kitchen.order.cancelled": {
         "command": "kitchen.logs.create"
+      },
+      "kitchen.item.bumped": {
+        "command": "kitchen.logs.create"
+      },
+      "kitchen.item.recalled": {
+        "command": "kitchen.logs.create"
       }
     },
     "emits": [
+      "kitchen.item.bumped",
+      "kitchen.item.recalled",
       "kitchen.order.cancelled",
       "kitchen.order.created",
       "kitchen.order.deleted",

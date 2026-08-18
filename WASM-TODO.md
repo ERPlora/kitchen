@@ -1,8 +1,9 @@
 # kitchen — estado Tier 2 (WASM) y lógica pendiente
 
 Módulo único de cocina (fusión `kitchen` + `kitchen_orders`, ADR-0014). El handler WASM
-(`handler/src/lib.rs` → `dist/handler.wasm`) está **implementado** para los 6 commands Tier 2:
-`create_order`, `update_order_status`, `delete_order`, `create_order_from_sale`,
+(`handler/src/lib.rs` → `dist/handler.wasm`) está **implementado** para los commands Tier 2:
+`create_order`, `update_order_status`, `mark_order_served`, `cancel_order`, `bump_items`,
+`recall_items`, `delete_order`, `create_order_from_sale`, `create_order_from_order`,
 `delete_station`, `set_routing`.
 
 > Regla hub: el WASM **nunca toca la BD**. Recibe `{payload, context}` y devuelve
@@ -43,13 +44,13 @@ El diseño original preveía que el handler leyera datos (comanda, líneas,
 
 ## Pendiente (NO cubierto por el handler actual)
 
-1. **Display agregado** (`get_display` legacy): comandas activas agrupadas por estación con
-   `elapsed_minutes`/`is_delayed` (umbrales de `kitchen_settings`) y cola de `ready`.
-   Lógica de presentación → WC/queries propias; los campos calculados pueden derivarse
-   en el cliente con `kitchen.orders.list` + `kitchen.stations.pending_counts`.
-2. **Bump/recall a nivel LÍNEA** (`bump_item` con auto-bump del pedido si todas listas):
-   necesita lecturas pre-cargadas (estado del resto de líneas) o un command SQL set-based
-   adicional. Hoy el bump es a nivel comanda (`mark_ready`).
+1. ~~**Display agregado**~~ — HECHO (kitchen#4): `kitchen.orders.display` (una fila por línea,
+   el WC agrupa por comanda y filtra por estación) + `kitchen.orders.all_day` (recuento por
+   producto). `elapsed`/semáforo se derivan en el CLIENTE contra `kitchen_settings`.
+2. ~~**Bump/recall a nivel LÍNEA**~~ — HECHO (kitchen#4): `kitchen.items.bump` / `.recall`
+   (`bump_items` / `recall_items`) con `reads` de `kitchen.orders.get` + `kitchen.orders.items`;
+   la comanda sigue a sus líneas (todas listas → `ready`; primera acción sobre `pending` →
+   `preparing`; recall sobre `ready` → `preparing`). Intención `_set_item_status` por línea.
 3. **Auto-accept / auto-bump temporizados** (`auto_accept_orders`, `auto_bump_enabled` +
    `auto_bump_delay_seconds`): reglas de background → scheduled task / handler del runtime.
 4. ~~**Permisos finos por acción** en `set_status`~~ — HECHO (kitchen#5): un command por
