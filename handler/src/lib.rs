@@ -4,17 +4,18 @@
 //! **intenciones** (commands `_`-prefijados del propio módulo) que el host valida y
 //! ejecuta en UNA transacción, más los eventos `kitchen.*` a emitir.
 //!
-//! Restricciones del runtime actual (sin lecturas pre-cargadas):
+//! Restricciones del runtime actual:
 //! * el snapshot de producto (`product_name`/`unit_price`/`category_id`) viaja en el
-//!   payload (patrón `sales`); la resolución de estación (routing) y los guardas de
-//!   estado se aplican EN EL SQL de la intención (no-op si no se cumplen);
+//!   payload (patrón `sales`); la resolución de estación (routing) se aplica EN EL SQL de la
+//!   intención. Las transiciones de estado leen la fila pre-cargada (`reads`, ADR-0069) y
+//!   rechazan con error de negocio lo que la matriz no permite (kitchen#11);
 //! * ids: el host pasa `context.new_ids` (autoridad de ids); el guest solo los reparte;
 //! * `order_number` atómico `YYYYMMDD-NNNN`: `_bump_counter` (upsert) + `_insert_order`
 //!   leyendo el contador con subquery en la misma transacción (patrón `sales`).
 
 use erplora_guest_sdk::money::{self, Qty};
 use erplora_guest_sdk::units::QUANTITY_SCALE;
-use erplora_guest_sdk::{Event, Operation, Output};
+use erplora_guest_sdk::{DomainError, Event, Operation, Output};
 use rust_decimal::Decimal;
 use serde_json::{json, Map, Value};
 
@@ -372,41 +373,102 @@ pub fn create_order_pure(input: Value) -> Result<Output, String> {
 //   · `kitchen.orders.cancel`      (cancel_order)  → cancelled
 // The runtime does not hand `context.permissions` to the guest, so the split by command is the
 // only place the per-action gate can live today.
+//
+// The state machine is AUTHORITATIVE (kitchen#11): the three commands declare a `reads` of
+// `kitchen.orders.get` (ADR-0069, filtered by `payload.order_id`, `required`), so the handler sees
+// the row's current status and refuses any transition outside the matrix with a business error —
+// no operation, no event. The SQL guard (`require_status`) is then pinned to the state the handler
+// validated against: a row that moved in between matches zero rows instead of jumping states.
+// (The affected-rows gate for handler operations is hub#1025 — until it lands, that last window is
+// closed by the runtime's serialisation of commands, not by a rollback.)
+
+/// `pending → preparing → ready → served`; `ready → preparing` (recall); anything not served can be
+/// cancelled. `served` and `cancelled` are terminal.
+fn allowed_from(action: &str) -> &'static [&'static str] {
+    match action {
+        "fire" => &["pending"],
+        "mark_ready" => &["pending", "preparing"],
+        "mark_served" => &["ready"],
+        "recall" => &["ready"],
+        "cancel" => &["pending", "preparing", "ready"],
+        _ => &[],
+    }
+}
+
+/// The ticket row the runtime preloaded for this command (`context.reads["kitchen.orders.get"]`).
+/// `Err` = the runtime did not preload it at all (a manifest/runtime mismatch, never a business
+/// case); `Ok(None)` = the read ran and found no ticket of this hub with that id.
+fn preloaded_order(input: &Value) -> Result<Option<Value>, String> {
+    let rows = input
+        .get("context")
+        .and_then(|c| c.get("reads"))
+        .and_then(|r| r.get("kitchen.orders.get"))
+        .ok_or_else(|| "missing_read: kitchen.orders.get (declare it in `reads`)".to_string())?;
+    let arr = match rows {
+        Value::Array(a) => a.clone(),
+        Value::Object(_) => rows
+            .get("rows")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default(),
+        _ => Vec::new(),
+    };
+    Ok(arr.into_iter().next())
+}
 
 /// `kitchen.orders.set_status`: the change_order verbs only.
 pub fn update_order_status_pure(input: Value) -> Result<Output, String> {
-    let (payload, ctx) = split_input(&input);
-    let action = as_str(payload.get("action_name").unwrap_or(&Value::Null));
+    let action = as_str(
+        input
+            .get("payload")
+            .and_then(|p| p.get("action_name"))
+            .unwrap_or(&Value::Null),
+    );
     if !matches!(action.as_str(), "fire" | "mark_ready" | "recall") {
         return Err(format!("unknown_action: {action}"));
     }
-    transition_pure(&payload, &ctx, &action)
+    transition_pure(&input, &action)
 }
 
 /// `kitchen.orders.mark_served`: served (complete_order).
 pub fn mark_order_served_pure(input: Value) -> Result<Output, String> {
-    let (payload, ctx) = split_input(&input);
-    transition_pure(&payload, &ctx, "mark_served")
+    transition_pure(&input, "mark_served")
 }
 
 /// `kitchen.orders.cancel`: cancelled (cancel_order).
 pub fn cancel_order_pure(input: Value) -> Result<Output, String> {
-    let (payload, ctx) = split_input(&input);
-    transition_pure(&payload, &ctx, "cancel")
+    transition_pure(&input, "cancel")
 }
 
-fn transition_pure(payload: &Value, ctx: &Ctx, action: &str) -> Result<Output, String> {
+fn transition_pure(input: &Value, action: &str) -> Result<Output, String> {
+    let (payload, ctx) = split_input(input);
     let order_id = as_str(payload.get("order_id").unwrap_or(&Value::Null));
     if order_id.is_empty() {
         return Err("missing_order_id".to_string());
     }
-    let reason = str_or(payload, "reason", "");
+    let reason = str_or(&payload, "reason", "");
 
-    // (status, require_status, set_fired, ready_mode, served_mode, append_note,
+    // Authoritative state check against the row the runtime preloaded (kitchen#11).
+    let Some(order) = preloaded_order(input)? else {
+        return Ok(Output::new().with_error(DomainError::new(
+            "kitchen.order_unavailable",
+            "That kitchen order is not available: it does not exist in this business or it has been deleted.",
+        )));
+    };
+    let current = as_str(order.get("status").unwrap_or(&Value::Null));
+    if !allowed_from(action).contains(&current.as_str()) {
+        return Ok(Output::new().with_error(DomainError::new(
+            "kitchen.invalid_transition",
+            format!("A kitchen order in status `{current}` cannot `{action}`."),
+        )));
+    }
+    // The SQL guard is pinned to the state just validated.
+    let require: &str = &current;
+
+    // (status, set_fired, ready_mode, served_mode, append_note,
     //  cascade: Option<(from_status, to_status, set_fired, completed_mode)>, evento, log_action)
     let (
         status,
-        require,
         set_fired,
         ready_mode,
         served_mode,
@@ -417,7 +479,6 @@ fn transition_pure(payload: &Value, ctx: &Ctx, action: &str) -> Result<Output, S
     ) = match action {
         "fire" => (
             "preparing",
-            "",
             1,
             "keep",
             "keep",
@@ -428,7 +489,6 @@ fn transition_pure(payload: &Value, ctx: &Ctx, action: &str) -> Result<Output, S
         ),
         "mark_ready" => (
             "ready",
-            "",
             0,
             "set",
             "keep",
@@ -439,7 +499,6 @@ fn transition_pure(payload: &Value, ctx: &Ctx, action: &str) -> Result<Output, S
         ),
         "mark_served" => (
             "served",
-            "",
             0,
             "keep",
             "set",
@@ -450,7 +509,6 @@ fn transition_pure(payload: &Value, ctx: &Ctx, action: &str) -> Result<Output, S
         ),
         "cancel" => (
             "cancelled",
-            "",
             0,
             "keep",
             "keep",
@@ -463,10 +521,8 @@ fn transition_pure(payload: &Value, ctx: &Ctx, action: &str) -> Result<Output, S
             "kitchen.order.cancelled",
             "cancelled",
         ),
-        // recall: SOLO si la comanda está en ready (guarda en el WHERE del SQL).
         "recall" => (
             "preparing",
-            "ready",
             0,
             "clear",
             "keep",
@@ -876,15 +932,16 @@ mod tests {
                 .expect_err("moved verb must be refused here");
             assert!(err.starts_with("unknown_action"), "got {err}");
         }
-        for verb in ["fire", "mark_ready", "recall"] {
-            update_order_status_pure(status_input(json!({ "order_id": "k1", "action_name": verb })))
+        for (verb, from) in [("fire", "pending"), ("mark_ready", "preparing"), ("recall", "ready")] {
+            let out = update_order_status_pure(with_state(from, json!({ "order_id": "k1", "action_name": verb })))
                 .expect("change_order verb still handled by set_status");
+            assert!(out.error.is_none(), "{verb} from {from}: {:?}", out.error);
         }
     }
 
     #[test]
     fn mark_order_served_is_the_served_transition() {
-        let out = mark_order_served_pure(status_input(json!({ "order_id": "k1" }))).expect("served");
+        let out = mark_order_served_pure(with_state("ready", json!({ "order_id": "k1" }))).expect("served");
         let head = out.operations.iter().find(|o| o.command == "kitchen._set_order_status").unwrap();
         assert_eq!(head.params["status"], json!("served"));
         assert_eq!(head.params["served_mode"], json!("set"));
@@ -894,7 +951,7 @@ mod tests {
 
     #[test]
     fn cancel_order_is_the_cancelled_transition_with_reason() {
-        let out = cancel_order_pure(status_input(json!({ "order_id": "k1", "reason": "guest left" })))
+        let out = cancel_order_pure(with_state("preparing", json!({ "order_id": "k1", "reason": "guest left" })))
             .expect("cancelled");
         let head = out.operations.iter().find(|o| o.command == "kitchen._set_order_status").unwrap();
         assert_eq!(head.params["status"], json!("cancelled"));
@@ -902,6 +959,94 @@ mod tests {
         assert!(out.operations.iter().any(|o| o.command == "kitchen._cascade_item_status"));
         assert_eq!(out.events[0].name, "kitchen.order.cancelled");
         assert_eq!(out.events[0].payload["notes"], json!("guest left"));
+    }
+
+    // ── kitchen#11: the state machine is authoritative ─────────────────────────────────
+
+    /// Input with the order row the runtime preloads (`reads`, ADR-0069) in `status`.
+    fn with_state(status: &str, payload: Value) -> Value {
+        json!({
+            "payload": payload,
+            "context": {
+                "hub_id": "h1", "current_user_id": "u1", "now": "2026-08-18T10:00:00+00:00", "new_ids": [],
+                "reads": { "kitchen.orders.get": [ { "id": "k1", "status": status } ] }
+            }
+        })
+    }
+
+    fn run(action: &str, from: &str) -> Result<Output, String> {
+        let payload = json!({ "order_id": "k1", "action_name": action, "reason": "" });
+        match action {
+            "mark_served" => mark_order_served_pure(with_state(from, payload)),
+            "cancel" => cancel_order_pure(with_state(from, payload)),
+            _ => update_order_status_pure(with_state(from, payload)),
+        }
+    }
+
+    #[test]
+    fn a_served_ticket_cannot_go_back_to_ready() {
+        // The P0 reproduced in QA (kitchen#11): served → mark_ready answered ok=true and left a
+        // ticket that was `ready` and had `served_at` at once. Now it is a business rejection with
+        // NO operation and NO event — the listeners never hear a state that is not in the database.
+        let out = run("mark_ready", "served").expect("a rejection is an Output, not a trap");
+        let err = out.error.expect("domain error");
+        assert_eq!(err.code, "kitchen.invalid_transition");
+        assert!(out.operations.is_empty(), "nothing to persist");
+        assert!(out.events.is_empty(), "no event for a rejected transition");
+    }
+
+    #[test]
+    fn the_transition_matrix() {
+        // (action, allowed-from). Terminal states: served, cancelled.
+        let matrix: [(&str, &[&str]); 5] = [
+            ("fire", &["pending"]),
+            ("mark_ready", &["pending", "preparing"]),
+            ("mark_served", &["ready"]),
+            ("recall", &["ready"]),
+            ("cancel", &["pending", "preparing", "ready"]),
+        ];
+        let states = ["pending", "preparing", "ready", "served", "cancelled"];
+        for (action, allowed) in matrix {
+            for from in states {
+                let out = run(action, from).expect("pure fn never traps on a known verb");
+                if allowed.contains(&from) {
+                    assert!(out.error.is_none(), "{action} from {from} must be allowed: {:?}", out.error);
+                    let head = out.operations.iter().find(|o| o.command == "kitchen._set_order_status").unwrap();
+                    // The SQL guard is pinned to the state the handler validated against, so a row
+                    // that moved in between matches zero rows instead of jumping states.
+                    assert_eq!(head.params["require_status"], json!(from), "{action} from {from}");
+                    assert_eq!(out.events.len(), 1);
+                } else {
+                    assert_eq!(
+                        out.error.as_ref().map(|e| e.code.as_str()),
+                        Some("kitchen.invalid_transition"),
+                        "{action} from {from} must be refused"
+                    );
+                    assert!(out.operations.is_empty() && out.events.is_empty(), "{action} from {from}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn an_unknown_or_foreign_ticket_is_order_unavailable() {
+        // The read came back empty: the id is not a ticket of THIS hub (or is deleted).
+        let inp = json!({
+            "payload": { "order_id": "ghost", "action_name": "fire" },
+            "context": { "hub_id": "h1", "current_user_id": "u1", "now": "2026-08-18T10:00:00+00:00", "new_ids": [],
+                         "reads": { "kitchen.orders.get": [] } }
+        });
+        let out = update_order_status_pure(inp).unwrap();
+        assert_eq!(out.error.unwrap().code, "kitchen.order_unavailable");
+    }
+
+    #[test]
+    fn without_the_read_the_handler_refuses_to_guess() {
+        // No `reads` at all = a runtime that did not preload the row. The old behaviour (trust the
+        // caller, guard in SQL, emit anyway) is exactly the bug: better a trap than a phantom event.
+        let err = update_order_status_pure(status_input(json!({ "order_id": "k1", "action_name": "fire" })))
+            .expect_err("no read → no transition");
+        assert!(err.contains("missing_read"), "got {err}");
     }
 
     #[test]

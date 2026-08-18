@@ -9,7 +9,7 @@ var __decorateClass = (decorators, target, key, kind) => {
   return result;
 };
 
-// ../module-toolkit/node_modules/@lit-labs/ssr-dom-shim/lib/element-internals.js
+// ../../module-toolkit/node_modules/@lit-labs/ssr-dom-shim/lib/element-internals.js
 var ElementInternalsShim = class ElementInternals {
   get shadowRoot() {
     return this.__host.__shadowRoot;
@@ -88,7 +88,7 @@ var ElementInternalsShim = class ElementInternals {
   }
 };
 
-// ../module-toolkit/node_modules/@lit-labs/ssr-dom-shim/lib/events.js
+// ../../module-toolkit/node_modules/@lit-labs/ssr-dom-shim/lib/events.js
 var __classPrivateFieldSet = function(receiver, state, value, kind, f3) {
   if (kind === "m") throw new TypeError("Private method is not writable");
   if (kind === "a" && !f3) throw new TypeError("Private accessor was defined without a setter");
@@ -246,7 +246,7 @@ Object.defineProperties(CustomEventShim.prototype, {
 var EventShimWithRealType = EventShim;
 var CustomEventShimWithRealType = CustomEventShim;
 
-// ../module-toolkit/node_modules/@lit-labs/ssr-dom-shim/lib/css.js
+// ../../module-toolkit/node_modules/@lit-labs/ssr-dom-shim/lib/css.js
 var _a2;
 var CSSRuleShim = (_a2 = class CSSRule {
   constructor() {
@@ -277,7 +277,7 @@ var CSSRuleShim = (_a2 = class CSSRule {
   }
 }, _a2.STYLE_RULE = 1, _a2.CHARSET_RULE = 2, _a2.IMPORT_RULE = 3, _a2.MEDIA_RULE = 4, _a2.FONT_FACE_RULE = 5, _a2.PAGE_RULE = 6, _a2.NAMESPACE_RULE = 10, _a2.KEYFRAMES_RULE = 7, _a2.KEYFRAME_RULE = 8, _a2.SUPPORTS_RULE = 12, _a2.COUNTER_STYLE_RULE = 11, _a2.FONT_FEATURE_VALUES_RULE = 14, _a2.MARGIN_RULE = 9, _a2);
 
-// ../module-toolkit/node_modules/@lit-labs/ssr-dom-shim/index.js
+// ../../module-toolkit/node_modules/@lit-labs/ssr-dom-shim/index.js
 globalThis.Event ??= EventShimWithRealType;
 globalThis.CustomEvent ??= CustomEventShimWithRealType;
 var constructionToken = Symbol();
@@ -674,7 +674,7 @@ var CustomElementRegistryShimWithRealType = CustomElementRegistry;
 var customElements2 = new CustomElementRegistryShimWithRealType();
 var windowShim = new WindowShim(constructionToken);
 
-// ../module-toolkit/node_modules/@lit/reactive-element/node/css-tag.js
+// ../../module-toolkit/node_modules/@lit/reactive-element/node/css-tag.js
 var t = globalThis;
 var e = t.ShadowRoot && (void 0 === t.ShadyCSS || t.ShadyCSS.nativeShadow) && "adoptedStyleSheets" in Document.prototype && "replace" in CSSStyleSheet.prototype;
 var s = Symbol();
@@ -719,7 +719,7 @@ var c = e || void 0 === t.CSSStyleSheet ? (t7) => t7 : (t7) => t7 instanceof CSS
   return r(e5);
 })(t7) : t7;
 
-// ../module-toolkit/node_modules/@lit/reactive-element/node/reactive-element.js
+// ../../module-toolkit/node_modules/@lit/reactive-element/node/reactive-element.js
 var { is: h, defineProperty: r2, getOwnPropertyDescriptor: o2, getOwnPropertyNames: n2, getOwnPropertySymbols: a, getPrototypeOf: c2 } = Object;
 var l = globalThis;
 l.customElements ??= customElements2;
@@ -942,7 +942,7 @@ var g = class extends (globalThis.HTMLElement ?? HTMLElementShimWithRealType) {
 };
 g.elementStyles = [], g.shadowRootOptions = { mode: "open" }, g[f("elementProperties")] = /* @__PURE__ */ new Map(), g[f("finalized")] = /* @__PURE__ */ new Map(), u?.({ ReactiveElement: g }), (l.reactiveElementVersions ??= []).push("2.1.2");
 
-// node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/lit-html.js
+// ../node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/lit-html.js
 var t2 = globalThis;
 var i2 = (t7) => t7;
 var s2 = t2.trustedTypes;
@@ -1197,7 +1197,7 @@ var D = (t7, i7, s5) => {
   return h4._$AI(t7), h4;
 };
 
-// node_modules/.pnpm/lit-element@4.2.2/node_modules/lit-element/lit-element.js
+// ../node_modules/.pnpm/lit-element@4.2.2/node_modules/lit-element/lit-element.js
 var s3 = globalThis;
 var i3 = class extends g {
   constructor() {
@@ -1226,7 +1226,7 @@ var o4 = s3.litElementPolyfillSupport;
 o4?.({ LitElement: i3 });
 (s3.litElementVersions ??= []).push("4.2.2");
 
-// ../module-toolkit/node_modules/@lit/reactive-element/node/decorators/property.js
+// ../../module-toolkit/node_modules/@lit/reactive-element/node/decorators/property.js
 var o5 = { attribute: true, type: String, converter: b, reflect: false, hasChanged: m };
 var r4 = (t7 = o5, e5, r6) => {
   const { kind: n6, metadata: i7 } = r6;
@@ -1256,19 +1256,19 @@ function n4(t7) {
   })(t7, e5, o7);
 }
 
-// ../module-toolkit/node_modules/@lit/reactive-element/node/decorators/state.js
+// ../../module-toolkit/node_modules/@lit/reactive-element/node/decorators/state.js
 function r5(r6) {
   return n4({ ...r6, state: true, attribute: false });
 }
 
-// ../outfitkit/dist/define.js
+// ../../outfitkit/dist/define.js
 function define(tag, ctor) {
   if (typeof customElements !== "undefined" && !customElements.get(tag)) {
     customElements.define(tag, ctor);
   }
 }
 
-// ../outfitkit/dist/shared/icons.js
+// ../../outfitkit/dist/shared/icons.js
 var rawAdd = '<svg viewBox="0 0 512 512" width="1.2em" height="1.2em" ><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" d="M256 112v288m144-144H112"/></svg>';
 var rawAlertCircle = '<svg viewBox="0 0 512 512" width="1.2em" height="1.2em" ><path fill="currentColor" d="M256 48C141.31 48 48 141.31 48 256s93.31 208 208 208s208-93.31 208-208S370.69 48 256 48m0 319.91a20 20 0 1 1 20-20a20 20 0 0 1-20 20m21.72-201.15l-5.74 122a16 16 0 0 1-32 0l-5.74-121.94v-.05a21.74 21.74 0 1 1 43.44 0Z"/></svg>';
 var rawAlertCircleOutline = '<svg viewBox="0 0 512 512" width="1.2em" height="1.2em" ><path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="32" d="M448 256c0-106-86-192-192-192S64 150 64 256s86 192 192 192s192-86 192-192Z"/><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" d="M250.26 166.05L256 288l5.73-121.95a5.74 5.74 0 0 0-5.79-6h0a5.74 5.74 0 0 0-5.68 6"/><path fill="currentColor" d="M256 367.91a20 20 0 1 1 20-20a20 20 0 0 1-20 20"/></svg>';
@@ -1416,7 +1416,7 @@ function okIcon(value) {
   return BY_NAME[value] ?? value;
 }
 
-// ../outfitkit/dist/ok-inline-feedback.js
+// ../../outfitkit/dist/ok-inline-feedback.js
 var __defProp2 = Object.defineProperty;
 var __decorateClass2 = (decorators, target, key, kind) => {
   var result = void 0;
@@ -1633,7 +1633,7 @@ __decorateClass2([
 ], OkInlineFeedback.prototype, "hasActions");
 define("ok-inline-feedback", OkInlineFeedback);
 
-// node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directive.js
+// ../node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directive.js
 var t3 = { ATTRIBUTE: 1, CHILD: 2, PROPERTY: 3, BOOLEAN_ATTRIBUTE: 4, EVENT: 5, ELEMENT: 6 };
 var e4 = (t7) => (...e5) => ({ _$litDirective$: t7, values: e5 });
 var i4 = class {
@@ -1653,7 +1653,7 @@ var i4 = class {
   }
 };
 
-// node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directive-helpers.js
+// ../node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directive-helpers.js
 var { I: t4 } = j;
 var i5 = (o7) => o7;
 var s4 = () => document.createComment("");
@@ -1686,7 +1686,7 @@ var h3 = (o7) => {
   o7._$AR(), o7._$AA.remove();
 };
 
-// node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directives/repeat.js
+// ../node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directives/repeat.js
 var u4 = (e5, s5, t7) => {
   const r6 = /* @__PURE__ */ new Map();
   for (let l3 = s5; l3 <= t7; l3++) r6.set(e5[l3], l3);
@@ -1739,7 +1739,7 @@ var c4 = e4(class extends i4 {
   }
 });
 
-// node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directives/style-map.js
+// ../node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directives/style-map.js
 var n5 = "important";
 var i6 = " !" + n5;
 var o6 = e4(class extends i4 {
@@ -1768,7 +1768,7 @@ var o6 = e4(class extends i4 {
   }
 });
 
-// ../outfitkit/dist/ok-data-table.js
+// ../../outfitkit/dist/ok-data-table.js
 var CSV_BOM = "\uFEFF";
 function decodeCsvBuffer(buf) {
   let text;
@@ -3196,7 +3196,7 @@ __decorateClass3([
 var OkDataTable = _OkDataTable;
 define("ok-data-table", OkDataTable);
 
-// ../hub/packages/module-sdk/src/index.ts
+// ../../hub/packages/module-sdk/src/index.ts
 function isEmpty(v3) {
   return v3 === null || v3 === void 0 || v3 === "";
 }
@@ -3314,7 +3314,7 @@ function createListController(client, queryName, onChange = () => {
   return new ListController(client, queryName, onChange, opts);
 }
 
-// modules/kitchen/locales/es.json
+// kitchen/locales/es.json
 var es_default = {
   name: "Cocina",
   description: "Pantalla de cocina y \xF3rdenes de producci\xF3n, seguidas desde que entran hasta que est\xE1n listas.",
@@ -3441,10 +3441,14 @@ var es_default = {
     stPaid: "Pagada",
     stCancelled: "Anulada",
     close: "Cerrar"
+  },
+  errors: {
+    "kitchen.invalid_transition": "Esa comanda ya no est\xE1 en el estado que requiere esta acci\xF3n. Actualiza e int\xE9ntalo de nuevo.",
+    "kitchen.order_unavailable": "Esa comanda no est\xE1 disponible: no existe en este negocio o se ha borrado."
   }
 };
 
-// modules/kitchen/locales/en.json
+// kitchen/locales/en.json
 var en_default = {
   name: "Kitchen",
   navigation: {
@@ -3570,10 +3574,14 @@ var en_default = {
     stPaid: "Paid",
     stCancelled: "Cancelled",
     close: "Close"
+  },
+  errors: {
+    "kitchen.invalid_transition": "That kitchen order is no longer in the state this action requires. Refresh and try again.",
+    "kitchen.order_unavailable": "That kitchen order is not available: it does not exist in this business or it has been deleted."
   }
 };
 
-// modules/kitchen/ui/components/erp-kitchen-display/erp-kitchen-display.ts
+// kitchen/ui/components/erp-kitchen-display/erp-kitchen-display.ts
 var CATALOG = { es: es_default, en: en_default };
 var DEFAULT_SETTINGS = {
   auto_accept_orders: false,
@@ -3796,7 +3804,7 @@ __decorateClass([
 ], ErpKitchenDisplay.prototype, "savingSettings", 2);
 define("erp-kitchen-display", ErpKitchenDisplay);
 
-// modules/kitchen/ui/components/erp-kitchen-orders-active/erp-kitchen-orders-active.ts
+// kitchen/ui/components/erp-kitchen-orders-active/erp-kitchen-orders-active.ts
 var CATALOG2 = { es: es_default, en: en_default };
 function erplora2() {
   const c5 = globalThis.erplora;
@@ -3814,6 +3822,22 @@ var VERB_PERMISSION = {
   recall: "kitchen.change_order",
   cancel: "kitchen.cancel_order"
 };
+var ALLOWED_FROM = {
+  fire: ["pending"],
+  mark_ready: ["pending", "preparing"],
+  mark_served: ["ready"],
+  recall: ["ready"],
+  cancel: ["pending", "preparing", "ready"]
+};
+function errorText(e5, fallbackKey) {
+  const code = e5?.code;
+  if (typeof code === "string") {
+    const lang = CATALOG2[erplora2().locale] ?? CATALOG2.en;
+    const text = lang?.errors?.[code] ?? CATALOG2.en.errors?.[code];
+    if (text) return text;
+  }
+  return e5 instanceof Error ? e5.message : erplora2().t(CATALOG2, fallbackKey);
+}
 var ErpKitchenOrdersActive = class extends i3 {
   constructor() {
     super(...arguments);
@@ -3882,7 +3906,7 @@ var ErpKitchenOrdersActive = class extends i3 {
       { id: "recall", label: t7("ui.rowRecall"), icon: "arrow-undo-outline" },
       { id: "cancel", label: t7("ui.rowCancel"), icon: "close-circle-outline", color: "danger" }
     ];
-    return all.filter((a3) => can(VERB_PERMISSION[a3.id]));
+    return all.filter((a3) => can(VERB_PERMISSION[a3.id])).map((a3) => ({ ...a3, disabled: (row) => !ALLOWED_FROM[a3.id].includes(String(row.status ?? "")) }));
   }
   async connectedCallback() {
     super.connectedCallback();
@@ -3949,7 +3973,8 @@ var ErpKitchenOrdersActive = class extends i3 {
       }
       await this.ctrl.load();
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : erplora2().t(CATALOG2, "ui.updateStatusError");
+      this.formError = errorText(e5, "ui.updateStatusError");
+      await this.ctrl.load().catch(() => void 0);
     }
   }
   render() {
@@ -3990,7 +4015,7 @@ __decorateClass([
 ], ErpKitchenOrdersActive.prototype, "tick", 2);
 define("erp-kitchen-orders-active", ErpKitchenOrdersActive);
 
-// modules/kitchen/ui/components/erp-kitchen-orders-stations/erp-kitchen-orders-stations.ts
+// kitchen/ui/components/erp-kitchen-orders-stations/erp-kitchen-orders-stations.ts
 var CATALOG3 = { es: es_default, en: en_default };
 function erplora3() {
   const c5 = globalThis.erplora;
@@ -4306,7 +4331,7 @@ __decorateClass([
 ], ErpKitchenOrdersStations.prototype, "routeCategoryId", 2);
 define("erp-kitchen-orders-stations", ErpKitchenOrdersStations);
 
-// modules/kitchen/ui/components/erp-kitchen-pos-comandas/erp-kitchen-pos-comandas.ts
+// kitchen/ui/components/erp-kitchen-pos-comandas/erp-kitchen-pos-comandas.ts
 var CATALOG4 = { es: es_default, en: en_default };
 function rows(r6) {
   if (Array.isArray(r6)) return r6;
@@ -4499,7 +4524,7 @@ __decorateClass([
 ], ErpKitchenPosComandas.prototype, "open", 2);
 define("erp-kitchen-pos-comandas", ErpKitchenPosComandas);
 
-// modules/kitchen/ui/lib/pos-fire.ts
+// kitchen/ui/lib/pos-fire.ts
 function pendingCount(state) {
   if (!state) return 0;
   return state.pending_count ?? state.items_count;
@@ -4508,7 +4533,7 @@ function canFire(state) {
   return pendingCount(state) > 0;
 }
 
-// modules/kitchen/ui/components/erp-kitchen-pos-fire/erp-kitchen-pos-fire.ts
+// kitchen/ui/components/erp-kitchen-pos-fire/erp-kitchen-pos-fire.ts
 var CATALOG5 = { es: es_default, en: en_default };
 function t6(key) {
   const c5 = globalThis.erplora;

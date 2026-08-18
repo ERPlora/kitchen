@@ -31,6 +31,12 @@ From the display or the ticket, apply one of: **fire**, **mark ready**, **mark s
 or **cancel**. The change cascades from the ticket header down to its lines and stamps the
 corresponding timestamp, then emits the matching event, which is also what writes the audit log.
 
+The ticket moves **pending → preparing → ready → served**; *recall* takes a ready ticket back to
+preparing; *cancel* works on anything not yet served. *Served* and *cancelled* are final. A
+transition outside that path is refused (`kitchen.invalid_transition`) — nothing is written and no
+event goes out — and the table only enables the buttons the ticket's state accepts. If your screen
+was stale, the message tells you and the row refreshes to its real state.
+
 Firing, marking ready and recalling need `kitchen.change_order`; marking served needs
 `kitchen.complete_order` — the cook has both. Cancelling a fired ticket is a front-of-house decision
 and needs `kitchen.cancel_order`, which the cook does not have. A verb you cannot run is not shown.

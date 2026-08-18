@@ -59,6 +59,28 @@ const VERB_PERMISSION: Record<Verb, string> = {
   cancel: 'kitchen.cancel_order',
 };
 
+/** The transition matrix (kitchen#11) — mirror of `allowed_from` in the handler, which is the
+ *  authority. Here it only decides which buttons are live for a row. */
+const ALLOWED_FROM: Record<Verb, readonly string[]> = {
+  fire: ['pending'],
+  mark_ready: ['pending', 'preparing'],
+  mark_served: ['ready'],
+  recall: ['ready'],
+  cancel: ['pending', 'preparing', 'ready'],
+};
+
+/** Business codes (`kitchen.*`) translate through the module catalog `errors`; anything else keeps
+ *  the server message. The catalog keys carry dots, so this reads it directly instead of `t()`. */
+function errorText(e: unknown, fallbackKey: string): string {
+  const code = (e as { code?: unknown } | null)?.code;
+  if (typeof code === 'string') {
+    const lang = (CATALOG[erplora().locale] ?? CATALOG.en) as { errors?: Record<string, string> } | undefined;
+    const text = lang?.errors?.[code] ?? (CATALOG.en as { errors?: Record<string, string> }).errors?.[code];
+    if (text) return text;
+  }
+  return e instanceof Error ? e.message : erplora().t(CATALOG, fallbackKey);
+}
+
 export class ErpKitchenOrdersActive extends LitElement {
   static styles = css`
     :host { display:block; font-family: system-ui, sans-serif; color: var(--ion-text-color, #1c1b18); }
@@ -133,7 +155,10 @@ export class ErpKitchenOrdersActive extends LitElement {
       { id: 'cancel', label: t('ui.rowCancel'), icon: 'close-circle-outline', color: 'danger' },
     ];
     // A verb the user cannot run is not offered (kitchen#5): the runtime would refuse it anyway.
-    return all.filter((a) => can(VERB_PERMISSION[a.id as Verb]));
+    // A verb the row's state does not accept is disabled (kitchen#11): the handler refuses it too.
+    return all
+      .filter((a) => can(VERB_PERMISSION[a.id as Verb]))
+      .map((a) => ({ ...a, disabled: (row: Record<string, unknown>) => !ALLOWED_FROM[a.id as Verb].includes(String(row.status ?? '')) }));
   }
 
   private readonly onLocaleChange = (): void => this.requestUpdate();
@@ -209,7 +234,10 @@ export class ErpKitchenOrdersActive extends LitElement {
       }
       await this.ctrl.load();
     } catch (e) {
-      this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.updateStatusError');
+      // A refused transition means this row was stale (kitchen#11): say why, in the user's
+      // language, and reload so the row shows the state the server actually has.
+      this.formError = errorText(e, 'ui.updateStatusError');
+      await this.ctrl.load().catch(() => undefined);
     }
   }
 
