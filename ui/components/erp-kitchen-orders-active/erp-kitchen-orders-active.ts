@@ -22,6 +22,8 @@ interface ErploraClientLike extends ListClient {
   /** Formateo de dinero (ADR-0059): recibe CÉNTIMOS y divide. El dinero viaja como
    *  INTEGER de céntimos (ADR-0007/0123) → SIEMPRE `formatMoney`, nunca ÷100 a mano. */
   formatMoney(cents: number, opts?: { currency?: string; locale?: string }): string;
+  /** Permission check of the SDK. Absent on old shells → everything is offered; the runtime gates. */
+  hasPermission?(permission: string): boolean;
 }
 
 interface Order {
@@ -41,6 +43,21 @@ function erplora(): ErploraClientLike {
   if (!c) throw new Error('erplora SDK no inicializado por el shell');
   return c;
 }
+
+function can(permission: string): boolean {
+  const client = erplora();
+  return typeof client.hasPermission === 'function' ? client.hasPermission(permission) : true;
+}
+
+/** One permission per verb (kitchen#5); the command that owns each verb is called by literal below. */
+type Verb = 'fire' | 'mark_ready' | 'mark_served' | 'recall' | 'cancel';
+const VERB_PERMISSION: Record<Verb, string> = {
+  fire: 'kitchen.change_order',
+  mark_ready: 'kitchen.change_order',
+  mark_served: 'kitchen.complete_order',
+  recall: 'kitchen.change_order',
+  cancel: 'kitchen.cancel_order',
+};
 
 export class ErpKitchenOrdersActive extends LitElement {
   static styles = css`
@@ -105,16 +122,18 @@ export class ErpKitchenOrdersActive extends LitElement {
     ];
   }
 
-  private get rowActions(): DataTableAction[] {
+  get rowActions(): DataTableAction[] {
     const t = (k: string): string => erplora().t(CATALOG, k);
-    return [
-    // Solo icono (ADR-0133): el `label` viaja como title + aria-label del botón, no como texto.
-    { id: 'fire', label: t('ui.rowFire'), icon: 'flame-outline' },
-    { id: 'mark_ready', label: t('ui.rowMarkReady'), icon: 'checkmark-done-outline' },
-    { id: 'mark_served', label: t('ui.rowMarkServed'), icon: 'restaurant-outline' },
-    { id: 'recall', label: t('ui.rowRecall'), icon: 'arrow-undo-outline' },
-    { id: 'cancel', label: t('ui.rowCancel'), icon: 'close-circle-outline', color: 'danger' },
+    const all: DataTableAction[] = [
+      // Solo icono (ADR-0133): el `label` viaja como title + aria-label del botón, no como texto.
+      { id: 'fire', label: t('ui.rowFire'), icon: 'flame-outline' },
+      { id: 'mark_ready', label: t('ui.rowMarkReady'), icon: 'checkmark-done-outline' },
+      { id: 'mark_served', label: t('ui.rowMarkServed'), icon: 'restaurant-outline' },
+      { id: 'recall', label: t('ui.rowRecall'), icon: 'arrow-undo-outline' },
+      { id: 'cancel', label: t('ui.rowCancel'), icon: 'close-circle-outline', color: 'danger' },
     ];
+    // A verb the user cannot run is not offered (kitchen#5): the runtime would refuse it anyway.
+    return all.filter((a) => can(VERB_PERMISSION[a.id as Verb]));
   }
 
   private readonly onLocaleChange = (): void => this.requestUpdate();
@@ -171,14 +190,23 @@ export class ErpKitchenOrdersActive extends LitElement {
     }
   }
 
-  private async onRowAction(ev: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) {
+  async onRowAction(ev: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) {
     const { actionId, row } = ev.detail;
     this.formError = '';
     try {
-      await erplora().command('kitchen.orders.set_status', {
-        order_id: (row as unknown as Order).id,
-        action_name: actionId,
-      });
+      const order_id = (row as unknown as Order).id;
+      // set_status carries the change_order verbs; served/cancel are commands of their own, each
+      // under its own permission (kitchen#5).
+      switch (actionId as Verb) {
+        case 'mark_served':
+          await erplora().command('kitchen.orders.mark_served', { order_id });
+          break;
+        case 'cancel':
+          await erplora().command('kitchen.orders.cancel', { order_id });
+          break;
+        default:
+          await erplora().command('kitchen.orders.set_status', { order_id, action_name: actionId });
+      }
       await this.ctrl.load();
     } catch (e) {
       this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.updateStatusError');

@@ -50,9 +50,10 @@ El diseño original preveía que el handler leyera datos (comanda, líneas,
    adicional. Hoy el bump es a nivel comanda (`mark_ready`).
 3. **Auto-accept / auto-bump temporizados** (`auto_accept_orders`, `auto_bump_enabled` +
    `auto_bump_delay_seconds`): reglas de background → scheduled task / handler del runtime.
-4. **Permisos finos por acción** en `set_status` (cancel→`cancel_order`,
-   mark_served→`complete_order`): el manifest gatea todo con `change_order`; honrar el
-   permiso por acción requiere un check adicional del runtime.
+4. ~~**Permisos finos por acción** en `set_status`~~ — HECHO (kitchen#5): un command por
+   permiso. `set_status` (`change_order`) = fire/mark_ready/recall; `mark_served`
+   (`complete_order`); `cancel` (`cancel_order`). El runtime no pasa `context.permissions` al
+   guest, así que la partición por command es el único sitio donde vive la puerta por acción.
 5. **PATCH por-campo de settings** con `updated_fields`: el command declarativo persiste el
    snapshot completo (la UI envía todo); un merge real necesitaría leer la fila.
 6. **Push WS en vivo + sonidos**: responsabilidad del transporte/runtime y de la UI

@@ -31,8 +31,9 @@ From the display or the ticket, apply one of: **fire**, **mark ready**, **mark s
 or **cancel**. The change cascades from the ticket header down to its lines and stamps the
 corresponding timestamp, then emits the matching event, which is also what writes the audit log.
 
-Firing, marking ready, recalling and cancelling need `kitchen.change_order`. Completing needs
-`kitchen.complete_order`, which an employee has.
+Firing, marking ready and recalling need `kitchen.change_order`; marking served needs
+`kitchen.complete_order` — the cook has both. Cancelling a fired ticket is a front-of-house decision
+and needs `kitchen.cancel_order`, which the cook does not have. A verb you cannot run is not shown.
 
 ### Create a ticket by hand
 
@@ -85,8 +86,9 @@ buried is the grill right now" number.
 
 ## The audit log
 
-Every state change is recorded (`kitchen.logs.list`, 50 rows per page, newest first). Requires
-`kitchen.view_log` — an employee has it.
+Every state change is recorded (`kitchen.logs.list`, 50 rows per page, newest first). Reading it
+requires `kitchen.view_log` — an employee has it. Adding an entry by hand (`kitchen.logs.create`)
+requires `kitchen.add_log` (manager); the automatic entries are written by the module itself.
 
 Each entry carries the ticket, the line, the station, the action, who did it and any notes. Filter by
 any of those, or by date range.
