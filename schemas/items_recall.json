@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "kitchen.items.recall",
+  "description": "Recall one or several ready lines of a kitchen order back to preparing (kitchen#4) — the undo of the bump. A ready ticket comes back to preparing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["order_id", "item_ids"],
+  "properties": {
+    "order_id": { "type": "string", "minLength": 1 },
+    "item_ids": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 200,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

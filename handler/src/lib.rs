@@ -50,6 +50,20 @@ pub fn cancel_order(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Outp
     to_fn_result(cancel_order_pure(input.into_inner().into_value()))
 }
 
+/// kitchen#4: bump per LINE (the KDS gesture); the ticket follows its lines.
+#[cfg(feature = "guest")]
+#[plugin_fn]
+pub fn bump_items(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
+    to_fn_result(bump_items_pure(input.into_inner().into_value()))
+}
+
+/// kitchen#4: recall per LINE — the undo of the bump, never behind a dialog.
+#[cfg(feature = "guest")]
+#[plugin_fn]
+pub fn recall_items(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
+    to_fn_result(recall_items_pure(input.into_inner().into_value()))
+}
+
 #[cfg(feature = "guest")]
 #[plugin_fn]
 pub fn delete_order(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
@@ -564,6 +578,207 @@ fn transition_pure(input: &Value, action: &str) -> Result<Output, String> {
     })
 }
 
+// ── Line bump / recall (kitchen#4 — the KDS gesture) ───────────────────────
+//
+// The market (Toast, Square, Lightspeed, Fresh, TouchBistro, Odoo, LS Central, Simphony) strikes
+// the ticket LINE by LINE and lets the ticket advance by itself when nothing is left; bump and
+// recall always travel as a pair, scoped to the station (a bump on the bar never clears the
+// grill's lines — Tek-Tips' recurring KDS complaint). Two commands share this core:
+//   · `kitchen.items.bump`   (change_order) → lines pending|preparing → ready; when no line of
+//     the ticket is left cooking, the ticket goes `ready` (emits `kitchen.order.ready`); the
+//     first bump on a `pending` ticket marks it `preparing` (emits `kitchen.order.fired`).
+//   · `kitchen.items.recall` (change_order) → lines ready → preparing; a `ready` ticket comes
+//     back to `preparing` (emits `kitchen.order.recalled`).
+// Both declare `reads` of `kitchen.orders.get` + `kitchen.orders.items` (ADR-0069, `required`),
+// so the handler decides against the rows the runtime saw — the same authority as kitchen#11.
+// Lines already in the target state are skipped, not refused: a header tap over a half-bumped
+// ticket is the normal case, not an error. Only a call that would touch NOTHING is refused.
+
+/// The lines of the ticket the runtime preloaded (`context.reads["kitchen.orders.items"]`).
+fn preloaded_items(input: &Value) -> Result<Vec<Value>, String> {
+    let rows = input
+        .get("context")
+        .and_then(|c| c.get("reads"))
+        .and_then(|r| r.get("kitchen.orders.items"))
+        .ok_or_else(|| "missing_read: kitchen.orders.items (declare it in `reads`)".to_string())?;
+    Ok(match rows {
+        Value::Array(a) => a.clone(),
+        Value::Object(_) => rows
+            .get("rows")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default(),
+        _ => Vec::new(),
+    })
+}
+
+/// Event payload for `kitchen.item.*` — the shape `kitchen.logs.create` expects, with the line.
+fn item_event(name: &str, order_id: &str, item: &Value, action: &str, user_id: &str) -> Event {
+    let station = item.get("station_id").cloned().unwrap_or(Value::Null);
+    Event::new(
+        name,
+        json!({
+            "sender": "kitchen",
+            "order_id": order_id,
+            "order_item_id": as_str(item.get("id").unwrap_or(&Value::Null)),
+            "station_id": if station.is_null() || as_str(&station).is_empty() { Value::Null } else { json!(as_str(&station)) },
+            "action": action,
+            "performed_by_id": if user_id.is_empty() { Value::Null } else { json!(user_id) },
+            "notes": "",
+        }),
+    )
+}
+
+/// `kitchen.items.bump`: lines → ready, ticket follows.
+pub fn bump_items_pure(input: Value) -> Result<Output, String> {
+    line_transition_pure(&input, LineVerb::Bump)
+}
+
+/// `kitchen.items.recall`: lines → preparing, ticket follows.
+pub fn recall_items_pure(input: Value) -> Result<Output, String> {
+    line_transition_pure(&input, LineVerb::Recall)
+}
+
+#[derive(Clone, Copy)]
+enum LineVerb {
+    Bump,
+    Recall,
+}
+
+fn line_transition_pure(input: &Value, verb: LineVerb) -> Result<Output, String> {
+    let (payload, ctx) = split_input(input);
+    let order_id = as_str(payload.get("order_id").unwrap_or(&Value::Null));
+    if order_id.is_empty() {
+        return Err("missing_order_id".to_string());
+    }
+    let item_ids: Vec<String> = payload
+        .get("item_ids")
+        .and_then(|v| v.as_array())
+        .map(|a| a.iter().map(as_str).filter(|s| !s.is_empty()).collect())
+        .unwrap_or_default();
+    if item_ids.is_empty() {
+        return Err("missing_item_ids".to_string());
+    }
+
+    let Some(order) = preloaded_order(input)? else {
+        return Ok(Output::new().with_error(DomainError::new(
+            "kitchen.order_unavailable",
+            "That kitchen order is not available: it does not exist in this business or it has been deleted.",
+        )));
+    };
+    let lines = preloaded_items(input)?;
+    let order_status = as_str(order.get("status").unwrap_or(&Value::Null));
+    // Lines only move while the ticket is on the line: served/cancelled are terminal (kitchen#11).
+    if !matches!(order_status.as_str(), "pending" | "preparing" | "ready") {
+        return Ok(Output::new().with_error(DomainError::new(
+            "kitchen.invalid_transition",
+            format!("A kitchen order in status `{order_status}` cannot move its lines."),
+        )));
+    }
+
+    // (from-states, to-state, completed_mode, item event, log action)
+    let (from, to, completed_mode, item_event_name, item_action) = match verb {
+        LineVerb::Bump => (
+            &["pending", "preparing"][..],
+            "ready",
+            "set",
+            "kitchen.item.bumped",
+            "item_bumped",
+        ),
+        LineVerb::Recall => (
+            &["ready"][..],
+            "preparing",
+            "clear",
+            "kitchen.item.recalled",
+            "item_recalled",
+        ),
+    };
+
+    let mut ops: Vec<Operation> = Vec::new();
+    let mut events: Vec<Event> = Vec::new();
+    // Status of every line AFTER this command, to decide whether the ticket follows.
+    let mut after: Vec<String> = Vec::with_capacity(lines.len());
+    let mut touched = 0usize;
+    for id in &item_ids {
+        let Some(line) = lines
+            .iter()
+            .find(|l| as_str(l.get("id").unwrap_or(&Value::Null)) == *id)
+        else {
+            return Ok(Output::new().with_error(DomainError::new(
+                "kitchen.item_unavailable",
+                format!("Line `{id}` is not a line of this kitchen order (or it was deleted)."),
+            )));
+        };
+        let current = as_str(line.get("status").unwrap_or(&Value::Null));
+        if !from.contains(&current.as_str()) {
+            continue; // already there (or not applicable): skipped, not refused
+        }
+        let mut p = Map::new();
+        p.insert("item_id".into(), json!(id));
+        p.insert("order_id".into(), json!(order_id));
+        p.insert("status".into(), json!(to));
+        p.insert("require_status".into(), json!(current));
+        p.insert("completed_mode".into(), json!(completed_mode));
+        ops.push(Operation::sql("kitchen._set_item_status", p));
+        events.push(item_event(
+            item_event_name,
+            &order_id,
+            line,
+            item_action,
+            &ctx.user_id,
+        ));
+        touched += 1;
+    }
+    if touched == 0 {
+        return Ok(Output::new().with_error(DomainError::new(
+            "kitchen.invalid_transition",
+            "None of those lines is in a state this action accepts.",
+        )));
+    }
+    for line in &lines {
+        let id = as_str(line.get("id").unwrap_or(&Value::Null));
+        let current = as_str(line.get("status").unwrap_or(&Value::Null));
+        let moved = item_ids.contains(&id) && from.contains(&current.as_str());
+        after.push(if moved { to.to_string() } else { current });
+    }
+
+    // Does the ticket follow its lines?
+    //   bump:   nothing left cooking → ready; first action on a pending ticket → preparing.
+    //   recall: a ready ticket has a line cooking again → preparing.
+    let all_ready = after.iter().all(|s| s == "ready");
+    let head = match verb {
+        LineVerb::Bump if all_ready && order_status != "ready" => {
+            Some(("ready", 1, "set", "kitchen.order.ready", "bumped"))
+        }
+        LineVerb::Bump if order_status == "pending" => {
+            Some(("preparing", 1, "keep", "kitchen.order.fired", "started"))
+        }
+        LineVerb::Recall if order_status == "ready" => {
+            Some(("preparing", 0, "clear", "kitchen.order.recalled", "recalled"))
+        }
+        _ => None,
+    };
+    if let Some((status, set_fired, ready_mode, event, log_action)) = head {
+        let mut h = Map::new();
+        h.insert("order_id".into(), json!(order_id));
+        h.insert("status".into(), json!(status));
+        h.insert("require_status".into(), json!(order_status));
+        h.insert("set_fired".into(), json!(set_fired));
+        h.insert("ready_mode".into(), json!(ready_mode));
+        h.insert("served_mode".into(), json!("keep"));
+        h.insert("append_note".into(), json!(""));
+        h.insert("nl".into(), json!("\n"));
+        ops.push(Operation::sql("kitchen._set_order_status", h));
+        events.push(order_event(event, &order_id, log_action, "", &ctx.user_id));
+    }
+
+    Ok(Output {
+        operations: ops,
+        events,
+        ..Default::default()
+    })
+}
+
 // ── delete_order (command kitchen.orders.delete) ───────────────────────────
 
 pub fn delete_order_pure(input: Value) -> Result<Output, String> {
@@ -1053,6 +1268,175 @@ mod tests {
     fn served_and_cancel_need_an_order_id() {
         assert!(mark_order_served_pure(status_input(json!({}))).is_err());
         assert!(cancel_order_pure(status_input(json!({}))).is_err());
+    }
+
+    // ── kitchen#4: bump/recall per LINE (the KDS gesture) ──────────────────────────────
+
+    /// Input for `kitchen.items.bump` / `kitchen.items.recall`: the order row plus its lines, as
+    /// the runtime preloads them (`reads`, ADR-0069). `lines` = [(id, status, station_id)].
+    fn lines_input(order_status: &str, lines: &[(&str, &str, &str)], item_ids: &[&str]) -> Value {
+        let rows: Vec<Value> = lines
+            .iter()
+            .map(|(id, st, station)| json!({ "id": id, "order_id": "k1", "status": st, "station_id": station, "station_name": station }))
+            .collect();
+        json!({
+            "payload": { "order_id": "k1", "item_ids": item_ids },
+            "context": {
+                "hub_id": "h1", "current_user_id": "u1", "now": "2026-08-18T10:00:00+00:00", "new_ids": [],
+                "reads": {
+                    "kitchen.orders.get": [ { "id": "k1", "status": order_status } ],
+                    "kitchen.orders.items": rows
+                }
+            }
+        })
+    }
+
+    fn item_ops(out: &Output) -> Vec<&Operation> {
+        out.operations.iter().filter(|o| o.command == "kitchen._set_item_status").collect()
+    }
+
+    fn order_op(out: &Output) -> Option<&Operation> {
+        out.operations.iter().find(|o| o.command == "kitchen._set_order_status")
+    }
+
+    #[test]
+    fn bumping_one_line_leaves_the_order_and_the_other_lines_alone() {
+        // Bar bumps the beer; the grill's burger is still cooking → the ticket stays `preparing`.
+        // (Tek-Tips: a bump scoped to one station must never clear the expo's whole ticket.)
+        let out = bump_items_pure(lines_input("preparing", &[("i1", "pending", "bar"), ("i2", "preparing", "grill")], &["i1"])).unwrap();
+        assert!(out.error.is_none(), "{:?}", out.error);
+        let items = item_ops(&out);
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].params["item_id"], json!("i1"));
+        assert_eq!(items[0].params["status"], json!("ready"));
+        assert_eq!(items[0].params["require_status"], json!("pending"), "guard pinned to the state validated");
+        assert_eq!(items[0].params["completed_mode"], json!("set"));
+        assert!(order_op(&out).is_none(), "the ticket does not move while a line is still cooking");
+        assert_eq!(out.events.len(), 1);
+        assert_eq!(out.events[0].name, "kitchen.item.bumped");
+        assert_eq!(out.events[0].payload["order_id"], json!("k1"));
+        assert_eq!(out.events[0].payload["order_item_id"], json!("i1"));
+        assert_eq!(out.events[0].payload["station_id"], json!("bar"));
+        assert_eq!(out.events[0].payload["action"], json!("item_bumped"));
+    }
+
+    #[test]
+    fn bumping_the_last_pending_line_moves_the_ticket_to_ready() {
+        // Odoo / Fresh: strike the lines one by one; when none is left the ticket advances by itself.
+        let out = bump_items_pure(lines_input("preparing", &[("i1", "ready", "bar"), ("i2", "preparing", "grill")], &["i2"])).unwrap();
+        assert!(out.error.is_none());
+        let head = order_op(&out).expect("the ticket flips to ready");
+        assert_eq!(head.params["status"], json!("ready"));
+        assert_eq!(head.params["require_status"], json!("preparing"));
+        assert_eq!(head.params["ready_mode"], json!("set"));
+        let names: Vec<&str> = out.events.iter().map(|e| e.name.as_str()).collect();
+        assert_eq!(names, vec!["kitchen.item.bumped", "kitchen.order.ready"]);
+        assert_eq!(out.events[1].payload["action"], json!("bumped"));
+    }
+
+    #[test]
+    fn a_header_tap_bumps_several_lines_at_once_and_skips_the_ones_already_ready() {
+        // The expo taps the header: every line of the ticket that is still cooking is bumped in ONE
+        // command; a line already ready is not an error, it is just not touched.
+        let out = bump_items_pure(lines_input("preparing", &[("i1", "ready", "bar"), ("i2", "pending", "grill"), ("i3", "preparing", "grill")], &["i1", "i2", "i3"])).unwrap();
+        assert!(out.error.is_none());
+        let ids: Vec<Value> = item_ops(&out).iter().map(|o| o.params["item_id"].clone()).collect();
+        assert_eq!(ids, vec![json!("i2"), json!("i3")]);
+        assert!(order_op(&out).is_some(), "nothing left cooking → ready");
+        assert_eq!(out.events.iter().filter(|e| e.name == "kitchen.item.bumped").count(), 2);
+    }
+
+    #[test]
+    fn the_first_line_bumped_on_a_pending_ticket_marks_it_preparing() {
+        // A ticket nobody fired explicitly: the first bump proves the kitchen is on it.
+        let out = bump_items_pure(lines_input("pending", &[("i1", "pending", "bar"), ("i2", "pending", "grill")], &["i1"])).unwrap();
+        assert!(out.error.is_none());
+        let head = order_op(&out).expect("pending → preparing");
+        assert_eq!(head.params["status"], json!("preparing"));
+        assert_eq!(head.params["require_status"], json!("pending"));
+        assert_eq!(head.params["set_fired"], json!(1));
+        let names: Vec<&str> = out.events.iter().map(|e| e.name.as_str()).collect();
+        assert_eq!(names, vec!["kitchen.item.bumped", "kitchen.order.fired"]);
+    }
+
+    #[test]
+    fn bumping_only_lines_that_are_already_ready_is_a_refused_no_op() {
+        let out = bump_items_pure(lines_input("preparing", &[("i1", "ready", "bar")], &["i1"])).unwrap();
+        assert_eq!(out.error.as_ref().map(|e| e.code.as_str()), Some("kitchen.invalid_transition"));
+        assert!(out.operations.is_empty() && out.events.is_empty());
+    }
+
+    #[test]
+    fn a_line_that_is_not_on_this_ticket_is_item_unavailable() {
+        // The read is scoped to the hub and the ticket: an id outside it is foreign, deleted or forged.
+        let out = bump_items_pure(lines_input("preparing", &[("i1", "pending", "bar")], &["ghost"])).unwrap();
+        assert_eq!(out.error.as_ref().map(|e| e.code.as_str()), Some("kitchen.item_unavailable"));
+        assert!(out.operations.is_empty() && out.events.is_empty());
+    }
+
+    #[test]
+    fn lines_of_a_served_or_cancelled_ticket_cannot_be_bumped_nor_recalled() {
+        for terminal in ["served", "cancelled"] {
+            let out = bump_items_pure(lines_input(terminal, &[("i1", "pending", "bar")], &["i1"])).unwrap();
+            assert_eq!(out.error.as_ref().map(|e| e.code.as_str()), Some("kitchen.invalid_transition"), "bump on {terminal}");
+            let out = recall_items_pure(lines_input(terminal, &[("i1", "ready", "bar")], &["i1"])).unwrap();
+            assert_eq!(out.error.as_ref().map(|e| e.code.as_str()), Some("kitchen.invalid_transition"), "recall on {terminal}");
+        }
+    }
+
+    #[test]
+    fn a_missing_ticket_or_missing_reads_are_not_guessed() {
+        let mut inp = lines_input("preparing", &[("i1", "pending", "bar")], &["i1"]);
+        inp["context"]["reads"]["kitchen.orders.get"] = json!([]);
+        let out = bump_items_pure(inp).unwrap();
+        assert_eq!(out.error.unwrap().code, "kitchen.order_unavailable");
+
+        let mut inp = lines_input("preparing", &[("i1", "pending", "bar")], &["i1"]);
+        inp["context"]["reads"].as_object_mut().unwrap().remove("kitchen.orders.items");
+        let err = bump_items_pure(inp).expect_err("no lines read → no bump");
+        assert!(err.contains("missing_read"), "got {err}");
+
+        let err = bump_items_pure(status_input(json!({ "order_id": "k1", "item_ids": [] }))).expect_err("empty item_ids");
+        assert!(err.contains("missing_item_ids"), "got {err}");
+    }
+
+    #[test]
+    fn recalling_a_line_of_a_ready_ticket_reopens_the_ticket() {
+        // Bump is instant, recall is its undo (Toast/Fresh/TouchBistro): no dialog, and the ticket
+        // comes back to the line because a line of it is cooking again.
+        let out = recall_items_pure(lines_input("ready", &[("i1", "ready", "bar"), ("i2", "ready", "grill")], &["i2"])).unwrap();
+        assert!(out.error.is_none(), "{:?}", out.error);
+        let items = item_ops(&out);
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].params["item_id"], json!("i2"));
+        assert_eq!(items[0].params["status"], json!("preparing"));
+        assert_eq!(items[0].params["require_status"], json!("ready"));
+        assert_eq!(items[0].params["completed_mode"], json!("clear"));
+        let head = order_op(&out).expect("ready → preparing");
+        assert_eq!(head.params["status"], json!("preparing"));
+        assert_eq!(head.params["require_status"], json!("ready"));
+        assert_eq!(head.params["ready_mode"], json!("clear"));
+        let names: Vec<&str> = out.events.iter().map(|e| e.name.as_str()).collect();
+        assert_eq!(names, vec!["kitchen.item.recalled", "kitchen.order.recalled"]);
+        assert_eq!(out.events[0].payload["action"], json!("item_recalled"));
+        assert_eq!(out.events[0].payload["order_item_id"], json!("i2"));
+    }
+
+    #[test]
+    fn recalling_a_line_of_a_ticket_still_cooking_touches_only_the_line() {
+        let out = recall_items_pure(lines_input("preparing", &[("i1", "ready", "bar"), ("i2", "pending", "grill")], &["i1"])).unwrap();
+        assert!(out.error.is_none());
+        assert_eq!(item_ops(&out).len(), 1);
+        assert!(order_op(&out).is_none());
+        assert_eq!(out.events.len(), 1);
+        assert_eq!(out.events[0].name, "kitchen.item.recalled");
+    }
+
+    #[test]
+    fn recalling_a_line_that_is_not_ready_is_a_refused_no_op() {
+        let out = recall_items_pure(lines_input("preparing", &[("i1", "pending", "bar")], &["i1"])).unwrap();
+        assert_eq!(out.error.as_ref().map(|e| e.code.as_str()), Some("kitchen.invalid_transition"));
+        assert!(out.operations.is_empty() && out.events.is_empty());
     }
 
     #[test]
