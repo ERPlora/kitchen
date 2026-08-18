@@ -372,6 +372,15 @@
     "kitchen.orders.set_status": {
       "permission": "kitchen.change_order",
       "schema": "schemas/order_set_status.json",
+      "reads": [
+        {
+          "query": "kitchen.orders.get",
+          "params": {
+            "order_id": "payload.order_id"
+          },
+          "required": true
+        }
+      ],
       "handler": {
         "type": "wasm",
         "file": "dist/handler.wasm",
@@ -384,6 +393,15 @@
     "kitchen.orders.mark_served": {
       "permission": "kitchen.complete_order",
       "schema": "schemas/order_mark_served.json",
+      "reads": [
+        {
+          "query": "kitchen.orders.get",
+          "params": {
+            "order_id": "payload.order_id"
+          },
+          "required": true
+        }
+      ],
       "handler": {
         "type": "wasm",
         "file": "dist/handler.wasm",
@@ -396,6 +414,15 @@
     "kitchen.orders.cancel": {
       "permission": "kitchen.cancel_order",
       "schema": "schemas/order_cancel.json",
+      "reads": [
+        {
+          "query": "kitchen.orders.get",
+          "params": {
+            "order_id": "payload.order_id"
+          },
+          "required": true
+        }
+      ],
       "handler": {
         "type": "wasm",
         "file": "dist/handler.wasm",
@@ -546,7 +573,13 @@
       "permission": "kitchen.change_order",
       "sql": [
         "commands/_set_order_status.sql"
-      ]
+      ],
+      "expect_rows": {
+        "op": "min",
+        "n": 1,
+        "error": "kitchen.invalid_transition",
+        "message": "That kitchen order is no longer in the state this action requires. Refresh and try again."
+      }
     },
     "kitchen._cascade_item_status": {
       "permission": "kitchen.change_order",

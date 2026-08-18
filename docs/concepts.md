@@ -67,6 +67,11 @@ have their own status, so a station can bump its part, but a header transition m
 **Recall** is the way back: a ticket that was bumped too early can be pulled back onto the screen. It
 is a first-class action with its own event, not an undo hack.
 
+The path is fixed: **pending → preparing → ready → served**, recall from ready back to preparing,
+cancel from anything not yet served; served and cancelled are final. The module checks the ticket's
+real state before moving it — a transition outside the path is refused, writes nothing and emits no
+event, so nobody downstream ever hears about a state that is not in the database.
+
 ## Deleting a ticket is guarded
 
 You can only delete a ticket that is `pending` or `cancelled` **and** not tied to a sale. Anything

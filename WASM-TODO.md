@@ -22,11 +22,13 @@ El diseño original preveía que el handler leyera datos (comanda, líneas,
    la query pública `inventory.products.get`.
 2. **Routing en SQL**: `_insert_item` resuelve la estación en la misma transacción
    (override explícito > mapeo producto > mapeo categoría > NULL; solo estaciones activas).
-3. **Guardas de estado en el WHERE** de la intención (no-op si no se cumplen, sin mensaje
-   de error): recall solo desde `ready`; delete_order solo `pending|cancelled` y sin
-   `sale_id`; delete_station sin routings ni líneas en curso; route_set solo a estación
-   activa. Mejora futura: con lecturas pre-cargadas, devolver errores tipados
-   (`cannot_delete_status`, `station_has_routings`, …).
+3. **Guardas de estado**: las transiciones de comanda (`set_status`/`mark_served`/`cancel`)
+   leen la fila pre-cargada (`reads` de `kitchen.orders.get`, ADR-0069) y rechazan con
+   `kitchen.invalid_transition` / `kitchen.order_unavailable` lo que la matriz no permite —
+   sin operación ni evento (kitchen#11). El resto sigue en el WHERE (no-op si no se cumple):
+   delete_order solo `pending|cancelled` y sin `sale_id`; delete_station sin routings ni
+   líneas en curso; route_set solo a estación activa. Mejora futura: mismo patrón de reads
+   para errores tipados (`cannot_delete_status`, `station_has_routings`, …).
 4. **Cascada set-based**: `_cascade_item_status` actualiza las líneas por
    `order_id`+`from_status` (no 1 intención por línea).
 5. **order_number atómico** `YYYYMMDD-NNNN`: `_bump_counter` (upsert sobre

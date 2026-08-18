@@ -1,8 +1,10 @@
--- Fija el estado y marcas de tiempo de una comanda. Intención emitida por el handler WASM
--- (update_order_status). Runtime inyecta :hub_id, :current_user_id, :now.
--- El handler decide los modos según la transición (sin lecturas previas; los guardas de
--- estado van en el WHERE → si no se cumplen, la transición es un no-op):
---   :require_status  '' = sin guarda; 'ready' = solo si la comanda está ready (recall).
+-- Sets the status and timestamps of a kitchen order. Intention emitted by the WASM handler
+-- (set_status / mark_served / cancel). The runtime injects :hub_id, :current_user_id, :now.
+-- The handler validates the transition against the row it was handed (`reads`, kitchen#11) and
+-- pins the guard to that state, so a row that moved in between matches ZERO rows instead of
+-- jumping states; `expect_rows` on this command turns that into a rejection (hub#1025 for
+-- handler operations).
+--   :require_status  the status the handler validated against ('' = no guard, legacy).
 --   :set_fired       1 = sella fired_at (si aún no estaba) con :now.
 --   :ready_mode      'set' = ready_at = :now · 'clear' = NULL · 'keep' = no tocar.
 --   :served_mode     'set' = served_at = :now · 'keep' = no tocar.

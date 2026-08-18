@@ -17,6 +17,8 @@
 
 | Refusal | What happened | What to do |
 |---|---|---|
+| `kitchen.invalid_transition` | The ticket is not in a state that accepts that action (e.g. serving one that is not ready, bumping one already served) | Refresh — the row shows its real state — and pick an action it accepts |
+| `kitchen.order_unavailable` | The ticket does not exist in this business or was deleted | Refresh the list |
 | Ticket delete refused | It is not `pending` or `cancelled`, or it is tied to a sale | Cancel it instead; cooked or charged work is history |
 | Station delete refused | It still has routings or lines in progress | Clear the routings and finish the work first |
 | Routing rejected | The target station is inactive or does not exist | Activate or create the station |

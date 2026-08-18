@@ -124,5 +124,9 @@
     "stPaid": "Pagada",
     "stCancelled": "Anulada",
     "close": "Cerrar"
+  },
+  "errors": {
+    "kitchen.invalid_transition": "Esa comanda ya no está en el estado que requiere esta acción. Actualiza e inténtalo de nuevo.",
+    "kitchen.order_unavailable": "Esa comanda no está disponible: no existe en este negocio o se ha borrado."
   }
 }

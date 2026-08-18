@@ -123,5 +123,9 @@
     "stPaid": "Paid",
     "stCancelled": "Cancelled",
     "close": "Close"
+  },
+  "errors": {
+    "kitchen.invalid_transition": "That kitchen order is no longer in the state this action requires. Refresh and try again.",
+    "kitchen.order_unavailable": "That kitchen order is not available: it does not exist in this business or it has been deleted."
   }
 }
