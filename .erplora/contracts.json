@@ -12,7 +12,9 @@
     ],
     "optional_queries": [],
     "commands": [
+      "kitchen.orders.cancel",
       "kitchen.orders.create",
+      "kitchen.orders.mark_served",
       "kitchen.orders.set_status",
       "kitchen.settings.update",
       "kitchen.stations.create",

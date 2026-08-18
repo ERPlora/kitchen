@@ -35,6 +35,20 @@ pub fn update_order_status(input: Json<erplora_guest_sdk::Input>) -> FnResult<Js
     to_fn_result(update_order_status_pure(input.into_inner().into_value()))
 }
 
+/// kitchen#5: served is `complete_order`, its own command → its own export.
+#[cfg(feature = "guest")]
+#[plugin_fn]
+pub fn mark_order_served(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
+    to_fn_result(mark_order_served_pure(input.into_inner().into_value()))
+}
+
+/// kitchen#5: cancelling is `cancel_order`, its own command → its own export.
+#[cfg(feature = "guest")]
+#[plugin_fn]
+pub fn cancel_order(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
+    to_fn_result(cancel_order_pure(input.into_inner().into_value()))
+}
+
 #[cfg(feature = "guest")]
 #[plugin_fn]
 pub fn delete_order(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
@@ -349,16 +363,44 @@ pub fn create_order_pure(input: Value) -> Result<Output, String> {
     })
 }
 
-// ── update_order_status (command kitchen.orders.set_status) ────────────────
+// ── Order status transitions ───────────────────────────────────────────────
+//
+// One permission per ACTION (kitchen#5): the manifest declares one permission per command, so the
+// verbs are split across three commands that share this core:
+//   · `kitchen.orders.set_status` (change_order)  → fire · mark_ready · recall
+//   · `kitchen.orders.mark_served` (complete_order) → served
+//   · `kitchen.orders.cancel`      (cancel_order)  → cancelled
+// The runtime does not hand `context.permissions` to the guest, so the split by command is the
+// only place the per-action gate can live today.
 
+/// `kitchen.orders.set_status`: the change_order verbs only.
 pub fn update_order_status_pure(input: Value) -> Result<Output, String> {
     let (payload, ctx) = split_input(&input);
+    let action = as_str(payload.get("action_name").unwrap_or(&Value::Null));
+    if !matches!(action.as_str(), "fire" | "mark_ready" | "recall") {
+        return Err(format!("unknown_action: {action}"));
+    }
+    transition_pure(&payload, &ctx, &action)
+}
+
+/// `kitchen.orders.mark_served`: served (complete_order).
+pub fn mark_order_served_pure(input: Value) -> Result<Output, String> {
+    let (payload, ctx) = split_input(&input);
+    transition_pure(&payload, &ctx, "mark_served")
+}
+
+/// `kitchen.orders.cancel`: cancelled (cancel_order).
+pub fn cancel_order_pure(input: Value) -> Result<Output, String> {
+    let (payload, ctx) = split_input(&input);
+    transition_pure(&payload, &ctx, "cancel")
+}
+
+fn transition_pure(payload: &Value, ctx: &Ctx, action: &str) -> Result<Output, String> {
     let order_id = as_str(payload.get("order_id").unwrap_or(&Value::Null));
     if order_id.is_empty() {
         return Err("missing_order_id".to_string());
     }
-    let action = as_str(payload.get("action_name").unwrap_or(&Value::Null));
-    let reason = str_or(&payload, "reason", "");
+    let reason = str_or(payload, "reason", "");
 
     // (status, require_status, set_fired, ready_mode, served_mode, append_note,
     //  cascade: Option<(from_status, to_status, set_fired, completed_mode)>, evento, log_action)
@@ -372,7 +414,7 @@ pub fn update_order_status_pure(input: Value) -> Result<Output, String> {
         cascade,
         event,
         log_action,
-    ) = match action.as_str() {
+    ) = match action {
         "fire" => (
             "preparing",
             "",
@@ -814,6 +856,58 @@ mod tests {
             .collect();
         assert_eq!(items.len(), 1, "el servicio no baja a cocina");
         assert_eq!(items[0].params["product_name"], json!("Tarta"));
+    }
+
+    // ── kitchen#5: one permission per action → one command per permission ──────────────
+
+    fn status_input(payload: Value) -> Value {
+        json!({
+            "payload": payload,
+            "context": { "hub_id": "h1", "current_user_id": "u1", "now": "2026-08-18T10:00:00+00:00", "new_ids": [] }
+        })
+    }
+
+    #[test]
+    fn set_status_keeps_only_the_change_order_verbs() {
+        // `mark_served` and `cancel` moved to their own commands (complete_order / cancel_order):
+        // a caller who only holds change_order must not reach them through set_status.
+        for verb in ["mark_served", "cancel"] {
+            let err = update_order_status_pure(status_input(json!({ "order_id": "k1", "action_name": verb })))
+                .expect_err("moved verb must be refused here");
+            assert!(err.starts_with("unknown_action"), "got {err}");
+        }
+        for verb in ["fire", "mark_ready", "recall"] {
+            update_order_status_pure(status_input(json!({ "order_id": "k1", "action_name": verb })))
+                .expect("change_order verb still handled by set_status");
+        }
+    }
+
+    #[test]
+    fn mark_order_served_is_the_served_transition() {
+        let out = mark_order_served_pure(status_input(json!({ "order_id": "k1" }))).expect("served");
+        let head = out.operations.iter().find(|o| o.command == "kitchen._set_order_status").unwrap();
+        assert_eq!(head.params["status"], json!("served"));
+        assert_eq!(head.params["served_mode"], json!("set"));
+        assert_eq!(out.events[0].name, "kitchen.order.served");
+        assert_eq!(out.events[0].payload["action"], json!("served"));
+    }
+
+    #[test]
+    fn cancel_order_is_the_cancelled_transition_with_reason() {
+        let out = cancel_order_pure(status_input(json!({ "order_id": "k1", "reason": "guest left" })))
+            .expect("cancelled");
+        let head = out.operations.iter().find(|o| o.command == "kitchen._set_order_status").unwrap();
+        assert_eq!(head.params["status"], json!("cancelled"));
+        assert_eq!(head.params["append_note"], json!("Cancelled: guest left"));
+        assert!(out.operations.iter().any(|o| o.command == "kitchen._cascade_item_status"));
+        assert_eq!(out.events[0].name, "kitchen.order.cancelled");
+        assert_eq!(out.events[0].payload["notes"], json!("guest left"));
+    }
+
+    #[test]
+    fn served_and_cancel_need_an_order_id() {
+        assert!(mark_order_served_pure(status_input(json!({}))).is_err());
+        assert!(cancel_order_pure(status_input(json!({}))).is_err());
     }
 
     #[test]

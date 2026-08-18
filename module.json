@@ -30,11 +30,11 @@
     "kitchen.delete_order",
     "kitchen.cancel_order",
     "kitchen.complete_order",
-    "kitchen.view_history",
     "kitchen.view_settings",
     "kitchen.change_settings",
     "kitchen.manage_settings",
-    "kitchen.view_log"
+    "kitchen.view_log",
+    "kitchen.add_log"
   ],
   "role_permissions": {
     "admin": [
@@ -47,14 +47,15 @@
       "kitchen.delete_order",
       "kitchen.cancel_order",
       "kitchen.complete_order",
-      "kitchen.view_history",
       "kitchen.view_settings",
       "kitchen.change_settings",
-      "kitchen.view_log"
+      "kitchen.view_log",
+      "kitchen.add_log"
     ],
     "employee": [
       "kitchen.view_order",
       "kitchen.add_order",
+      "kitchen.change_order",
       "kitchen.complete_order",
       "kitchen.view_settings",
       "kitchen.view_log"
@@ -377,7 +378,31 @@
         "function": "update_order_status"
       },
       "ai": {
-        "description": "Changes the status of a kitchen order (fire, mark_ready, mark_served, cancel, recall); the handler emits the matching kitchen.order.* event"
+        "description": "Moves a kitchen order along the line (fire, mark_ready, recall); the handler emits the matching kitchen.order.* event. Serving and cancelling are their own commands (kitchen.orders.mark_served / kitchen.orders.cancel)"
+      }
+    },
+    "kitchen.orders.mark_served": {
+      "permission": "kitchen.complete_order",
+      "schema": "schemas/order_mark_served.json",
+      "handler": {
+        "type": "wasm",
+        "file": "dist/handler.wasm",
+        "function": "mark_order_served"
+      },
+      "ai": {
+        "description": "Marks a ready kitchen order as served (handed to the guest); the handler emits kitchen.order.served"
+      }
+    },
+    "kitchen.orders.cancel": {
+      "permission": "kitchen.cancel_order",
+      "schema": "schemas/order_cancel.json",
+      "handler": {
+        "type": "wasm",
+        "file": "dist/handler.wasm",
+        "function": "cancel_order"
+      },
+      "ai": {
+        "description": "Cancels a kitchen order that has not been served yet, with an optional reason; the handler emits kitchen.order.cancelled"
       }
     },
     "kitchen.orders.delete": {
@@ -483,7 +508,7 @@
       }
     },
     "kitchen.logs.create": {
-      "permission": "kitchen.view_log",
+      "permission": "kitchen.add_log",
       "transaction": true,
       "sql": [
         "commands/log_create.sql"

@@ -47,18 +47,19 @@
 |---|---|
 | See tickets, lines, stations and pending counts | `kitchen.view_order` |
 | Create a ticket, fire from the till | `kitchen.add_order` |
-| Edit a ticket, change status, recall, cancel | `kitchen.change_order` |
-| Mark a ticket complete | `kitchen.complete_order` |
+| Edit a ticket, fire it, mark it ready, recall it | `kitchen.change_order` |
+| Mark a ticket served | `kitchen.complete_order` |
 | Delete a ticket | `kitchen.delete_order` |
 | Cancel a ticket | `kitchen.cancel_order` |
 | See the audit log | `kitchen.view_log` |
-| See the history | `kitchen.view_history` |
+| Write an entry in the audit log by hand | `kitchen.add_log` |
 | See / change the KDS settings | `kitchen.view_settings` / `kitchen.change_settings` |
 | Create, edit or delete a station; configure routing | `kitchen.manage_settings` (admin only) |
 
-By role: **admin** has everything. **manager** manages tickets, stations and settings and reads the
-history. **employee** can **see, create and complete** tickets and read the settings and the log — an
-employee **cannot** edit or cancel a ticket, cannot delete, and cannot touch stations or routing.
+By role: **admin** has everything. **manager** manages tickets and settings, cancels tickets and may
+annotate the audit log by hand. **employee** (the cook) can **see, create, fire, bump, recall and
+serve** tickets and read the settings and the log — an employee **cannot** cancel a fired ticket,
+cannot delete, cannot write in the audit log by hand, and cannot touch stations or routing.
 
 ## Dependencies — what breaks if something is missing
 

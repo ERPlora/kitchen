@@ -28,10 +28,11 @@ versión instalada y cita la de TU versión, no la de la última publicada. En i
 | query | `kitchen.orders.list` / `.get` / `.items` · `kitchen.stations.list` / `.pending_counts` | `view_order` |
 | query | `kitchen.settings.get` · `kitchen.logs.list` | `view_settings` · `view_log` |
 | command | `kitchen.orders.create` (WASM) / `.create_from_order` (WASM, listener) / `.create_from_sale` (WASM, legacy) | `add_order` |
-| command | `kitchen.orders.update` / `.set_status` (WASM) | `change_order` |
+| command | `kitchen.orders.update` / `.set_status` (WASM: fire · mark_ready · recall) | `change_order` |
+| command | `kitchen.orders.mark_served` (WASM) · `kitchen.orders.cancel` (WASM) | `complete_order` · `cancel_order` |
 | command | `kitchen.orders.delete` (WASM) | `delete_order` |
 | command | `kitchen.stations.create` / `.update` / `.delete` (WASM) / `.set_routing` (WASM) | `manage_settings` |
-| command | `kitchen.settings.update` · `kitchen.logs.create` | `change_settings` · `view_log` |
+| command | `kitchen.settings.update` · `kitchen.logs.create` | `change_settings` · `add_log` |
 | escucha | `order.fired` → `create_from_order` · `kitchen.order.*` → `logs.create` | — |
 | emite | `kitchen.order.*`, `kitchen.station.*`, `kitchen.routing.changed`, `kitchen.settings.updated` | — |
 | slots | `sales.pos.actions` → `erp-kitchen-pos-fire` · `sales.pos.order_info` → `erp-kitchen-pos-comandas` | `add_order` · `view_order` |

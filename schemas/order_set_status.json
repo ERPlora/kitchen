@@ -1,6 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "kitchen.orders.set_status",
+  "description": "The change_order verbs of the kitchen line (kitchen#5). Serving is kitchen.orders.mark_served (complete_order); cancelling is kitchen.orders.cancel (cancel_order).",
   "type": "object",
   "additionalProperties": false,
   "required": ["order_id", "action_name"],
@@ -8,8 +9,7 @@
     "order_id": { "type": "string", "minLength": 1 },
     "action_name": {
       "type": "string",
-      "enum": ["fire", "mark_ready", "mark_served", "cancel", "recall"]
-    },
-    "reason": { "type": "string", "default": "" }
+      "enum": ["fire", "mark_ready", "recall"]
+    }
   }
 }
