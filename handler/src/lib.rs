@@ -201,11 +201,17 @@ const PRIORITIES: [&str; 3] = ["normal", "rush", "vip"];
 
 /// Payload estándar de los eventos `kitchen.order.*` que escucha `kitchen.logs.create`
 /// (el payload del evento ES el payload del listener: debe traer order_id/action/notes).
+///
+/// Y SOLO eso (kitchen#29). El relay entrega el payload del evento tal cual al listener, y
+/// `execute_at` lo valida contra el schema del command de destino, que es
+/// `additionalProperties: false`: una clave de más no se ignora, tumba la entrega y el rastro de
+/// cocina se queda vacío sin decir por qué. Aquí sobraba `sender: "kitchen"` — la procedencia ya la
+/// guarda el runtime en la fila del outbox (`_event_outbox.module_id`), que además no depende de
+/// que el handler se nombre a sí mismo bien.
 fn order_event(name: &str, order_id: &str, action: &str, notes: &str, user_id: &str) -> Event {
     Event::new(
         name,
         json!({
-            "sender": "kitchen",
             "order_id": order_id,
             "order_item_id": Value::Null,
             "station_id": Value::Null,
@@ -613,12 +619,12 @@ fn preloaded_items(input: &Value) -> Result<Vec<Value>, String> {
 }
 
 /// Event payload for `kitchen.item.*` — the shape `kitchen.logs.create` expects, with the line.
+/// Nothing else, for the reason spelled out on [`order_event`] (kitchen#29).
 fn item_event(name: &str, order_id: &str, item: &Value, action: &str, user_id: &str) -> Event {
     let station = item.get("station_id").cloned().unwrap_or(Value::Null);
     Event::new(
         name,
         json!({
-            "sender": "kitchen",
             "order_id": order_id,
             "order_item_id": as_str(item.get("id").unwrap_or(&Value::Null)),
             "station_id": if station.is_null() || as_str(&station).is_empty() { Value::Null } else { json!(as_str(&station)) },
@@ -1464,5 +1470,92 @@ mod tests {
             "context": { "hub_id": "h1", "current_user_id": "u1", "now": "2026-07-18T10:00:00+00:00", "new_ids": ["kit-1"] }
         });
         assert!(create_order_from_order_pure(inp).is_err());
+    }
+
+    // ── kitchen#29: the payload of a listened event IS the listener's command payload ───
+
+    /// The events `module.json` routes to `kitchen.logs.create`, read from the manifest itself so a
+    /// listener declared tomorrow is covered by the test below the day it is written.
+    fn events_routed_to_log_create() -> Vec<String> {
+        let manifest: Value = serde_json::from_str(include_str!("../../module.json"))
+            .expect("module.json parses");
+        manifest["events"]["listen"]
+            .as_object()
+            .expect("events.listen")
+            .iter()
+            .filter(|(_, l)| l["command"] == json!("kitchen.logs.create"))
+            .map(|(event, _)| event.clone())
+            .collect()
+    }
+
+    /// Judges a payload the way the runtime judges it before running the listener.
+    ///
+    /// The relay hands the listener the event payload **verbatim** (`outbox.rs::process_row` →
+    /// `commands::execute_at`), and `execute_at` validates it against the JSON Schema of the
+    /// DESTINATION command — `schemas/log_create.json` — before touching the database. That schema
+    /// is `additionalProperties: false`, so one key too many is not ignored: it is a hard refusal,
+    /// retried and finally parked in the dead-letter, and the kitchen log stays empty with nothing
+    /// on screen to say why («Sin actividad reciente», kitchen#3).
+    ///
+    /// The two rules that decide this case are re-read from the schema file on every run, so the
+    /// test cannot drift away from the contract it is about.
+    fn assert_log_create_accepts(event: &str, payload: &Value) {
+        let schema: Value = serde_json::from_str(include_str!("../../schemas/log_create.json"))
+            .expect("log_create.json parses");
+        assert_eq!(
+            schema["additionalProperties"],
+            json!(false),
+            "this test only makes sense while the destination schema is strict"
+        );
+        let declared = schema["properties"].as_object().expect("properties");
+        let object = payload.as_object().expect("an event payload is an object");
+        for key in object.keys() {
+            assert!(
+                declared.contains_key(key),
+                "`{event}` carries `{key}`, which `kitchen.logs.create` does not declare: \
+                 additionalProperties:false makes the listener fail before it writes a row"
+            );
+        }
+        for required in schema["required"].as_array().expect("required") {
+            let name = required.as_str().unwrap();
+            assert!(object.contains_key(name), "`{event}` is missing `{name}`");
+        }
+        let actions = schema["properties"]["action"]["enum"].as_array().expect("enum");
+        assert!(
+            actions.contains(&object["action"]),
+            "`{event}` logs action {:?}, outside the enum the schema accepts",
+            object["action"]
+        );
+    }
+
+    #[test]
+    fn every_event_the_kitchen_log_listens_to_is_accepted_by_log_create() {
+        let routed = events_routed_to_log_create();
+        assert!(!routed.is_empty(), "the manifest routes events to the log");
+
+        let outputs = [
+            run("fire", "pending"),
+            run("mark_ready", "preparing"),
+            run("mark_served", "ready"),
+            run("cancel", "preparing"),
+            run("recall", "ready"),
+            bump_items_pure(lines_input("preparing", &[("i1", "pending", "bar")], &["i1"])),
+            recall_items_pure(lines_input("ready", &[("i1", "ready", "bar")], &["i1"])),
+        ];
+
+        let mut covered: Vec<String> = Vec::new();
+        for out in outputs {
+            let out = out.expect("the transition is allowed");
+            assert!(out.error.is_none(), "{:?}", out.error);
+            for ev in &out.events {
+                if routed.contains(&ev.name) {
+                    assert_log_create_accepts(&ev.name, &ev.payload);
+                    covered.push(ev.name.clone());
+                }
+            }
+        }
+        for event in &routed {
+            assert!(covered.contains(event), "no case in this test emits `{event}`");
+        }
     }
 }
