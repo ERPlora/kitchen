@@ -1,16 +1,35 @@
 # Kitchen — Screens
 
-The module contributes three tabs to the hub navigation — **Display**, **Commands** and
-**Stations** — plus a **Kitchen** settings tab the shell generates from the declarative settings
+The module contributes four tabs to the hub navigation — **Display**, **Commands**, **Stations**
+and **History** — plus a **Kitchen** settings tab the shell generates from the declarative settings
 block. It also injects two panels into the sell screen.
 
-## Display — the kitchen screen
+## Display — the KDS
 
-The KDS. It shows the live tickets and reloads by itself whenever any `kitchen.order.*` event
-arrives — no polling, no refresh button. Requires `kitchen.view_order`.
+A grid of tickets, one card per order (kitchen#4). Each card shows the label the waiter sent
+("Table 4", "Bar", "Pickup Ana"), the ticket number, the round, a rush/VIP badge and its lines with
+quantity, modifiers, notes and seat. Requires `kitchen.view_order`; bumping needs
+`kitchen.change_order`, serving `kitchen.complete_order`.
 
-This is the screen the line works from: tickets appear when a waiter fires an order, and are bumped
-as they are cooked and served.
+- **Stations.** A segment filters the cards by the station frozen on each line; the first entry is
+  the expo/pass view (every station). A card only shows the lines of the station you are on.
+- **One tap = bump.** Tap a line to mark it ready (it is struck through); tap a struck line to
+  recall it. Tap the card header (or **Bump**) to bump every line on screen still cooking — only
+  those: a bump on the bar never clears the grill's lines from the expo. When no line of the ticket
+  is left cooking, the ticket goes **ready** by itself and moves to the **Ready** rail, where
+  **Recall** brings it back and **Served** hands it over. There is never a confirmation dialog:
+  recall is the undo.
+- **Semaphore.** Each card ages from the moment it was fired: green, then amber past
+  `warning_time_minutes`, then red past `critical_time_minutes` (settings). The clock keeps
+  counting in red; `show_timer` hides the clock and `color_coding_enabled` turns the colours off.
+- **All-Day.** The second mode sums what is left to cook per product (and per station in the expo
+  view), so the fryer fires one batch instead of six.
+- Reloads by itself on every `kitchen.order.*` / `kitchen.item.*` event — no polling.
+
+## History — the audit trail
+
+Every action the kitchen recorded (`kitchen.logs.list`): received, fired, line ready, line
+recalled, ready, served, recalled, cancelled. Requires `kitchen.view_log`.
 
 ## Commands — the tickets
 

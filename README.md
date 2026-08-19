@@ -33,12 +33,14 @@ versión instalada y cita la de TU versión, no la de la última publicada. En i
 | command | `kitchen.orders.delete` (WASM) | `delete_order` |
 | command | `kitchen.stations.create` / `.update` / `.delete` (WASM) / `.set_routing` (WASM) | `manage_settings` |
 | command | `kitchen.settings.update` · `kitchen.logs.create` | `change_settings` · `add_log` |
-| escucha | `order.fired` → `create_from_order` · `kitchen.order.*` → `logs.create` | — |
-| emite | `kitchen.order.*`, `kitchen.station.*`, `kitchen.routing.changed`, `kitchen.settings.updated` | — |
+| escucha | `order.fired` → `create_from_order` · `kitchen.order.*` / `kitchen.item.*` → `logs.create` | — |
+| emite | `kitchen.order.*`, `kitchen.item.*`, `kitchen.station.*`, `kitchen.routing.changed`, `kitchen.settings.updated` | — |
 | slots | `sales.pos.actions` → `erp-kitchen-pos-fire` · `sales.pos.order_info` → `erp-kitchen-pos-comandas` | `add_order` · `view_order` |
 
-Navegación: `erp-kitchen-display` («Display»), `erp-kitchen-orders-active` («Commands»),
-`erp-kitchen-orders-stations` («Stations»); ajustes declarativos (ADR-0082).
+Navegación: `erp-kitchen-display` («Display», el KDS: rejilla de comandas por estación con
+bump/recall por línea, semáforo y All-Day — kitchen#4), `erp-kitchen-orders-active` («Commands»),
+`erp-kitchen-orders-stations` («Stations»), `erp-kitchen-history` («History», el log); ajustes
+declarativos (ADR-0082).
 
 ## Layout
 
