@@ -4,6 +4,8 @@
   "consumes": {
     "queries": [
       "kitchen.logs.list",
+      "kitchen.orders.all_day",
+      "kitchen.orders.display",
       "kitchen.orders.items",
       "kitchen.orders.list",
       "kitchen.settings.get",
@@ -12,17 +14,20 @@
     ],
     "optional_queries": [],
     "commands": [
+      "kitchen.items.bump",
+      "kitchen.items.recall",
       "kitchen.orders.cancel",
       "kitchen.orders.create",
       "kitchen.orders.mark_served",
       "kitchen.orders.set_status",
-      "kitchen.settings.update",
       "kitchen.stations.create",
       "kitchen.stations.delete",
       "kitchen.stations.set_routing",
       "kitchen.stations.update"
     ],
     "events": [
+      "kitchen.item.bumped",
+      "kitchen.item.recalled",
       "kitchen.order.cancelled",
       "kitchen.order.created",
       "kitchen.order.deleted",
@@ -32,6 +37,7 @@
       "kitchen.order.served",
       "kitchen.order.updated",
       "kitchen.routing.changed",
+      "kitchen.settings.updated",
       "kitchen.station.created",
       "kitchen.station.deleted",
       "kitchen.station.updated"

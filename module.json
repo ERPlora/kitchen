@@ -79,6 +79,12 @@
       "label": "Stations",
       "icon": "flame-outline",
       "component": "erp-kitchen-orders-stations"
+    },
+    {
+      "id": "history",
+      "label": "History",
+      "icon": "time-outline",
+      "component": "erp-kitchen-history"
     }
   ],
   "settings": {
