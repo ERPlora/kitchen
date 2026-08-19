@@ -2,8 +2,8 @@
 
 ## Known limitations you should know about
 
-- **Category routing is inert.** Only per-product routing works. The category fallback exists in the
-  SQL but nothing can trigger it.
+- **Category routing uses the product's PRIMARY category.** A product in several categories routes by
+  the first one the till knows; map the product itself when that is not the station you want.
 - **Firing with Kitchen inactive silently loses the ticket.** The lines are marked as sent and no
   ticket is created. There is no guard yet — do not fire from an integration when the module is off.
 - **Auto-accept and auto-bump do nothing on their own.** They are settings; no scheduled task drives
@@ -87,8 +87,8 @@ was lost: the lines are marked sent but no ticket exists.
 **"The same dish was cooked twice."** Check the rounds on the ticket. A fired line does not return to
 pending, so this normally means it was added twice on the check, not fired twice.
 
-**"A product goes to the wrong station."** Routing is per product. Open Stations, check that
-product's mapping. Category routing does not work, so a category-level expectation will not be met.
+**"A product goes to the wrong station."** Open Stations and check the product's mapping first (it
+beats the category); then the mapping of the product's primary category.
 
 **"Nothing prints for a station."** Its destination is probably `display`. Set it to `printer` or
 `both`. Also check the printer role — `printer_name` is obsolete and read by nobody.

@@ -50,14 +50,16 @@ Two consequences:
 - **The database is the source of truth; the paper is a copy.** If a printer fails, the ticket exists
   and the KDS shows it. You are warned and you can reprint. The waiter is never blocked.
 
-## Routing is per product; per category is inert
+## Routing is per product, then per category
 
 A product is mapped to the station that prepares it, and the routing is resolved in SQL as the line is
-inserted, in the same transaction.
+inserted, in the same transaction: explicit station on the line → product mapping → **category
+mapping** → no station.
 
-**Category routing does not work.** The fallback exists but nothing can trigger it: the till does not
-send a category, and a product can belong to several categories at once, so a single category value
-cannot model the case. Do not rely on it.
+The category fallback is live since sales#12 (2026-08-18): the till sends the product's **primary
+category** with every fired line (a product can belong to several categories; the first one wins),
+and kitchen forwards it as an opaque id. Map a category to a station in **Stations → Routing** and
+every unmapped product of that category lands there. A product mapping always beats the category.
 
 ## Status cascades from the ticket to its lines
 
