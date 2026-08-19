@@ -56,8 +56,8 @@ docs/                         # documentación de usuario + corpus del asistente
 ## Estado y trabajo abierto
 
 El estado vive en las **Issues de este repo**, no aquí. Limitaciones conocidas y documentadas en
-`docs/limits.md`: enrutado por **categoría inerte** (el TPV no manda `category_id` y producto↔categoría
-es M2M), **entrega insegura** al disparar con el módulo inactivo (falta guard/ack), y auto-accept/
+`docs/limits.md`: enrutado por categoría por la categoría **primaria** del producto (sales#12; el
+mapeo por producto gana), **entrega insegura** al disparar con el módulo inactivo (falta guard/ack), y auto-accept/
 auto-bump sin tarea programada que los aplique.
 
 Doc de arquitectura: `architecture/modules/kitchen.md` (cargarlo antes de tocar el módulo).

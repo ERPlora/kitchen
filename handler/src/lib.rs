@@ -1110,6 +1110,24 @@ mod tests {
     }
 
     #[test]
+    fn the_category_of_the_line_reaches_the_routing_sql() {
+        // kitchen#4 / #23 residue: routing by CATEGORY was documented as inert because "the till does
+        // not send `category_id`". Since sales#12 (2026-08-18) `order.fired` carries the product's
+        // primary category per line; this pins that kitchen forwards it to `_insert_item`, whose
+        // COALESCE falls back to `kitchen_category_station` when the product has no mapping.
+        let out = create_order_from_order_pure(fired(
+            "Mesa 4",
+            "dine_in",
+            json!([{ "product_id": "p-cerveza", "product_name": "Caña", "quantity": 1_000_000, "unit_price": 250, "category_id": "cat-bebidas" },
+                   { "product_id": "p-raro", "product_name": "Sin clasificar", "quantity": 1_000_000, "unit_price": 100, "category_id": null }]),
+        ))
+        .unwrap();
+        let items: Vec<_> = out.operations.iter().filter(|o| o.command == "kitchen._insert_item").collect();
+        assert_eq!(items[0].params["category_id"], json!("cat-bebidas"));
+        assert_eq!(items[1].params["category_id"], Value::Null, "an unclassified line routes by product only (or nowhere)");
+    }
+
+    #[test]
     fn las_lineas_de_servicio_no_se_cocinan() {
         let out = create_order_from_order_pure(fired(
             "Barra",

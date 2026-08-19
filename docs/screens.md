@@ -77,9 +77,9 @@ its work comes out:
 
 Every ticket line is routed to its station **when the line is inserted**, in the same transaction.
 
-> ⚠️ **Routing by category does not work today.** The fallback exists but cannot fire: the till does
-> not send a category, and a product can belong to several categories. Only **per-product** routing
-> is live.
+> Routing by category is live (sales#12): the till sends the product's **primary** category with each
+> fired line. A product mapping beats the category mapping; an unmapped product of an unmapped
+> category has no station and shows under «No station» on the KDS.
 
 ### Delete a station
 
