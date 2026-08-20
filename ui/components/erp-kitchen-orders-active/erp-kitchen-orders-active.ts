@@ -248,12 +248,12 @@ export class ErpKitchenOrdersActive extends LitElement {
           <h2>${t('ui.ordersTitle')}</h2>
         </header>
         <form class="form" @submit=${(e) => this.createOrder(e)}>
-          <ion-select fill="outline" label-placement="floating" label=${t('ui.colType')} .value=${this.newType} @ionChange=${(e: any) => (this.newType = e.target.value)}>
+          <ion-select mode="md" fill="outline" label-placement="floating" label=${t('ui.colType')} .value=${this.newType} @ionChange=${(e: any) => (this.newType = e.target.value)}>
             <ion-select-option value="dine_in">${t('ui.orderTypeDineIn')}</ion-select-option>
             <ion-select-option value="takeaway">${t('ui.orderTypeTakeaway')}</ion-select-option>
             <ion-select-option value="delivery">${t('ui.orderTypeDelivery')}</ion-select-option>
           </ion-select>
-          <ion-input fill="outline" label-placement="floating" label=${t('ui.colNotes')} .value=${this.newNotes} @ionInput=${(e: any) => (this.newNotes = e.target.value)}></ion-input>
+          <ion-input mode="md" fill="outline" label-placement="floating" label=${t('ui.colNotes')} .value=${this.newNotes} @ionInput=${(e: any) => (this.newNotes = e.target.value)}></ion-input>
           <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t('ui.creatingOrder') : t('ui.newOrder')}</ion-button>
         </form>
         ${this.formError ? html`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : nothing}

@@ -294,9 +294,9 @@ export class ErpKitchenOrdersStations extends LitElement {
     return html`<section class="panel">
       <h3>${t('ui.editStationTitle')} · ${this.editing.name}</h3>
       <form class="form" @submit=${(e: Event) => this.saveEdit(e)}>
-        <ion-input fill="outline" label=${t('ui.labelName')} label-placement="floating" .value=${this.editName} @ionInput=${(e: any) => (this.editName = e.target.value)}></ion-input>
-        <ion-input fill="outline" label=${t('ui.labelColor')} label-placement="floating" placeholder="#F97316" .value=${this.editColor} @ionInput=${(e: any) => (this.editColor = e.target.value)}></ion-input>
-        <ion-input fill="outline" label=${t('ui.labelPrinter')} label-placement="floating" .value=${this.editPrinter} @ionInput=${(e: any) => (this.editPrinter = e.target.value)}></ion-input>
+        <ion-input mode="md" fill="outline" label=${t('ui.labelName')} label-placement="floating" .value=${this.editName} @ionInput=${(e: any) => (this.editName = e.target.value)}></ion-input>
+        <ion-input mode="md" fill="outline" label=${t('ui.labelColor')} label-placement="floating" placeholder="#F97316" .value=${this.editColor} @ionInput=${(e: any) => (this.editColor = e.target.value)}></ion-input>
+        <ion-input mode="md" fill="outline" label=${t('ui.labelPrinter')} label-placement="floating" .value=${this.editPrinter} @ionInput=${(e: any) => (this.editPrinter = e.target.value)}></ion-input>
         <ion-toggle .checked=${this.editActive} @ionChange=${(e: any) => (this.editActive = e.detail.checked)}>${t('ui.labelActive')}</ion-toggle>
         <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t('ui.saving') : t('ui.save')}</ion-button>
         <ion-button size="small" fill="outline" @click=${() => (this.editing = null)}>${t('ui.cancel')}</ion-button>
@@ -310,11 +310,11 @@ export class ErpKitchenOrdersStations extends LitElement {
     return html`<section class="panel">
       <h3>${t('ui.routingTitle')}</h3>
       <form class="form" @submit=${(e: Event) => this.saveRouting(e)}>
-        <ion-select fill="outline" label-placement="floating" label=${t('ui.colStation')} .value=${this.routeStationId} @ionChange=${(e: any) => (this.routeStationId = e.target.value)}>
+        <ion-select mode="md" fill="outline" label-placement="floating" label=${t('ui.colStation')} .value=${this.routeStationId} @ionChange=${(e: any) => (this.routeStationId = e.target.value)}>
           ${stations.map((s) => html`<ion-select-option value=${s.id}>${s.name}</ion-select-option>`)}
         </ion-select>
-        <ion-input fill="outline" label=${t('ui.labelProductId')} label-placement="floating" placeholder=${t('ui.placeholderOptional')} .value=${this.routeProductId} @ionInput=${(e: any) => (this.routeProductId = e.target.value)}></ion-input>
-        <ion-input fill="outline" label=${t('ui.labelCategoryId')} label-placement="floating" placeholder=${t('ui.placeholderOptional')} .value=${this.routeCategoryId} @ionInput=${(e: any) => (this.routeCategoryId = e.target.value)}></ion-input>
+        <ion-input mode="md" fill="outline" label=${t('ui.labelProductId')} label-placement="floating" placeholder=${t('ui.placeholderOptional')} .value=${this.routeProductId} @ionInput=${(e: any) => (this.routeProductId = e.target.value)}></ion-input>
+        <ion-input mode="md" fill="outline" label=${t('ui.labelCategoryId')} label-placement="floating" placeholder=${t('ui.placeholderOptional')} .value=${this.routeCategoryId} @ionInput=${(e: any) => (this.routeCategoryId = e.target.value)}></ion-input>
         <ion-button type="submit" size="small" ?disabled=${this.saving || !this.routeStationId || (!this.routeProductId.trim() && !this.routeCategoryId.trim())}>${this.saving ? t('ui.saving') : t('ui.saveRouting')}</ion-button>
       </form>
     </section>`;
@@ -335,8 +335,8 @@ export class ErpKitchenOrdersStations extends LitElement {
           <!-- Alta de estación: se proyecta SIEMPRE (aunque el panel esté cerrado); si se renderizara
                solo con el panel abierto, el «+» de la barra abriría un panel vacío. -->
           <form slot="create" class="create-form" @submit=${(e: Event) => this.createStation(e)}>
-            <ion-input fill="outline" label-placement="floating" label=${t('ui.labelName')} placeholder=${t('ui.placeholderStationName')} .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
-            <ion-input fill="outline" label-placement="floating" label=${t('ui.labelPrinter')} placeholder=${t('ui.placeholderPrinterOptional')} .value=${this.newPrinter} @ionInput=${(e: any) => (this.newPrinter = e.target.value)}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" label=${t('ui.labelName')} placeholder=${t('ui.placeholderStationName')} .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" label=${t('ui.labelPrinter')} placeholder=${t('ui.placeholderPrinterOptional')} .value=${this.newPrinter} @ionInput=${(e: any) => (this.newPrinter = e.target.value)}></ion-input>
             <ion-button type="submit" ?disabled=${this.saving || !this.newName}>${this.saving ? t('ui.saving') : t('ui.addStation')}</ion-button>
           </form>
         </ok-data-table>
