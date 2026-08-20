@@ -322,6 +322,11 @@
       "permission": "kitchen.view_log",
       "sql": "queries/logs_list.sql",
       "list": {
+        "search": [
+          "action",
+          "order_id",
+          "notes"
+        ],
         "sort": [
           "id",
           "order_id",
