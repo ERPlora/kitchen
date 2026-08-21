@@ -341,7 +341,7 @@
         "default_dir": "desc",
         "filters": {
           "order_id": {
-            "op": "eq"
+            "op": "like"
           },
           "order_item_id": {
             "op": "eq"
