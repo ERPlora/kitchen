@@ -1756,9 +1756,6 @@ var es_default = {
   },
   ui: {
     displayTitle: "Pantalla de cocina",
-    orderTypeDineIn: "En sala",
-    orderTypeTakeaway: "Para llevar",
-    orderTypeDelivery: "A domicilio",
     colAction: "Acci\xF3n",
     colOrder: "Comanda",
     colNotes: "Notas",
@@ -1857,6 +1854,7 @@ var es_default = {
     round: "Ronda {n}",
     seat: "Comensal",
     printerOnly: "Solo impresora",
+    priority_normal: "Normal",
     priority_rush: "Urgente",
     priority_vip: "VIP",
     orderType_dine_in: "En sala",
@@ -1897,9 +1895,6 @@ var en_default = {
   },
   ui: {
     displayTitle: "Kitchen display",
-    orderTypeDineIn: "Dine in",
-    orderTypeTakeaway: "Takeaway",
-    orderTypeDelivery: "Delivery",
     colAction: "Action",
     colOrder: "Order",
     colNotes: "Notes",
@@ -1998,6 +1993,7 @@ var en_default = {
     round: "Round {n}",
     seat: "Seat",
     printerOnly: "Printer only",
+    priority_normal: "Normal",
     priority_rush: "Rush",
     priority_vip: "VIP",
     orderType_dine_in: "Dine in",
@@ -4190,15 +4186,41 @@ var ErpKitchenHistory = class extends i3 {
 };
 define("erp-kitchen-history", ErpKitchenHistory);
 
-// modules/kitchen/ui/components/erp-kitchen-orders-active/erp-kitchen-orders-active.ts
+// modules/kitchen/ui/lib/enums.ts
 var CATALOG3 = { es: es_default, en: en_default };
 function erplora3() {
   const c5 = globalThis.erplora;
   if (!c5) throw new Error("erplora SDK no inicializado por el shell");
   return c5;
 }
+var ORDER_TYPE_KEY = {
+  dine_in: "ui.orderType_dine_in",
+  takeaway: "ui.orderType_takeaway",
+  delivery: "ui.orderType_delivery"
+};
+var PRIORITY_KEY = {
+  normal: "ui.priority_normal",
+  rush: "ui.priority_rush",
+  vip: "ui.priority_vip"
+};
+function enumLabel(keys, value) {
+  const raw = value == null ? "" : String(value);
+  const key = keys[raw];
+  return key ? erplora3().t(CATALOG3, key) : raw;
+}
+function enumOptions(keys) {
+  return Object.keys(keys).map((value) => ({ value, label: enumLabel(keys, value) }));
+}
+
+// modules/kitchen/ui/components/erp-kitchen-orders-active/erp-kitchen-orders-active.ts
+var CATALOG4 = { es: es_default, en: en_default };
+function erplora4() {
+  const c5 = globalThis.erplora;
+  if (!c5) throw new Error("erplora SDK no inicializado por el shell");
+  return c5;
+}
 function can2(permission) {
-  const client = erplora3();
+  const client = erplora4();
   return typeof client.hasPermission === "function" ? client.hasPermission(permission) : true;
 }
 var VERB_PERMISSION = {
@@ -4218,11 +4240,11 @@ var ALLOWED_FROM = {
 function errorText2(e5, fallbackKey) {
   const code = e5?.code;
   if (typeof code === "string") {
-    const lang = CATALOG3[erplora3().locale] ?? CATALOG3.en;
-    const text = lang?.errors?.[code] ?? CATALOG3.en.errors?.[code];
+    const lang = CATALOG4[erplora4().locale] ?? CATALOG4.en;
+    const text = lang?.errors?.[code] ?? CATALOG4.en.errors?.[code];
     if (text) return text;
   }
-  return e5 instanceof Error ? e5.message : erplora3().t(CATALOG3, fallbackKey);
+  return e5 instanceof Error ? e5.message : erplora4().t(CATALOG4, fallbackKey);
 }
 var ErpKitchenOrdersActive = class extends i3 {
   constructor() {
@@ -4247,14 +4269,34 @@ var ErpKitchenOrdersActive = class extends i3 {
   }
   // Getters (no campos): se re-evalúan en cada render → los textos cambian con el idioma activo (ADR-0055).
   get columns() {
-    const t7 = (k2) => erplora3().t(CATALOG3, k2);
+    const t7 = (k2) => erplora4().t(CATALOG4, k2);
     return [
       { key: "order_number", header: t7("ui.colOrder"), sortable: true, filterable: true, filterType: "text" },
       // ADR-0141: a dónde va el plato. Es una ETIQUETA OPACA que manda quien dispara ("Mesa 4",
       // "Barra", "Recogida Ana"): cocina la imprime tal cual y no depende de `tables`.
       { key: "label", header: t7("ui.colLabel"), width: "140px", sortable: true, filterable: true, filterType: "text" },
-      { key: "order_type", header: t7("ui.colType"), sortable: true, filterable: true, filterType: "text" },
-      { key: "priority", header: t7("ui.colPriority"), sortable: true, filterable: true, filterType: "text" },
+      // CLOSED domains (`schemas/order_create.json`): they are PICKED, not typed. A free-text box
+      // here obliged the cook to know the internal value, in English (`dine_in`) — and since the
+      // manifest filters them by equality, anything else emptied the list without saying why
+      // (kitchen#39). `op: eq` is the right operator for a picker, so what changes is the box.
+      {
+        key: "order_type",
+        header: t7("ui.colType"),
+        sortable: true,
+        filterable: true,
+        filterType: "select",
+        format: (r6) => enumLabel(ORDER_TYPE_KEY, r6.order_type),
+        options: enumOptions(ORDER_TYPE_KEY)
+      },
+      {
+        key: "priority",
+        header: t7("ui.colPriority"),
+        sortable: true,
+        filterable: true,
+        filterType: "select",
+        format: (r6) => enumLabel(PRIORITY_KEY, r6.priority),
+        options: enumOptions(PRIORITY_KEY)
+      },
       {
         key: "status",
         header: t7("ui.colStatus"),
@@ -4278,12 +4320,12 @@ var ErpKitchenOrdersActive = class extends i3 {
         filterType: "range",
         // El total llega en CÉNTIMOS → `formatMoney` (divide). Antes hacía `toFixed(2)` sobre
         // los céntimos crudos y una comanda de 6,00 € se pintaba «600.00» (incidencia 5).
-        format: (r6) => erplora3().formatMoney(Number(r6.total || 0))
+        format: (r6) => erplora4().formatMoney(Number(r6.total || 0))
       }
     ];
   }
   get rowActions() {
-    const t7 = (k2) => erplora3().t(CATALOG3, k2);
+    const t7 = (k2) => erplora4().t(CATALOG4, k2);
     const all = [
       // Solo icono (ADR-0133): el `label` viaja como title + aria-label del botón, no como texto.
       { id: "fire", label: t7("ui.rowFire"), icon: "flame-outline" },
@@ -4297,7 +4339,7 @@ var ErpKitchenOrdersActive = class extends i3 {
   async connectedCallback() {
     super.connectedCallback();
     window.addEventListener("erplora:locale-changed", this.onLocaleChange);
-    this.ctrl = createListController(erplora3(), "kitchen.orders.list", () => this.requestUpdate(), {
+    this.ctrl = createListController(erplora4(), "kitchen.orders.list", () => this.requestUpdate(), {
       pageSize: 50,
       sort: "created_at",
       dir: "desc"
@@ -4305,14 +4347,14 @@ var ErpKitchenOrdersActive = class extends i3 {
     await this.ctrl.load();
     try {
       const offs = [
-        erplora3().on("kitchen.order.created", () => this.ctrl.load()),
-        erplora3().on("kitchen.order.updated", () => this.ctrl.load()),
-        erplora3().on("kitchen.order.fired", () => this.ctrl.load()),
-        erplora3().on("kitchen.order.ready", () => this.ctrl.load()),
-        erplora3().on("kitchen.order.served", () => this.ctrl.load()),
-        erplora3().on("kitchen.order.recalled", () => this.ctrl.load()),
-        erplora3().on("kitchen.order.cancelled", () => this.ctrl.load()),
-        erplora3().on("kitchen.order.deleted", () => this.ctrl.load())
+        erplora4().on("kitchen.order.created", () => this.ctrl.load()),
+        erplora4().on("kitchen.order.updated", () => this.ctrl.load()),
+        erplora4().on("kitchen.order.fired", () => this.ctrl.load()),
+        erplora4().on("kitchen.order.ready", () => this.ctrl.load()),
+        erplora4().on("kitchen.order.served", () => this.ctrl.load()),
+        erplora4().on("kitchen.order.recalled", () => this.ctrl.load()),
+        erplora4().on("kitchen.order.cancelled", () => this.ctrl.load()),
+        erplora4().on("kitchen.order.deleted", () => this.ctrl.load())
       ];
       this.unsub = () => offs.forEach((o7) => o7());
     } catch {
@@ -4328,7 +4370,7 @@ var ErpKitchenOrdersActive = class extends i3 {
     this.saving = true;
     this.formError = "";
     try {
-      await erplora3().command("kitchen.orders.create", {
+      await erplora4().command("kitchen.orders.create", {
         order_type: this.newType,
         priority: "normal",
         notes: this.newNotes.trim(),
@@ -4337,7 +4379,7 @@ var ErpKitchenOrdersActive = class extends i3 {
       this.newNotes = "";
       await this.ctrl.load();
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : erplora3().t(CATALOG3, "ui.createOrderError");
+      this.formError = e5 instanceof Error ? e5.message : erplora4().t(CATALOG4, "ui.createOrderError");
     } finally {
       this.saving = false;
     }
@@ -4349,13 +4391,13 @@ var ErpKitchenOrdersActive = class extends i3 {
       const order_id = row.id;
       switch (actionId) {
         case "mark_served":
-          await erplora3().command("kitchen.orders.mark_served", { order_id });
+          await erplora4().command("kitchen.orders.mark_served", { order_id });
           break;
         case "cancel":
-          await erplora3().command("kitchen.orders.cancel", { order_id });
+          await erplora4().command("kitchen.orders.cancel", { order_id });
           break;
         default:
-          await erplora3().command("kitchen.orders.set_status", { order_id, action_name: actionId });
+          await erplora4().command("kitchen.orders.set_status", { order_id, action_name: actionId });
       }
       await this.ctrl.load();
     } catch (e5) {
@@ -4364,16 +4406,16 @@ var ErpKitchenOrdersActive = class extends i3 {
     }
   }
   render() {
-    const t7 = (k2) => erplora3().t(CATALOG3, k2);
+    const t7 = (k2) => erplora4().t(CATALOG4, k2);
     return b2`<div>
         <header>
           <h2>${t7("ui.ordersTitle")}</h2>
         </header>
         <form class="form" @submit=${(e5) => this.createOrder(e5)}>
           <ion-select mode="md" fill="outline" label-placement="floating" label=${t7("ui.colType")} .value=${this.newType} @ionChange=${(e5) => this.newType = e5.target.value}>
-            <ion-select-option value="dine_in">${t7("ui.orderTypeDineIn")}</ion-select-option>
-            <ion-select-option value="takeaway">${t7("ui.orderTypeTakeaway")}</ion-select-option>
-            <ion-select-option value="delivery">${t7("ui.orderTypeDelivery")}</ion-select-option>
+            ${enumOptions(ORDER_TYPE_KEY).map(
+      (o7) => b2`<ion-select-option value=${o7.value}>${o7.label}</ion-select-option>`
+    )}
           </ion-select>
           <ion-input mode="md" fill="outline" label-placement="floating" label=${t7("ui.colNotes")} .value=${this.newNotes} @ionInput=${(e5) => this.newNotes = e5.target.value}></ion-input>
           <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t7("ui.creatingOrder") : t7("ui.newOrder")}</ion-button>
@@ -4402,8 +4444,8 @@ __decorateClass([
 define("erp-kitchen-orders-active", ErpKitchenOrdersActive);
 
 // modules/kitchen/ui/components/erp-kitchen-orders-stations/erp-kitchen-orders-stations.ts
-var CATALOG4 = { es: es_default, en: en_default };
-function erplora4() {
+var CATALOG5 = { es: es_default, en: en_default };
+function erplora5() {
   const c5 = globalThis.erplora;
   if (!c5) throw new Error("erplora SDK no inicializado por el shell");
   return c5;
@@ -4448,7 +4490,7 @@ var ErpKitchenOrdersStations = class extends i3 {
   }
   // Getters (no campos): se re-evalúan en cada render → los textos cambian con el idioma activo (ADR-0055).
   get columns() {
-    const t7 = (k2) => erplora4().t(CATALOG4, k2);
+    const t7 = (k2) => erplora5().t(CATALOG5, k2);
     return [
       { key: "name", header: t7("ui.colStation"), sortable: true, filterable: true, filterType: "text" },
       {
@@ -4475,7 +4517,7 @@ var ErpKitchenOrdersStations = class extends i3 {
     ];
   }
   get rowActions() {
-    const t7 = (k2) => erplora4().t(CATALOG4, k2);
+    const t7 = (k2) => erplora5().t(CATALOG5, k2);
     return [
       // Solo icono (ADR-0133): el `label` viaja como title + aria-label del botón, no como texto.
       { id: "edit", label: t7("ui.rowEdit"), icon: "create-outline" },
@@ -4486,7 +4528,7 @@ var ErpKitchenOrdersStations = class extends i3 {
   async connectedCallback() {
     super.connectedCallback();
     window.addEventListener("erplora:locale-changed", this.onLocaleChange);
-    this.ctrl = createListController(erplora4(), "kitchen.stations.list", () => this.requestUpdate(), {
+    this.ctrl = createListController(erplora5(), "kitchen.stations.list", () => this.requestUpdate(), {
       pageSize: 50,
       sort: "name",
       dir: "asc"
@@ -4494,10 +4536,10 @@ var ErpKitchenOrdersStations = class extends i3 {
     await Promise.all([this.ctrl.load(), this.loadAux()]);
     try {
       const offs = [
-        erplora4().on("kitchen.station.created", () => this.reload()),
-        erplora4().on("kitchen.station.updated", () => this.reload()),
-        erplora4().on("kitchen.station.deleted", () => this.reload()),
-        erplora4().on("kitchen.routing.changed", () => this.reload())
+        erplora5().on("kitchen.station.created", () => this.reload()),
+        erplora5().on("kitchen.station.updated", () => this.reload()),
+        erplora5().on("kitchen.station.deleted", () => this.reload()),
+        erplora5().on("kitchen.routing.changed", () => this.reload())
       ];
       this.unsub = () => offs.forEach((o7) => o7());
     } catch {
@@ -4513,7 +4555,7 @@ var ErpKitchenOrdersStations = class extends i3 {
   }
   async loadAux() {
     try {
-      const pending = await erplora4().query("kitchen.stations.pending_counts");
+      const pending = await erplora5().query("kitchen.stations.pending_counts");
       this.pendingCounts = new Map((pending ?? []).map((p4) => [p4.station_id, p4.pending_count]));
       this.requestUpdate();
     } catch {
@@ -4530,7 +4572,7 @@ var ErpKitchenOrdersStations = class extends i3 {
     this.formError = "";
     this.formMsg = "";
     try {
-      await erplora4().command("kitchen.stations.create", {
+      await erplora5().command("kitchen.stations.create", {
         name: this.newName.trim(),
         printer_name: this.newPrinter.trim()
       });
@@ -4539,7 +4581,7 @@ var ErpKitchenOrdersStations = class extends i3 {
       this.dataTable()?.close();
       await this.reload();
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : erplora4().t(CATALOG4, "ui.createStationError");
+      this.formError = e5 instanceof Error ? e5.message : erplora5().t(CATALOG5, "ui.createStationError");
     } finally {
       this.saving = false;
     }
@@ -4560,18 +4602,18 @@ var ErpKitchenOrdersStations = class extends i3 {
     this.formError = "";
     this.formMsg = "";
     try {
-      await erplora4().command("kitchen.stations.update", {
+      await erplora5().command("kitchen.stations.update", {
         station_id: this.editing.id,
         name: this.editName.trim() || null,
         color: this.editColor.trim() || null,
         printer_name: this.editPrinter.trim(),
         is_active: this.editActive ? 1 : 0
       });
-      this.formMsg = erplora4().t(CATALOG4, "ui.stationUpdated");
+      this.formMsg = erplora5().t(CATALOG5, "ui.stationUpdated");
       this.editing = null;
       await this.reload();
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : erplora4().t(CATALOG4, "ui.updateStationError");
+      this.formError = e5 instanceof Error ? e5.message : erplora5().t(CATALOG5, "ui.updateStationError");
     } finally {
       this.saving = false;
     }
@@ -4583,17 +4625,17 @@ var ErpKitchenOrdersStations = class extends i3 {
     this.formError = "";
     this.formMsg = "";
     try {
-      await erplora4().command("kitchen.stations.set_routing", {
+      await erplora5().command("kitchen.stations.set_routing", {
         station_id: this.routeStationId,
         product_id: this.routeProductId.trim(),
         category_id: this.routeCategoryId.trim()
       });
-      this.formMsg = erplora4().t(CATALOG4, "ui.routingSaved");
+      this.formMsg = erplora5().t(CATALOG5, "ui.routingSaved");
       this.routeProductId = "";
       this.routeCategoryId = "";
       await this.reload();
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : erplora4().t(CATALOG4, "ui.saveRoutingError");
+      this.formError = e5 instanceof Error ? e5.message : erplora5().t(CATALOG5, "ui.saveRoutingError");
     } finally {
       this.saving = false;
     }
@@ -4614,15 +4656,15 @@ var ErpKitchenOrdersStations = class extends i3 {
     this.formError = "";
     this.formMsg = "";
     try {
-      await erplora4().command("kitchen.stations.delete", { station_id: station.id });
+      await erplora5().command("kitchen.stations.delete", { station_id: station.id });
       await this.reload();
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : erplora4().t(CATALOG4, "ui.deleteStationError");
+      this.formError = e5 instanceof Error ? e5.message : erplora5().t(CATALOG5, "ui.deleteStationError");
     }
   }
   renderEditPanel() {
     if (!this.editing) return A;
-    const t7 = (k2) => erplora4().t(CATALOG4, k2);
+    const t7 = (k2) => erplora5().t(CATALOG5, k2);
     return b2`<section class="panel">
       <h3>${t7("ui.editStationTitle")} · ${this.editing.name}</h3>
       <form class="form" @submit=${(e5) => this.saveEdit(e5)}>
@@ -4636,7 +4678,7 @@ var ErpKitchenOrdersStations = class extends i3 {
     </section>`;
   }
   renderRoutingPanel() {
-    const t7 = (k2) => erplora4().t(CATALOG4, k2);
+    const t7 = (k2) => erplora5().t(CATALOG5, k2);
     const stations = this.ctrl?.rows ?? [];
     return b2`<section class="panel">
       <h3>${t7("ui.routingTitle")}</h3>
@@ -4654,7 +4696,7 @@ var ErpKitchenOrdersStations = class extends i3 {
   // Los paneles de EDICIÓN y ENRUTADO se quedan fuera de la tabla: no dan de alta una fila, son
   // configuración (el enrutado producto/categoría → estación ni siquiera vive en la fila).
   render() {
-    const t7 = (k2) => erplora4().t(CATALOG4, k2);
+    const t7 = (k2) => erplora5().t(CATALOG5, k2);
     return b2`<div class="page">
         ${this.renderEditPanel()}
         ${this.renderRoutingPanel()}
@@ -4718,20 +4760,20 @@ __decorateClass([
 define("erp-kitchen-orders-stations", ErpKitchenOrdersStations);
 
 // modules/kitchen/ui/components/erp-kitchen-pos-comandas/erp-kitchen-pos-comandas.ts
-var CATALOG5 = { es: es_default, en: en_default };
+var CATALOG6 = { es: es_default, en: en_default };
 function rows(r6) {
   if (Array.isArray(r6)) return r6;
   if (r6 && typeof r6 === "object" && Array.isArray(r6.rows)) return r6.rows;
   return [];
 }
-function erplora5() {
+function erplora6() {
   const c5 = globalThis.erplora;
   if (!c5) throw new Error("erplora SDK no inicializado por el shell");
   return c5;
 }
 function t5(key, params) {
   const c5 = globalThis.erplora;
-  return c5?.t ? c5.t(CATALOG5, key, params) : key;
+  return c5?.t ? c5.t(CATALOG6, key, params) : key;
 }
 var STATUS_KEY = {
   pending: "ui.stQueued",
@@ -4803,7 +4845,7 @@ var ErpKitchenPosComandas = class extends i3 {
   connectedCallback() {
     super.connectedCallback();
     this.addEventListener("erp:pos-state", this.onPosState);
-    const c5 = erplora5();
+    const c5 = erplora6();
     if (typeof c5.on === "function") {
       this.offs = KDS_EVENTS.map((ev) => c5.on(ev, () => void this.refresh()));
     }
@@ -4820,7 +4862,7 @@ var ErpKitchenPosComandas = class extends i3 {
       return;
     }
     try {
-      const rows2 = await erplora5().queryAll("kitchen.orders.list", {
+      const rows2 = await erplora6().queryAll("kitchen.orders.list", {
         filters: { source_order_id: this.orderId },
         sort: "round_number",
         dir: "desc"
@@ -4844,7 +4886,7 @@ var ErpKitchenPosComandas = class extends i3 {
     for (const c5 of this.comandas) {
       if (this.items.has(c5.id)) continue;
       try {
-        const its = rows(await erplora5().query("kitchen.orders.items", { order_id: c5.id }));
+        const its = rows(await erplora6().query("kitchen.orders.items", { order_id: c5.id }));
         this.items = new Map(this.items).set(c5.id, its);
       } catch {
       }
@@ -4920,10 +4962,10 @@ function canFire(state) {
 }
 
 // modules/kitchen/ui/components/erp-kitchen-pos-fire/erp-kitchen-pos-fire.ts
-var CATALOG6 = { es: es_default, en: en_default };
+var CATALOG7 = { es: es_default, en: en_default };
 function t6(key) {
   const c5 = globalThis.erplora;
-  return c5?.t ? c5.t(CATALOG6, key) : key;
+  return c5?.t ? c5.t(CATALOG7, key) : key;
 }
 var ErpKitchenPosFire = class extends i3 {
   constructor() {

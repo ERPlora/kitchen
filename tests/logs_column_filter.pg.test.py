@@ -16,9 +16,12 @@ MANIFEST DECLARES — `eq` → `CAST(sub.<col> AS TEXT) = CAST(:f_<col> AS TEXT)
 `CAST(sub.<col> AS TEXT) LIKE '%' || CAST(:f_<col> AS TEXT) || '%'`. Built from the manifest on
 purpose: change the op back and this test goes red, which is the whole point.
 
-There is a coherence check too, scoped to this screen: a column the WC paints as a free-text box
-must not be filtered by equality. (The same mismatch survives in `kitchen.orders.list` and
-`kitchen.stations.list`; widening this guard is that issue's job, not this one's.)
+The coherence check that used to live here — «a column the WC paints as a free-text box must not be
+filtered by equality» — was **scoped to this screen**, which is exactly why the same mismatch
+survived in `kitchen.orders.list` and `kitchen.stations.list` after this file went green. It now
+sweeps the whole module from `tests/filter_boxes_match_the_manifest.contract.test.py` (kitchen#39),
+and the behaviour of the other columns is proved by `tests/text_filters_narrow_by_fragment.pg.test.py`.
+This file keeps what it was written for: that the Comanda column really narrows by a fragment.
 
 Usage: tests/logs_column_filter.pg.test.py   (exit 0 = green)
   Uses the `erplora-test-pg-5433` container (override: KITCHEN_TEST_PG_CONTAINER).
@@ -34,7 +37,6 @@ import uuid
 
 MODULE_DIR = pathlib.Path(__file__).resolve().parent.parent
 MANIFEST = json.loads((MODULE_DIR / "module.json").read_text())
-COMPONENT = MODULE_DIR / "ui/components/erp-kitchen-history/erp-kitchen-history.ts"
 CONTAINER = os.environ.get("KITCHEN_TEST_PG_CONTAINER", "erplora-test-pg-5433")
 
 QUERY = "kitchen.logs.list"
@@ -142,24 +144,6 @@ def seed(db: ScratchDb) -> None:
     ))
 
 
-def check_manifest_matches_the_box() -> None:
-    """A column painted as a free-text box must not be filtered by equality."""
-    src = COMPONENT.read_text()
-    filters = (MANIFEST["queries"][QUERY].get("list") or {}).get("filters") or {}
-    for chunk in src.split("key: '")[1:]:
-        column = chunk.split("'")[0]
-        head = chunk.split("key: '")[0]
-        kind = re.search(r"filterType: '(\w+)'", head)
-        if not kind or column not in filters:
-            continue
-        op = (filters[column] or {}).get("op")
-        if kind.group(1) == "text" and op != "like":
-            fail(
-                f"the Historial paints `{column}` as a free-text box (`filterType: 'text'`) but the "
-                f"manifest filters it with `op: {op!r}` → typing a fragment empties the list (kitchen#36)"
-            )
-
-
 def check_behaviour(db: ScratchDb) -> None:
     # --- check the check: unfiltered, this hub has its three rows (not the neighbour's). ---
     everything = list_query(db)
@@ -195,8 +179,10 @@ def check_behaviour(db: ScratchDb) -> None:
 
 
 def main() -> int:
-    check_manifest_matches_the_box()
-
+    # The manifest-vs-box coherence check moved to
+    # `tests/filter_boxes_match_the_manifest.contract.test.py`, which sweeps EVERY table of the
+    # module (kitchen#39). Keeping a screen-scoped copy here is what let four other columns keep
+    # the bug this file closed.
     if not container_available():
         print(f"SKIPPED: no Postgres in container {CONTAINER} (nothing was verified)")
         return 1 if failures else 0

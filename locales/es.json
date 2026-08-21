@@ -20,9 +20,6 @@
   },
   "ui": {
     "displayTitle": "Pantalla de cocina",
-    "orderTypeDineIn": "En sala",
-    "orderTypeTakeaway": "Para llevar",
-    "orderTypeDelivery": "A domicilio",
     "colAction": "Acción",
     "colOrder": "Comanda",
     "colNotes": "Notas",
@@ -121,6 +118,7 @@
     "round": "Ronda {n}",
     "seat": "Comensal",
     "printerOnly": "Solo impresora",
+    "priority_normal": "Normal",
     "priority_rush": "Urgente",
     "priority_vip": "VIP",
     "orderType_dine_in": "En sala",
