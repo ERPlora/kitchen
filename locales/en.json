@@ -19,9 +19,6 @@
   },
   "ui": {
     "displayTitle": "Kitchen display",
-    "orderTypeDineIn": "Dine in",
-    "orderTypeTakeaway": "Takeaway",
-    "orderTypeDelivery": "Delivery",
     "colAction": "Action",
     "colOrder": "Order",
     "colNotes": "Notes",
@@ -120,6 +117,7 @@
     "round": "Round {n}",
     "seat": "Seat",
     "printerOnly": "Printer only",
+    "priority_normal": "Normal",
     "priority_rush": "Rush",
     "priority_vip": "VIP",
     "orderType_dine_in": "Dine in",

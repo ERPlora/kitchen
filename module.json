@@ -130,6 +130,7 @@
         "sort": [
           "id",
           "order_number",
+          "label",
           "status",
           "order_type",
           "priority",
@@ -152,7 +153,10 @@
         "default_dir": "desc",
         "filters": {
           "order_number": {
-            "op": "eq"
+            "op": "like"
+          },
+          "label": {
+            "op": "like"
           },
           "status": {
             "op": "eq"
@@ -287,7 +291,7 @@
             "op": "eq"
           },
           "printer_name": {
-            "op": "eq"
+            "op": "like"
           },
           "sort_order": {
             "op": "eq"

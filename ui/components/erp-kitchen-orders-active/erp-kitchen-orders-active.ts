@@ -6,6 +6,9 @@ import '@erplora/outfitkit/ok-data-table';
 import type { DataTableColumn, DataTableAction } from '@erplora/outfitkit';
 import { createListController } from '@erplora/module-sdk';
 import type { ListController, ListClient, ListParams, ListPage } from '@erplora/module-sdk';
+// One catalogue for the module's closed domains: the CELL, the column FILTER and the new-order
+// picker all read from it, so they cannot say different things about the same value (kitchen#39).
+import { ORDER_TYPE_KEY, PRIORITY_KEY, enumLabel, enumOptions } from '../../lib/enums';
 // Catálogo i18n del módulo (ADR-0055): esbuild inlinea estos JSON en el `dist` del WC.
 import esLocale from '../../../locales/es.json';
 import enLocale from '../../../locales/en.json';
@@ -114,8 +117,28 @@ export class ErpKitchenOrdersActive extends LitElement {
     // ADR-0141: a dónde va el plato. Es una ETIQUETA OPACA que manda quien dispara ("Mesa 4",
     // "Barra", "Recogida Ana"): cocina la imprime tal cual y no depende de `tables`.
     { key: 'label', header: t('ui.colLabel'), width: '140px', sortable: true, filterable: true, filterType: 'text' },
-    { key: 'order_type', header: t('ui.colType'), sortable: true, filterable: true, filterType: 'text' },
-    { key: 'priority', header: t('ui.colPriority'), sortable: true, filterable: true, filterType: 'text' },
+    // CLOSED domains (`schemas/order_create.json`): they are PICKED, not typed. A free-text box
+    // here obliged the cook to know the internal value, in English (`dine_in`) — and since the
+    // manifest filters them by equality, anything else emptied the list without saying why
+    // (kitchen#39). `op: eq` is the right operator for a picker, so what changes is the box.
+    {
+      key: 'order_type',
+      header: t('ui.colType'),
+      sortable: true,
+      filterable: true,
+      filterType: 'select',
+      format: (r) => enumLabel(ORDER_TYPE_KEY, r.order_type),
+      options: enumOptions(ORDER_TYPE_KEY),
+    },
+    {
+      key: 'priority',
+      header: t('ui.colPriority'),
+      sortable: true,
+      filterable: true,
+      filterType: 'select',
+      format: (r) => enumLabel(PRIORITY_KEY, r.priority),
+      options: enumOptions(PRIORITY_KEY),
+    },
     {
       key: 'status',
       header: t('ui.colStatus'),
@@ -249,9 +272,9 @@ export class ErpKitchenOrdersActive extends LitElement {
         </header>
         <form class="form" @submit=${(e) => this.createOrder(e)}>
           <ion-select mode="md" fill="outline" label-placement="floating" label=${t('ui.colType')} .value=${this.newType} @ionChange=${(e: any) => (this.newType = e.target.value)}>
-            <ion-select-option value="dine_in">${t('ui.orderTypeDineIn')}</ion-select-option>
-            <ion-select-option value="takeaway">${t('ui.orderTypeTakeaway')}</ion-select-option>
-            <ion-select-option value="delivery">${t('ui.orderTypeDelivery')}</ion-select-option>
+            ${enumOptions(ORDER_TYPE_KEY).map(
+              (o) => html`<ion-select-option value=${o.value}>${o.label}</ion-select-option>`,
+            )}
           </ion-select>
           <ion-input mode="md" fill="outline" label-placement="floating" label=${t('ui.colNotes')} .value=${this.newNotes} @ionInput=${(e: any) => (this.newNotes = e.target.value)}></ion-input>
           <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t('ui.creatingOrder') : t('ui.newOrder')}</ion-button>
