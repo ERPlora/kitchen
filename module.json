@@ -114,7 +114,8 @@
       "migrations/postgres/002_order_source.sql",
       "migrations/postgres/003_station_destination.sql",
       "migrations/postgres/004_dispatch_snapshot.sql",
-      "migrations/postgres/005_quantity_fixed_point.sql"
+      "migrations/postgres/005_quantity_fixed_point.sql",
+      "migrations/postgres/006_settings_thresholds.sql"
     ]
   },
   "queries": {

@@ -1752,7 +1752,57 @@ var es_default = {
     }
   },
   settings: {
-    title: "Cocina"
+    title: "Cocina",
+    fields: {
+      auto_accept_orders: {
+        label: "Aceptar comandas autom\xE1ticamente"
+      },
+      show_timer: {
+        label: "Mostrar cron\xF3metro"
+      },
+      warning_time_minutes: {
+        label: "Aviso \xE1mbar (minutos)"
+      },
+      critical_time_minutes: {
+        label: "Aviso rojo (minutos)"
+      },
+      items_per_page: {
+        label: "Comandas por p\xE1gina"
+      },
+      auto_refresh_seconds: {
+        label: "Refresco autom\xE1tico (segundos)"
+      },
+      sound_enabled: {
+        label: "Sonido"
+      },
+      sound_on_new_order: {
+        label: "Sonar al entrar una comanda"
+      },
+      sound_on_rush: {
+        label: "Sonar en comandas urgentes"
+      },
+      auto_bump_enabled: {
+        label: "Marcar listo autom\xE1ticamente"
+      },
+      auto_bump_delay_seconds: {
+        label: "Espera del marcado autom\xE1tico (segundos)"
+      },
+      color_coding_enabled: {
+        label: "Sem\xE1foro de color"
+      },
+      auto_print_tickets: {
+        label: "Imprimir comandas autom\xE1ticamente"
+      },
+      use_rounds: {
+        label: "Usar rondas"
+      },
+      auto_fire_on_round: {
+        label: "Lanzar la ronda autom\xE1ticamente"
+      },
+      default_order_type: {
+        label: "Tipo de comanda por defecto"
+      }
+    }
   },
   ui: {
     displayTitle: "Pantalla de cocina",
@@ -1891,7 +1941,57 @@ var en_default = {
     }
   },
   settings: {
-    title: "Kitchen"
+    title: "Kitchen",
+    fields: {
+      auto_accept_orders: {
+        label: "Accept orders automatically"
+      },
+      show_timer: {
+        label: "Show timer"
+      },
+      warning_time_minutes: {
+        label: "Amber warning (minutes)"
+      },
+      critical_time_minutes: {
+        label: "Red alert (minutes)"
+      },
+      items_per_page: {
+        label: "Orders per page"
+      },
+      auto_refresh_seconds: {
+        label: "Auto refresh (seconds)"
+      },
+      sound_enabled: {
+        label: "Sound"
+      },
+      sound_on_new_order: {
+        label: "Sound on a new order"
+      },
+      sound_on_rush: {
+        label: "Sound on a rush order"
+      },
+      auto_bump_enabled: {
+        label: "Mark ready automatically"
+      },
+      auto_bump_delay_seconds: {
+        label: "Auto mark-ready delay (seconds)"
+      },
+      color_coding_enabled: {
+        label: "Colour semaphore"
+      },
+      auto_print_tickets: {
+        label: "Print tickets automatically"
+      },
+      use_rounds: {
+        label: "Use rounds"
+      },
+      auto_fire_on_round: {
+        label: "Fire the round automatically"
+      },
+      default_order_type: {
+        label: "Default order type"
+      }
+    }
   },
   ui: {
     displayTitle: "Kitchen display",

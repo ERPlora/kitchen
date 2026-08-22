@@ -16,7 +16,57 @@
     }
   },
   "settings": {
-    "title": "Cocina"
+    "title": "Cocina",
+    "fields": {
+      "auto_accept_orders": {
+        "label": "Aceptar comandas automáticamente"
+      },
+      "show_timer": {
+        "label": "Mostrar cronómetro"
+      },
+      "warning_time_minutes": {
+        "label": "Aviso ámbar (minutos)"
+      },
+      "critical_time_minutes": {
+        "label": "Aviso rojo (minutos)"
+      },
+      "items_per_page": {
+        "label": "Comandas por página"
+      },
+      "auto_refresh_seconds": {
+        "label": "Refresco automático (segundos)"
+      },
+      "sound_enabled": {
+        "label": "Sonido"
+      },
+      "sound_on_new_order": {
+        "label": "Sonar al entrar una comanda"
+      },
+      "sound_on_rush": {
+        "label": "Sonar en comandas urgentes"
+      },
+      "auto_bump_enabled": {
+        "label": "Marcar listo automáticamente"
+      },
+      "auto_bump_delay_seconds": {
+        "label": "Espera del marcado automático (segundos)"
+      },
+      "color_coding_enabled": {
+        "label": "Semáforo de color"
+      },
+      "auto_print_tickets": {
+        "label": "Imprimir comandas automáticamente"
+      },
+      "use_rounds": {
+        "label": "Usar rondas"
+      },
+      "auto_fire_on_round": {
+        "label": "Lanzar la ronda automáticamente"
+      },
+      "default_order_type": {
+        "label": "Tipo de comanda por defecto"
+      }
+    }
   },
   "ui": {
     "displayTitle": "Pantalla de cocina",
