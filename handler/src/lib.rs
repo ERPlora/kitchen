@@ -278,7 +278,7 @@ fn build_order_ops(
                                                           // negocio; la migración 005 reescala la columna). El lógico solo existe al pintar.
         p.insert("quantity".into(), json!(qty_raw));
         p.insert("total".into(), json!(line_total)); // céntimos
-        p.insert("modifiers".into(), json!(str_or(item, "modifiers", "")));
+        p.insert("modifiers".into(), json!(modifiers_for_display(item)));
         p.insert("notes".into(), json!(str_or(item, "notes", "")));
         p.insert("status".into(), json!("pending"));
         p.insert(
@@ -961,6 +961,47 @@ pub fn set_routing_pure(input: Value) -> Result<Output, String> {
 /// sabe qué significa; cocina no tiene por qué.
 ///
 /// Cada disparo es una **ronda** del mismo pedido (bebidas primero, comida después). Como el guest
+/// pm#93 — aplana los suplementos de una línea al TEXTO que lee cocina.
+///
+/// `kitchen_order_item.modifiers` es una columna de DISPLAY: el KDS la pinta tal cual y la comanda
+/// impresa la saca por la térmica. Aquí se convierte la lista que manda `sales` en esa línea.
+///
+/// 🔴 Esto es el eslabón que se rompía EN SILENCIO: `sales` pasó a mandar una lista de objetos y
+/// aquí se leía con `str_or`, que sobre un array devuelve cadena vacía. El camarero teclea «sin
+/// cebolla», la venta lo guarda, el evento lo transporta, y cocina no ve nada — sin error y sin
+/// aviso. Es el fallo estrella del sector: de enrutado, no de modelo.
+///
+/// Prioridad de cada opción: `kitchen_name` → `name` → `option_id`. El id es feo, pero aparece solo
+/// cuando `sales` no pudo resolver su catálogo al disparar, y un cocinero que ve un código pregunta
+/// mientras que uno que no ve nada sirve el plato mal.
+///
+/// Se admite además el formato ANTIGUO (una cadena suelta): un `sales` sin actualizar, o cualquier
+/// integración de terceros, no puede quedarse sin comanda.
+fn modifiers_for_display(item: &Value) -> String {
+    match item.get("modifiers") {
+        // Formato antiguo: ya viene escrito.
+        Some(Value::String(s)) => s.clone(),
+        Some(Value::Array(picks)) => picks
+            .iter()
+            .map(|m| {
+                for key in ["kitchen_name", "name", "option_id"] {
+                    let v = str_or(m, key, "");
+                    if !v.is_empty() {
+                        return v;
+                    }
+                }
+                String::new()
+            })
+            .filter(|s| !s.is_empty())
+            // `, ` y no `·`: esto acaba en una térmica y no hay transliteración por el camino.
+            // `·` es U+00B7 — 0xFA en CP437, 0xB7 en latin-1: una codificación ingenua imprime un
+            // carácter de caja. La coma se lee igual en el KDS y no falla en ninguna tabla.
+            .collect::<Vec<_>>()
+            .join(", "),
+        _ => String::new(),
+    }
+}
+
 /// no puede leer la BD, manda `round_number = 0` y el SQL la calcula contra las comandas ya
 /// disparadas de ese pedido, en la misma transacción.
 pub fn create_order_from_order_pure(input: Value) -> Result<Output, String> {
@@ -1557,5 +1598,90 @@ mod tests {
         for event in &routed {
             assert!(covered.contains(event), "no case in this test emits `{event}`");
         }
+    }
+
+    // ── pm#93 · los suplementos LLEGAN AL PAPEL ──────────────────────────────────────────────
+    //
+    // El eslabón que faltaba, y el que se rompía en silencio: `sales` manda ahora los suplementos
+    // como una LISTA de objetos (`[{option_id, name, kitchen_name}]`), mientras aquí se leían con
+    // `str_or(item, "modifiers", "")`. Un `str_or` sobre un array devuelve cadena vacía ⇒ el
+    // camarero teclea «sin cebolla», la venta lo guarda, el evento lo transporta… y **cocina no ve
+    // nada**. Sin error, sin aviso: exactamente el fallo estrella del sector, que es de enrutado y
+    // no de modelo.
+    //
+    // `kitchen_order_item.modifiers` es una columna de DISPLAY (el KDS la pinta tal cual en
+    // `<div class="mods">`), así que aquí se aplana a texto legible, en el ORDEN de elección.
+
+    fn item_con_mods(mods: Value) -> Value {
+        json!([{ "product_id": "p-burger", "product_name": "Hamburguesa", "quantity": 1_000_000,
+                 "unit_price": 500, "notes": "", "category_id": null, "order_item_id": "li-1",
+                 "modifiers": mods }])
+    }
+
+    fn primer_item(out: &Output) -> &Map<String, Value> {
+        out.operations
+            .iter()
+            .find(|o| o.command == "kitchen._insert_item")
+            .map(|o| &o.params)
+            .expect("una línea de comanda")
+    }
+
+    #[test]
+    fn los_suplementos_llegan_al_papel_con_su_nombre_de_cocina() {
+        let out = create_order_from_order_pure(fired("Mesa 4", "dine_in", item_con_mods(json!([
+            { "option_id": "o1", "name": "Sin cebolla", "kitchen_name": "SIN CEBOLLA" },
+        ])))).expect("comanda válida");
+        assert_eq!(primer_item(&out)["modifiers"], json!("SIN CEBOLLA"));
+    }
+
+    #[test]
+    fn varios_suplementos_salen_EN_EL_ORDEN_elegido() {
+        // Cocina lee en el orden en que se eligió, no en el del catálogo — la petición recurrente
+        // en los foros de Square, y el motivo de que el orden viaje intacto desde el TPV.
+        let out = create_order_from_order_pure(fired("Mesa 4", "dine_in", item_con_mods(json!([
+            { "option_id": "o2", "name": "Extra de queso", "kitchen_name": "+QUESO" },
+            { "option_id": "o1", "name": "Sin cebolla", "kitchen_name": "SIN CEBOLLA" },
+        ])))).expect("comanda válida");
+        // Separador `, ` y no `·`, a propósito: esto acaba en una impresora térmica y NO hay capa de
+        // transliteración (lo que se manda es lo que se imprime). `·` es U+00B7, que en CP437 vive en
+        // 0xFA pero en latin-1 en 0xB7 — una codificación ingenua saca un carácter de caja en el
+        // papel. La coma se lee igual en el KDS y no puede fallar en ninguna tabla de códigos.
+        assert_eq!(primer_item(&out)["modifiers"], json!("+QUESO, SIN CEBOLLA"));
+    }
+
+    #[test]
+    fn sin_kitchen_name_se_imprime_el_comercial() {
+        // Un hueco en la comanda es lo mismo que no haberla impreso.
+        let out = create_order_from_order_pure(fired("Mesa 4", "dine_in", item_con_mods(json!([
+            { "option_id": "o1", "name": "Sin cebolla", "kitchen_name": "" },
+        ])))).expect("comanda válida");
+        assert_eq!(primer_item(&out)["modifiers"], json!("Sin cebolla"));
+    }
+
+    #[test]
+    fn sin_ningun_nombre_se_imprime_el_ID_antes_que_nada() {
+        // Pasa cuando `sales` no pudo resolver el catálogo al disparar: manda solo el id. Es feo,
+        // pero un cocinero que ve un código pregunta; uno que no ve nada, sirve el plato mal.
+        let out = create_order_from_order_pure(fired("Mesa 4", "dine_in", item_con_mods(json!([
+            { "option_id": "o-sin-cebolla" },
+        ])))).expect("comanda válida");
+        assert_eq!(primer_item(&out)["modifiers"], json!("o-sin-cebolla"));
+    }
+
+    #[test]
+    fn el_formato_ANTIGUO_de_texto_sigue_valiendo() {
+        // Compat: un `sales` viejo (o cualquier integración) manda `modifiers` como cadena. No se
+        // puede romper la comanda de quien no haya actualizado todavía.
+        let out = create_order_from_order_pure(fired("Mesa 4", "dine_in", item_con_mods(json!("sin cebolla"))))
+            .expect("comanda válida");
+        assert_eq!(primer_item(&out)["modifiers"], json!("sin cebolla"));
+    }
+
+    #[test]
+    fn una_linea_SIN_suplementos_sigue_saliendo_vacia() {
+        // Control: el 99 % de las comandas. Romper esto sería romper cocina entera.
+        let out = create_order_from_order_pure(fired("Mesa 4", "dine_in", item_con_mods(json!([]))))
+            .expect("comanda válida");
+        assert_eq!(primer_item(&out)["modifiers"], json!(""));
     }
 }
