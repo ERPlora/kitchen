@@ -2156,6 +2156,20 @@ var ErpKitchenDisplay = class extends i3 {
     .line .tick { font-size:1.4rem; line-height:1; color: var(--ion-color-success, #2dd36f); }
     .foot { display:flex; gap:.5rem; padding:.5rem .75rem; border-top:1px solid var(--ion-border-color, #e7e2d6); }
     .foot ion-button { flex:1; }
+    /* kitchen#42 — el fondo del bump se declara AQUÍ, dentro del shadow root, y no con
+       \`color="success"\`. Ionic implementa \`color=\` con la regla GLOBAL
+       \`.ion-color-success { --ion-color-base: … }\`, que vive en la hoja del documento y NO
+       atraviesa el shadow root de un WC de módulo: dentro, el selector no casa con nada,
+       \`--ion-color-base\` queda vacío y \`button-solid { background: var(--ion-color-base) }\`
+       resuelve a transparente — texto blanco sobre tarjeta blanca, contraste 1:1. Las custom
+       properties sí heredan a través del límite, así que el token se lee sin problema.
+       Hermana del gotcha de \`fill\` + \`mode="ios"\` (ADR-0143, hub#760/#1060). */
+    .foot ion-button[data-action="bump"] {
+      --background: var(--ion-color-success);
+      --background-activated: var(--ion-color-success-shade);
+      --background-hover: var(--ion-color-success-tint);
+      --color: var(--ion-color-success-contrast);
+    }
     .notes { padding:.4rem .75rem; font-size:.85rem; font-style:italic; opacity:.85; border-top:1px dashed var(--ion-border-color, #e7e2d6); }
     .allday { width:100%; border-collapse:collapse; }
     .allday td, .allday th { padding:.6rem .75rem; text-align:left; border-bottom:1px solid var(--ion-border-color, #e7e2d6); min-height:44px; }
@@ -2336,7 +2350,7 @@ var ErpKitchenDisplay = class extends i3 {
       <ul class="lines">${lines.map((l3) => this.renderLine(t7, l3))}</ul>
       ${t7.notes ? b2`<div class="notes">${t7.notes}</div>` : A}
       ${canChange || canServe && t7.status === "ready" ? b2`<footer class="foot">
-            ${canChange && cooking ? b2`<ion-button data-action="bump" color="success" @click=${() => this.bumpTicket(t7)}>${t_("ui.bump")}</ion-button>` : A}
+            ${canChange && cooking ? b2`<ion-button data-action="bump" @click=${() => this.bumpTicket(t7)}>${t_("ui.bump")}</ion-button>` : A}
             ${canChange && struck ? b2`<ion-button data-action="recall" fill="outline" @click=${() => this.recallTicket(t7)}>${t_("ui.recall")}</ion-button>` : A}
             ${canServe && t7.status === "ready" ? b2`<ion-button data-action="served" fill="outline" @click=${() => this.serveTicket(t7)}>${t_("ui.rowMarkServed")}</ion-button>` : A}
           </footer>` : A}
@@ -2557,12 +2571,53 @@ var o6 = e4(class extends i4 {
 
 // ../outfitkit/dist/ok-data-table.js
 var CSV_BOM = "\uFEFF";
+var WINDOWS_1252_C1 = [
+  8364,
+  129,
+  8218,
+  402,
+  8222,
+  8230,
+  8224,
+  8225,
+  710,
+  8240,
+  352,
+  8249,
+  338,
+  141,
+  381,
+  143,
+  144,
+  8216,
+  8217,
+  8220,
+  8221,
+  8226,
+  8211,
+  8212,
+  732,
+  8482,
+  353,
+  8250,
+  339,
+  157,
+  382,
+  376
+];
+function decodeWindows1252(bytes) {
+  let text = "";
+  for (const byte of bytes) {
+    text += String.fromCharCode(byte >= 128 && byte <= 159 ? WINDOWS_1252_C1[byte - 128] : byte);
+  }
+  return text;
+}
 function decodeCsvBuffer(buf) {
   let text;
   try {
     text = new TextDecoder("utf-8", { fatal: true }).decode(buf);
   } catch {
-    text = new TextDecoder("windows-1252").decode(buf);
+    text = decodeWindows1252(new Uint8Array(buf));
   }
   return text.charCodeAt(0) === 65279 ? text.slice(1) : text;
 }
@@ -4927,7 +4982,7 @@ var ErpKitchenPosComandas = class extends i3 {
           ${this.comandas.map((c5) => b2`
             <div class="krow">
               <div class="krow-h">
-                <ion-icon name="flame" color="warning"></ion-icon>
+                <ion-icon name="flame" style="color: var(--ion-color-warning)"></ion-icon>
                 <span>${t5("ui.comandaN", { n: String(c5.round_number) })}</span>
                 <span class="ktime">· ${(c5.fired_at ?? c5.created_at ?? "").replace("T", " ").slice(11, 16)}</span>
                 <span class="kstate" data-st=${c5.status}>${t5(STATUS_KEY[c5.status] ?? c5.status)}</span>

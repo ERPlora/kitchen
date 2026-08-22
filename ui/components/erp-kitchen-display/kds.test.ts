@@ -256,3 +256,35 @@ describe('permissions and live refresh', () => {
     expect(text).not.toMatch(/size="small"/);
   });
 });
+
+// ── kitchen#42: el botón «Listo» pinta su propio fondo ────────────────────────────────────────
+//
+// `color="success"` no pinta fondo dentro del Shadow DOM de un módulo. Ionic lo implementa con la
+// regla GLOBAL `.ion-color-success { --ion-color-base: … }`, que vive en la hoja del documento y no
+// atraviesa el shadow root: dentro del WC el selector no casa con nada, `--ion-color-base` queda
+// VACÍO y `button-solid { background: var(--ion-color-base) }` resuelve a transparente. El texto sí
+// sale blanco (lo pone `--color`), de ahí el blanco sobre blanco de la issue.
+//
+// happy-dom no hace layout ni carga el CSS de Ionic, así que aquí no se puede medir el
+// `backgroundColor` computado (eso lo midió el QA en un navegador real, con la prueba A/B de
+// `--ion-color-base`). Lo que se fija es el CONTRATO que lo hace imposible: el fondo se declara en
+// el CSS del componente —que sí vive dentro del shadow root— y ningún botón lo delega en `color=`.
+describe('kitchen#42: the bump button paints its own background', () => {
+  const stylesOf = (el: Host): string => {
+    const css = (el.constructor as unknown as { styles: { cssText: string } | { cssText: string }[] }).styles;
+    return Array.isArray(css) ? css.map((c) => c.cssText).join('\n') : css.cssText;
+  };
+
+  it('declares --background inside the shadow root instead of delegating to color=', async () => {
+    const el = await mount();
+    expect(stylesOf(el)).toMatch(/\[data-action=["']bump["']\][^{]*\{[^}]*--background:/);
+  });
+
+  it('no ion-button of the KDS depends on color= for its background', async () => {
+    const el = await mount();
+    const offenders = Array.from(el.shadowRoot.querySelectorAll('ion-button'))
+      .filter((b) => b.hasAttribute('color') && !b.hasAttribute('fill'))
+      .map((b) => b.getAttribute('data-action') ?? b.textContent?.trim());
+    expect(offenders, 'a solid ion-button inside a module shadow root renders transparent').toEqual([]);
+  });
+});
