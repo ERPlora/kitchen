@@ -205,7 +205,7 @@ export class ErpKitchenPosComandas extends LitElement {
           ${this.comandas.map((c) => html`
             <div class="krow">
               <div class="krow-h">
-                <ion-icon name="flame" color="warning"></ion-icon>
+                <ion-icon name="flame" style="color: var(--ion-color-warning)"></ion-icon>
                 <span>${t('ui.comandaN', { n: String(c.round_number) })}</span>
                 <span class="ktime">· ${(c.fired_at ?? c.created_at ?? '').replace('T', ' ').slice(11, 16)}</span>
                 <span class="kstate" data-st=${c.status}>${t(STATUS_KEY[c.status] ?? c.status)}</span>

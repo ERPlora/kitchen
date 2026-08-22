@@ -255,6 +255,20 @@ export class ErpKitchenDisplay extends LitElement {
     .line .tick { font-size:1.4rem; line-height:1; color: var(--ion-color-success, #2dd36f); }
     .foot { display:flex; gap:.5rem; padding:.5rem .75rem; border-top:1px solid var(--ion-border-color, #e7e2d6); }
     .foot ion-button { flex:1; }
+    /* kitchen#42 — el fondo del bump se declara AQUÍ, dentro del shadow root, y no con
+       \`color="success"\`. Ionic implementa \`color=\` con la regla GLOBAL
+       \`.ion-color-success { --ion-color-base: … }\`, que vive en la hoja del documento y NO
+       atraviesa el shadow root de un WC de módulo: dentro, el selector no casa con nada,
+       \`--ion-color-base\` queda vacío y \`button-solid { background: var(--ion-color-base) }\`
+       resuelve a transparente — texto blanco sobre tarjeta blanca, contraste 1:1. Las custom
+       properties sí heredan a través del límite, así que el token se lee sin problema.
+       Hermana del gotcha de \`fill\` + \`mode="ios"\` (ADR-0143, hub#760/#1060). */
+    .foot ion-button[data-action="bump"] {
+      --background: var(--ion-color-success);
+      --background-activated: var(--ion-color-success-shade);
+      --background-hover: var(--ion-color-success-tint);
+      --color: var(--ion-color-success-contrast);
+    }
     .notes { padding:.4rem .75rem; font-size:.85rem; font-style:italic; opacity:.85; border-top:1px dashed var(--ion-border-color, #e7e2d6); }
     .allday { width:100%; border-collapse:collapse; }
     .allday td, .allday th { padding:.6rem .75rem; text-align:left; border-bottom:1px solid var(--ion-border-color, #e7e2d6); min-height:44px; }
@@ -475,7 +489,7 @@ export class ErpKitchenDisplay extends LitElement {
       ${t.notes ? html`<div class="notes">${t.notes}</div>` : nothing}
       ${canChange || (canServe && t.status === 'ready')
         ? html`<footer class="foot">
-            ${canChange && cooking ? html`<ion-button data-action="bump" color="success" @click=${() => this.bumpTicket(t)}>${t_('ui.bump')}</ion-button>` : nothing}
+            ${canChange && cooking ? html`<ion-button data-action="bump" @click=${() => this.bumpTicket(t)}>${t_('ui.bump')}</ion-button>` : nothing}
             ${canChange && struck ? html`<ion-button data-action="recall" fill="outline" @click=${() => this.recallTicket(t)}>${t_('ui.recall')}</ion-button>` : nothing}
             ${canServe && t.status === 'ready' ? html`<ion-button data-action="served" fill="outline" @click=${() => this.serveTicket(t)}>${t_('ui.rowMarkServed')}</ion-button>` : nothing}
           </footer>`
