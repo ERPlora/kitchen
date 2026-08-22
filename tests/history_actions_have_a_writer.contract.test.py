@@ -61,10 +61,19 @@ def fail(msg: str) -> None:
 
 
 def offered_actions() -> list[tuple[str, str]]:
-    """(value, label key) of every option of the Acción dropdown, in the order the UI offers them."""
+    """(value, label key) of every option of the Acción dropdown, in the order the UI offers them.
+
+    Reads whichever shape the source uses: the literal `options: [{ value, label }, …]` list, or
+    the single ACTION_LABEL_KEY map the cells and the dropdown share since kitchen#44 (one map,
+    not two that drift). If neither is found the parser has rotted and the test says so instead of
+    passing vacuously.
+    """
     src = HISTORY_TS
+    if "ACTION_LABEL_KEY" in src:
+        block = src[src.index("ACTION_LABEL_KEY") : src.index("}", src.index("ACTION_LABEL_KEY"))]
+        return re.findall(r"(\w+):\s*'(ui\.action\w+)'", block)
     start = src.index("key: 'action'")
-    end = src.index("{ key: 'order_id'", start)
+    end = src.index("{ key: 'order", start)
     return re.findall(r"\{\s*value:\s*'([a-z_]+)',\s*label:\s*t\('([a-zA-Z.]+)'\)\s*\}", src[start:end])
 
 
