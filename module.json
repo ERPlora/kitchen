@@ -329,12 +329,12 @@
       "list": {
         "search": [
           "action",
-          "order_id",
+          "order_number",
           "notes"
         ],
         "sort": [
           "id",
-          "order_id",
+          "order_number",
           "order_item_id",
           "station_id",
           "action",
@@ -345,7 +345,7 @@
         "default_sort": "created_at",
         "default_dir": "desc",
         "filters": {
-          "order_id": {
+          "order_number": {
             "op": "like"
           },
           "order_item_id": {

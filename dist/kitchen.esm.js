@@ -2828,6 +2828,7 @@ var _OkDataTable = class _OkDataTable2 extends i3 {
     this.exportable = false;
     this.importable = false;
     this.columnSelector = false;
+    this.rowClickable = false;
     this.selectable = false;
     this.inlineFilters = false;
     this.menuActions = [];
@@ -2842,10 +2843,12 @@ var _OkDataTable = class _OkDataTable2 extends i3 {
     this.viewMode = "table";
     this.viewChosenByUser = false;
     this.isMobile = false;
+    this.xOverflow = false;
     this.hiddenKeys = /* @__PURE__ */ new Set();
     this.internalSelection = /* @__PURE__ */ new Set();
     this.menuOpen = false;
     this.onLocaleChanged = () => this.requestUpdate();
+    this.onWindowResize = () => this.measureXOverflow();
     this.onSearch = (ev) => {
       const value = ev.target.value ?? "";
       if (this.serverSide) {
@@ -2996,7 +2999,14 @@ var _OkDataTable = class _OkDataTable2 extends i3 {
     .filters-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.6rem; }
 
     /* ── Vista lista en CSS GRID (no <table>): permite ancho por columna ──────────────────── */
+    /* #67 — La barra horizontal es PERMANENTE cuando hay desbordamiento: la overlay de macOS se
+       esconde a los pocos ms y deja la tabla sin ninguna pista de que sigue a la derecha. Al
+       declarar ::-webkit-scrollbar el navegador pinta la clásica, que ocupa sitio y se ve. */
     .scroll { overflow-x: auto; }
+    .scroll::-webkit-scrollbar { height: 10px; }
+    .scroll::-webkit-scrollbar-track { background: transparent; }
+    .scroll::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--color) 25%, transparent); border-radius: 6px; }
+    .scroll::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--color) 40%, transparent); }
     .grid { min-width: max-content; font-size: 14px; }
     .grow { display: grid; align-items: center; gap: 0.5rem; padding: 0 1rem; }
     .ghead { position: sticky; top: 0; z-index: 2; border-bottom: 1px solid var(--border-color);
@@ -3005,6 +3015,17 @@ var _OkDataTable = class _OkDataTable2 extends i3 {
     .gcell > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .gcell.right { justify-content: flex-end; text-align: right; }
     .gcell.center { justify-content: center; text-align: center; }
+    /* #67 — COLUMNA DE ACCIONES FIJADA. Con seis columnas o más la rejilla desborda por diseño
+       (min-width: max-content) y el botón que abre el registro se iba fuera de la pantalla: a
+       1440px quedaba a 335px del borde, sin nada que lo delatara. Se queda pegada al borde
+       derecho, como en Zendesk/Freshdesk/Shopify. Con background:inherit la hereda de la fila (que
+       por eso es opaca), así conserva hover y selección sin que se lea nada por debajo. */
+    .gcell.actions-col { position: sticky; right: 0; z-index: 1; background: inherit;
+      margin-right: -1rem; padding-right: 1rem; }
+    /* La sombra solo aparece cuando de verdad hay algo escondido a la izquierda (clase x-overflow);
+       si la tabla cabe entera no se pinta nada. */
+    .scroll.x-overflow .gcell.actions-col { box-shadow: -10px 0 10px -10px color-mix(in srgb, var(--color) 45%, transparent); }
+    .ghead .gcell.actions-col { z-index: 3; }
     .gh { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted); }
     .gh.sortable { cursor: pointer; user-select: none; white-space: nowrap; transition: background-color var(--ok-transition, 150ms ease), color var(--ok-transition, 150ms ease), box-shadow var(--ok-transition, 150ms ease), transform 120ms ease; }
     @media (hover: hover) {
@@ -3013,13 +3034,17 @@ var _OkDataTable = class _OkDataTable2 extends i3 {
     /* Caret de orden (3 estados, icono Ionic): neutral atenuado / activo en color primario. */
     .caret { display: inline-flex; align-items: center; margin-left: 0.25rem; flex: 0 0 auto; font-size: 13px; opacity: 0.3; }
     .caret.on { opacity: 1; color: var(--primary); }
-    .grow-data { border-bottom: 1px solid var(--border-color-soft); padding-top: 0.6rem; padding-bottom: 0.6rem; transition: background-color var(--ok-transition, 150ms ease), color var(--ok-transition, 150ms ease), box-shadow var(--ok-transition, 150ms ease), transform 120ms ease; }
+    .grow-data { background: var(--background); border-bottom: 1px solid var(--border-color-soft); padding-top: 0.6rem; padding-bottom: 0.6rem; transition: background-color var(--ok-transition, 150ms ease), color var(--ok-transition, 150ms ease), box-shadow var(--ok-transition, 150ms ease), transform 120ms ease; }
     .grow-data:last-child { border-bottom: 0; }
     @media (hover: hover) {
-      .grow-data:hover { background: var(--row-hover); }
+      .grow-data:hover { background: linear-gradient(var(--row-hover), var(--row-hover)), var(--background); }
     }
     .grow-data:active { transform: scale(0.995); }
-    .grow-data.selected { background: color-mix(in srgb, var(--primary) 10%, transparent); }
+    .grow-data.selected { background: linear-gradient(color-mix(in srgb, var(--primary) 10%, transparent), color-mix(in srgb, var(--primary) 10%, transparent)), var(--background); }
+    /* #67 — Fila clicable (opt-in row-clickable): es lo primero que intenta el usuario y lo que
+       hacen Odoo, Jira SM, Shopify o Square en sus listados. */
+    .grow-data.clickable { cursor: pointer; }
+    .grow-data.clickable:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
     .selcb { display: flex; align-items: center; justify-content: center; }
     .filters-grow { padding-top: 0.4rem; padding-bottom: 0.6rem; }
     .filters-grow input, .filters-grow select { width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; padding: 0.3rem 0.4rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--background); color: var(--color); }
@@ -3095,6 +3120,7 @@ var _OkDataTable = class _OkDataTable2 extends i3 {
     super.connectedCallback();
     if (typeof window !== "undefined") {
       window.addEventListener("erplora:locale-changed", this.onLocaleChanged);
+      window.addEventListener("resize", this.onWindowResize);
     }
     if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
       this.mq = window.matchMedia(`(max-width: ${_OkDataTable2.MOBILE_BREAKPOINT}px)`);
@@ -3110,10 +3136,37 @@ var _OkDataTable = class _OkDataTable2 extends i3 {
       this._mqHandler = handler;
     }
   }
+  /** #67 — Recalcula si la vista lista desborda a lo ancho (`scrollWidth > clientWidth`).
+   *
+   * Se mide después de renderizar, que es cuando el navegador ya conoce los anchos, y solo se
+   * escribe el estado si CAMBIA: asignarlo siempre reprogramaría un render en bucle. */
+  measureXOverflow() {
+    const scroll = this.renderRoot?.querySelector?.(".scroll");
+    const overflow = !!scroll && scroll.scrollWidth > scroll.clientWidth;
+    if (this.xOverflow !== overflow) this.xOverflow = overflow;
+  }
+  /** Engancha el observador al contenedor de scroll del render actual (cambia entre vistas). */
+  observeXOverflow() {
+    if (typeof ResizeObserver === "undefined") return;
+    const scroll = this.renderRoot?.querySelector?.(".scroll");
+    if (!scroll) return;
+    this.xObserver ??= new ResizeObserver(() => this.measureXOverflow());
+    this.xObserver.disconnect();
+    this.xObserver.observe(scroll);
+    const grid = scroll.querySelector(".grid");
+    if (grid) this.xObserver.observe(grid);
+  }
+  updated() {
+    this.observeXOverflow();
+    this.measureXOverflow();
+  }
   disconnectedCallback() {
     if (typeof window !== "undefined") {
       window.removeEventListener("erplora:locale-changed", this.onLocaleChanged);
+      window.removeEventListener("resize", this.onWindowResize);
     }
+    this.xObserver?.disconnect();
+    this.xObserver = void 0;
     if (this.mq) {
       const handler = this._mqHandler;
       if (handler) this.mq.removeEventListener("change", handler);
@@ -3888,6 +3941,13 @@ var _OkDataTable = class _OkDataTable2 extends i3 {
       </div>
     `;
   }
+  /** #67 — Enter/Espacio activan la fila clicable: si se llega con el tabulador, el ratón no puede
+   *  ser el único camino. Espacio además NO debe desplazar la página. */
+  onRowKeydown(e5, row) {
+    if (e5.key !== "Enter" && e5.key !== " " && e5.key !== "Spacebar") return;
+    e5.preventDefault();
+    this.emit("rowClick", { row });
+  }
   emptyState() {
     return b2`
       <div class="empty">
@@ -3904,7 +3964,7 @@ var _OkDataTable = class _OkDataTable2 extends i3 {
     const allOn = this.selectable && visible.length > 0 && visible.every((r6) => this.selection.has(this.keyOf(r6)));
     const alignCls = (a3) => a3 === "right" ? "right" : a3 === "center" ? "center" : "left";
     return b2`
-      <div class="scroll">
+      <div class=${`scroll${this.xOverflow ? " x-overflow" : ""}`}>
         <div class="grid" role="table">
           <!-- Cabecera -->
           <div class="grow ghead" role="row" style=${o6(tpl)}>
@@ -3925,7 +3985,7 @@ var _OkDataTable = class _OkDataTable2 extends i3 {
                 </div>
               `;
     })}
-            ${this.actions.length ? b2`<div class="gcell gh right" role="columnheader">${this.t.actions}</div>` : A}
+            ${this.actions.length ? b2`<div class="gcell gh right actions-col" role="columnheader">${this.t.actions}</div>` : A}
           </div>
 
           <!-- Filas -->
@@ -3936,12 +3996,19 @@ var _OkDataTable = class _OkDataTable2 extends i3 {
         const key = this.keyOf(row);
         const selected = this.selectable && this.selection.has(key);
         return b2`
-                <div class=${`grow grow-data${selected ? " selected" : ""}`} role="row" style=${o6(tpl)}>
-                  ${this.selectable ? b2`<span class="selcb"><ion-checkbox .checked=${selected} aria-label=${this.t.selectRow} @ionChange=${() => this.toggleRow(key)}></ion-checkbox></span>` : A}
+                <div
+                  class=${`grow grow-data${selected ? " selected" : ""}${this.rowClickable ? " clickable" : ""}`}
+                  role="row"
+                  style=${o6(tpl)}
+                  tabindex=${this.rowClickable ? "0" : A}
+                  @click=${this.rowClickable ? () => this.emit("rowClick", { row }) : A}
+                  @keydown=${this.rowClickable ? (e5) => this.onRowKeydown(e5, row) : A}
+                >
+                  ${this.selectable ? b2`<span class="selcb" @click=${(e5) => e5.stopPropagation()}><ion-checkbox .checked=${selected} aria-label=${this.t.selectRow} @ionChange=${() => this.toggleRow(key)}></ion-checkbox></span>` : A}
                   ${cols.map(
           (c5) => b2`<div class=${`gcell ${alignCls(c5.align)}`} role="cell">${c5.render ? c5.render(row) : b2`<span>${this.cell(c5, row)}</span>`}</div>`
         )}
-                  ${this.actions.length ? b2`<div class="gcell right" role="cell">${this.actionButtons(row)}</div>` : A}
+                  ${this.actions.length ? b2`<div class="gcell right actions-col" role="cell" @click=${(e5) => e5.stopPropagation()}>${this.actionButtons(row)}</div>` : A}
                 </div>
               `;
       }
@@ -4073,6 +4140,9 @@ __decorateClass4([
   n4({ attribute: false })
 ], _OkDataTable.prototype, "pageSizes");
 __decorateClass4([
+  n4({ type: Boolean, attribute: "row-clickable" })
+], _OkDataTable.prototype, "rowClickable");
+__decorateClass4([
   n4({ type: Boolean })
 ], _OkDataTable.prototype, "selectable");
 __decorateClass4([
@@ -4126,6 +4196,9 @@ __decorateClass4([
 __decorateClass4([
   r5()
 ], _OkDataTable.prototype, "isMobile");
+__decorateClass4([
+  r5()
+], _OkDataTable.prototype, "xOverflow");
 __decorateClass4([
   r5()
 ], _OkDataTable.prototype, "hiddenKeys");
@@ -4263,6 +4336,31 @@ function erplora2() {
   if (!c5) throw new Error("erplora SDK not initialised by the shell");
   return c5;
 }
+var ACTION_LABEL_KEY = {
+  received: "ui.actionReceived",
+  started: "ui.actionStarted",
+  bumped: "ui.actionBumped",
+  item_bumped: "ui.actionItemBumped",
+  item_recalled: "ui.actionItemRecalled",
+  served: "ui.actionServed",
+  recalled: "ui.actionRecalled",
+  cancelled: "ui.actionCancelled"
+};
+function actionLabel(code) {
+  const key = ACTION_LABEL_KEY[code];
+  return key ? erplora2().t(CATALOG2, key) : code;
+}
+function formatWhen(iso) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return new Intl.DateTimeFormat(erplora2().locale === "en" ? "en-GB" : "es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+}
 var ErpKitchenHistory = class extends i3 {
   constructor() {
     super(...arguments);
@@ -4284,20 +4382,30 @@ var ErpKitchenHistory = class extends i3 {
         sortable: true,
         filterable: true,
         filterType: "select",
-        options: [
-          { value: "received", label: t7("ui.actionReceived") },
-          { value: "started", label: t7("ui.actionStarted") },
-          { value: "bumped", label: t7("ui.actionBumped") },
-          { value: "item_bumped", label: t7("ui.actionItemBumped") },
-          { value: "item_recalled", label: t7("ui.actionItemRecalled") },
-          { value: "served", label: t7("ui.actionServed") },
-          { value: "recalled", label: t7("ui.actionRecalled") },
-          { value: "cancelled", label: t7("ui.actionCancelled") }
-        ]
+        // The same map the cell renders with — one source, not two (kitchen#44).
+        options: Object.entries(ACTION_LABEL_KEY).map(([value, labelKey]) => ({ value, label: t7(labelKey) })),
+        format: (r6) => actionLabel(String(r6.action ?? ""))
       },
-      { key: "order_id", header: t7("ui.colOrder"), sortable: true, filterable: true, filterType: "text" },
+      // kitchen#44: the ticket NUMBER the KDS shows — the whole point of the trail is matching an
+      // action with the ticket in front of you, and nobody matches a UUID by eye. The id stays as
+      // the fallback of last resort (a row never blanks), and the box filters what it shows.
+      {
+        key: "order_number",
+        header: t7("ui.colOrder"),
+        sortable: true,
+        filterable: true,
+        filterType: "text",
+        format: (r6) => String(r6.order_number || r6.order_id || "\u2014")
+      },
       { key: "notes", header: t7("ui.colNotes"), sortable: true, filterable: true, filterType: "text" },
-      { key: "created_at", header: t7("ui.colWhen"), sortable: true, filterable: true, filterType: "daterange" }
+      {
+        key: "created_at",
+        header: t7("ui.colWhen"),
+        sortable: true,
+        filterable: true,
+        filterType: "daterange",
+        format: (r6) => formatWhen(String(r6.created_at ?? ""))
+      }
     ];
   }
   async connectedCallback() {
@@ -4336,7 +4444,7 @@ var ErpKitchenHistory = class extends i3 {
     return b2`<div>
         <header><h2>${t7("ui.historyTitle")}</h2></header>
         ${this.ctrl?.error ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
-        <ok-data-table .serverSide=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => `#${String(r6.order_id ?? "\u2014")}`} .cardIcon=${() => "restaurant-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "desc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchLogs")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyLogs")} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}></ok-data-table>
+        <ok-data-table .serverSide=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.order_number || r6.order_id || "\u2014")} .cardIcon=${() => "restaurant-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "desc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchLogs")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyLogs")} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}></ok-data-table>
       </div>`;
   }
 };

@@ -134,13 +134,60 @@ def list_query(db: ScratchDb, search: str | None, hub: str = HUB) -> list[dict]:
 
 
 def seed(db: ScratchDb) -> None:
-    """Three logs of this hub, each carrying its distinctive term in a DIFFERENT promised field."""
+    """Three logs of this hub, each carrying its distinctive term in a DIFFERENT promised field.
+
+    Since kitchen#44 the Comanda column shows (and searches) the ticket's NUMBER, so each log
+    points at a ticket of its own hub whose number carries the distinctive token.
+    """
+    orders = [
+        # id,        hub,      order_number
+        ("k-alpha", HUB, "20260821-0001"),
+        ("k-beta", HUB, "20260821-0002"),
+        ("k-gamma", HUB, "20260821-0003"),
+        ("k-alpha-x", OTHER_HUB, "20260821-0001"),
+    ]
+    db.psql(
+        [],
+        db=db.name,
+        stdin=(
+            "INSERT INTO kitchen_order (id, hub_id, order_number, status, order_type, priority, label, notes,"
+            " subtotal, tax, discount, total, round_number, is_deleted, created_by, updated_by, created_at, updated_at) VALUES "
+            + ",".join(
+                "("
+                + ",".join(
+                    [
+                        literal(i),
+                        literal(hub),
+                        literal(number),
+                        "'pending'",
+                        "'dine_in'",
+                        "'normal'",
+                        "''",
+                        "''",
+                        "0",
+                        "0",
+                        "0",
+                        "0",
+                        "1",
+                        "0",
+                        "'u1'",
+                        "'u1'",
+                        literal(NOW),
+                        literal(NOW),
+                    ]
+                )
+                + ")"
+                for i, hub, number in orders
+            )
+            + ";"
+        ),
+    )
     rows = [
         # id,     order_id,      action,     notes,                 hub
-        ("l1", "ORD-alpha", "fired", "sin cebolla", HUB),
-        ("l2", "ORD-beta", "bumped", "mesa 7 con prisa", HUB),
-        ("l3", "ORD-gamma", "recalled", "plato devuelto", HUB),
-        ("l4", "ORD-alpha", "fired", "sin cebolla", OTHER_HUB),
+        ("l1", "k-alpha", "fired", "sin cebolla", HUB),
+        ("l2", "k-beta", "bumped", "mesa 7 con prisa", HUB),
+        ("l3", "k-gamma", "recalled", "plato devuelto", HUB),
+        ("l4", "k-alpha-x", "fired", "sin cebolla", OTHER_HUB),
     ]
     values = ",".join(
         "("
@@ -185,7 +232,7 @@ def check_manifest() -> list[str]:
 
     # The placeholder promises three things; the block must cover all three.
     base = (MODULE_DIR / spec["sql"]).read_text()
-    for promised in ("action", "order_id", "notes"):
+    for promised in ("action", "order_number", "notes"):
         if promised not in columns:
             fail(
                 f"the placeholder promises `{promised}` but `search` does not cover it: {columns}"
@@ -212,7 +259,7 @@ def check_behaviour(db: ScratchDb) -> None:
     # One term per promised field, each matching exactly one row.
     for label, term, expected_id in (
         ("by ACTION", "recalled", "l3"),
-        ("by ORDER", "beta", "l2"),
+        ("by ORDER number", "0002", "l2"),
         ("by NOTES", "cebolla", "l1"),
     ):
         got = list_query(db, term)
