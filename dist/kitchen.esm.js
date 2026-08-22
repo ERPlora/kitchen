@@ -1733,7 +1733,7 @@ __decorateClass3([
 ], OkEmptyState.prototype, "message");
 define("ok-empty-state", OkEmptyState);
 
-// modules/kitchen/locales/es.json
+// modules/kitchen/.wt-rowclick/locales/es.json
 var es_default = {
   name: "Cocina",
   description: "Pantalla de cocina y \xF3rdenes de producci\xF3n, seguidas desde que entran hasta que est\xE1n listas.",
@@ -1923,7 +1923,7 @@ var es_default = {
   }
 };
 
-// modules/kitchen/locales/en.json
+// modules/kitchen/.wt-rowclick/locales/en.json
 var en_default = {
   name: "Kitchen",
   navigation: {
@@ -2112,7 +2112,7 @@ var en_default = {
   }
 };
 
-// modules/kitchen/ui/components/erp-kitchen-display/erp-kitchen-display.ts
+// modules/kitchen/.wt-rowclick/ui/components/erp-kitchen-display/erp-kitchen-display.ts
 var CATALOG = { es: es_default, en: en_default };
 var DEFAULT_SETTINGS = {
   show_timer: true,
@@ -4256,7 +4256,7 @@ function createListController(client, queryName, onChange = () => {
   return new ListController(client, queryName, onChange, opts);
 }
 
-// modules/kitchen/ui/components/erp-kitchen-history/erp-kitchen-history.ts
+// modules/kitchen/.wt-rowclick/ui/components/erp-kitchen-history/erp-kitchen-history.ts
 var CATALOG2 = { es: es_default, en: en_default };
 function erplora2() {
   const c5 = globalThis.erplora;
@@ -4341,7 +4341,7 @@ var ErpKitchenHistory = class extends i3 {
 };
 define("erp-kitchen-history", ErpKitchenHistory);
 
-// modules/kitchen/ui/lib/enums.ts
+// modules/kitchen/.wt-rowclick/ui/lib/enums.ts
 var CATALOG3 = { es: es_default, en: en_default };
 function erplora3() {
   const c5 = globalThis.erplora;
@@ -4367,7 +4367,7 @@ function enumOptions(keys) {
   return Object.keys(keys).map((value) => ({ value, label: enumLabel(keys, value) }));
 }
 
-// modules/kitchen/ui/components/erp-kitchen-orders-active/erp-kitchen-orders-active.ts
+// modules/kitchen/.wt-rowclick/ui/components/erp-kitchen-orders-active/erp-kitchen-orders-active.ts
 var CATALOG4 = { es: es_default, en: en_default };
 function erplora4() {
   const c5 = globalThis.erplora;
@@ -4598,7 +4598,7 @@ __decorateClass([
 ], ErpKitchenOrdersActive.prototype, "tick", 2);
 define("erp-kitchen-orders-active", ErpKitchenOrdersActive);
 
-// modules/kitchen/ui/components/erp-kitchen-orders-stations/erp-kitchen-orders-stations.ts
+// modules/kitchen/.wt-rowclick/ui/components/erp-kitchen-orders-stations/erp-kitchen-orders-stations.ts
 var CATALOG5 = { es: es_default, en: en_default };
 function erplora5() {
   const c5 = globalThis.erplora;
@@ -4858,7 +4858,7 @@ var ErpKitchenOrdersStations = class extends i3 {
         ${this.formMsg ? b2`<p class="ok">${this.formMsg}</p>` : A}
         ${this.formError ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
         ${this.ctrl?.error ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
-        <ok-data-table .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.name ?? "\u2014")} .cardIcon=${() => "flame-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchStations")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyStations")} .actions=${this.rowActions} @rowAction=${(e5) => this.onRowAction(e5)} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @pageSizeChange=${(e5) => this.ctrl.setPageSize(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}>
+        <ok-data-table .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.name ?? "\u2014")} .cardIcon=${() => "flame-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchStations")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyStations")} .actions=${this.rowActions} .rowClickable=${true} @rowAction=${(e5) => this.onRowAction(e5)} @rowClick=${(e5) => this.onRowAction({ detail: { actionId: "edit", row: e5.detail.row } })} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @pageSizeChange=${(e5) => this.ctrl.setPageSize(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}>
           <!-- Alta de estación: se proyecta SIEMPRE (aunque el panel esté cerrado); si se renderizara
                solo con el panel abierto, el «+» de la barra abriría un panel vacío. -->
           <form slot="create" class="create-form" @submit=${(e5) => this.createStation(e5)}>
@@ -4914,7 +4914,7 @@ __decorateClass([
 ], ErpKitchenOrdersStations.prototype, "routeCategoryId", 2);
 define("erp-kitchen-orders-stations", ErpKitchenOrdersStations);
 
-// modules/kitchen/ui/components/erp-kitchen-pos-comandas/erp-kitchen-pos-comandas.ts
+// modules/kitchen/.wt-rowclick/ui/components/erp-kitchen-pos-comandas/erp-kitchen-pos-comandas.ts
 var CATALOG6 = { es: es_default, en: en_default };
 function rows(r6) {
   if (Array.isArray(r6)) return r6;
@@ -5107,7 +5107,7 @@ __decorateClass([
 ], ErpKitchenPosComandas.prototype, "open", 2);
 define("erp-kitchen-pos-comandas", ErpKitchenPosComandas);
 
-// modules/kitchen/ui/lib/pos-fire.ts
+// modules/kitchen/.wt-rowclick/ui/lib/pos-fire.ts
 function pendingCount(state) {
   if (!state) return 0;
   return state.pending_count ?? state.items_count;
@@ -5116,7 +5116,7 @@ function canFire(state) {
   return pendingCount(state) > 0;
 }
 
-// modules/kitchen/ui/components/erp-kitchen-pos-fire/erp-kitchen-pos-fire.ts
+// modules/kitchen/.wt-rowclick/ui/components/erp-kitchen-pos-fire/erp-kitchen-pos-fire.ts
 var CATALOG7 = { es: es_default, en: en_default };
 function t6(key) {
   const c5 = globalThis.erplora;
