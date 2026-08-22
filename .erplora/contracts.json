@@ -34,6 +34,7 @@
       "kitchen.order.fired",
       "kitchen.order.ready",
       "kitchen.order.recalled",
+      "kitchen.order.received",
       "kitchen.order.served",
       "kitchen.order.updated",
       "kitchen.routing.changed",
