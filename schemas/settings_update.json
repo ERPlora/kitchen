@@ -1,28 +1,104 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "kitchen.settings.update",
-  "description": "Configuración de cocina (singleton por hub): display (KDS) + comportamiento de comandas (fusión ADR-0014). La UI envía el snapshot completo (upsert).",
+  "description": "Kitchen configuration (one singleton row per hub): KDS display + order behaviour (merge of ADR-0014). The generic settings form of the shell sends the WHOLE snapshot (upsert), so every property is `required` — and therefore every property MUST carry a `default` equal to its column DEFAULT in `migrations/postgres/001_init.sql`. Without it, a hub whose singleton row does not exist yet (every new hub, since the row is born from this form) starts the form empty and its first save is a 422 nobody can get past (kitchen#41). Pinned by `tests/settings_defaults_match_the_column.contract.test.py`.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "auto_accept_orders": { "type": "boolean" },
-    "show_timer": { "type": "boolean" },
-    "warning_time_minutes": { "type": "integer", "minimum": 1, "maximum": 120 },
-    "critical_time_minutes": { "type": "integer", "minimum": 1, "maximum": 120 },
-    "items_per_page": { "type": "integer", "minimum": 4, "maximum": 50 },
-    "auto_refresh_seconds": { "type": "integer", "minimum": 3, "maximum": 120 },
-    "sound_enabled": { "type": "boolean" },
-    "sound_on_new_order": { "type": "boolean" },
-    "sound_on_rush": { "type": "boolean" },
-    "auto_bump_enabled": { "type": "boolean" },
-    "auto_bump_delay_seconds": { "type": "integer", "minimum": 1, "maximum": 300 },
-    "color_coding_enabled": { "type": "boolean" },
-    "auto_print_tickets": { "type": "boolean" },
-    "use_rounds": { "type": "boolean" },
-    "auto_fire_on_round": { "type": "boolean" },
+    "auto_accept_orders": {
+      "title": "Accept orders automatically",
+      "type": "boolean",
+      "default": false
+    },
+    "show_timer": {
+      "title": "Show timer",
+      "type": "boolean",
+      "default": true
+    },
+    "warning_time_minutes": {
+      "title": "Amber warning (minutes)",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 120,
+      "default": 15
+    },
+    "critical_time_minutes": {
+      "title": "Red alert (minutes)",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 120,
+      "default": 30
+    },
+    "items_per_page": {
+      "title": "Orders per page",
+      "type": "integer",
+      "minimum": 4,
+      "maximum": 50,
+      "default": 12
+    },
+    "auto_refresh_seconds": {
+      "title": "Auto refresh (seconds)",
+      "type": "integer",
+      "minimum": 3,
+      "maximum": 120,
+      "default": 3
+    },
+    "sound_enabled": {
+      "title": "Sound",
+      "type": "boolean",
+      "default": true
+    },
+    "sound_on_new_order": {
+      "title": "Sound on a new order",
+      "type": "boolean",
+      "default": true
+    },
+    "sound_on_rush": {
+      "title": "Sound on a rush order",
+      "type": "boolean",
+      "default": true
+    },
+    "auto_bump_enabled": {
+      "title": "Mark ready automatically",
+      "type": "boolean",
+      "default": false
+    },
+    "auto_bump_delay_seconds": {
+      "title": "Auto mark-ready delay (seconds)",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 300,
+      "default": 5
+    },
+    "color_coding_enabled": {
+      "title": "Colour semaphore",
+      "type": "boolean",
+      "default": true
+    },
+    "auto_print_tickets": {
+      "title": "Print tickets automatically",
+      "type": "boolean",
+      "default": true
+    },
+    "use_rounds": {
+      "title": "Use rounds",
+      "type": "boolean",
+      "default": true
+    },
+    "auto_fire_on_round": {
+      "title": "Fire the round automatically",
+      "type": "boolean",
+      "default": false
+    },
     "default_order_type": {
+      "title": "Default order type",
       "type": "string",
-      "enum": ["dine_in", "takeaway", "delivery"]
+      "enum": [
+        "dine_in",
+        "takeaway",
+        "delivery"
+      ],
+      "default": "dine_in"
     }
   },
   "required": [
