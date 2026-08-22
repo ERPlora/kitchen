@@ -30,7 +30,11 @@ SELECT
    :item_id, :hub_id, :order_id, r.station_id,
    -- Sin estación (producto sin enrutar) el destino cae a `both`: en la duda se ve Y se imprime,
    -- porque perder una comanda en cocina es peor que gastar papel.
-   COALESCE(st.name,         ''),
+   -- kitchen#45: se congela el nombre EN EL IDIOMA DEL HUB (name_es con caída a name): este texto
+   -- es lo que lee el cocinero en el vale y en el KDS, y con `name` a secas un hub español
+   -- congelaba «Kitchen» bajo cada producto. La estación (id) sigue siendo el hecho; el nombre,
+   -- presentación.
+   COALESCE(NULLIF(st.name_es, ''), st.name, ''),
    COALESCE(st.destination,  'both'),
    COALESCE(st.printer_role, 'kitchen'),
    :sales_order_item_id, :product_id, :product_name,

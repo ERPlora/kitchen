@@ -1868,8 +1868,8 @@ var es_default = {
     updateStationError: "No se pudo actualizar la estaci\xF3n",
     routingTitle: "Enrutado producto/categor\xEDa \u2192 estaci\xF3n",
     placeholderStation: "Estaci\xF3n",
-    labelProductId: "ID de producto",
-    labelCategoryId: "ID de categor\xEDa",
+    labelProduct: "Producto",
+    labelCategory: "Categor\xEDa",
     placeholderOptional: "(opcional)",
     saveRouting: "Guardar enrutado",
     routingSaved: "Enrutado guardado",
@@ -2057,8 +2057,8 @@ var en_default = {
     updateStationError: "Could not update station",
     routingTitle: "Product/category routing \u2192 station",
     placeholderStation: "Station",
-    labelProductId: "Product ID",
-    labelCategoryId: "Category ID",
+    labelProduct: "Product",
+    labelCategory: "Category",
     placeholderOptional: "(optional)",
     saveRouting: "Save routing",
     routingSaved: "Routing saved",
@@ -2166,6 +2166,7 @@ function groupTickets(rows2) {
     if (r6.item_id) {
       t7.lines.push({
         id: r6.item_id,
+        station_id: r6.station_id === null || r6.station_id === void 0 || r6.station_id === "" ? null : String(r6.station_id),
         station: String(r6.station_name ?? ""),
         destination: String(r6.destination ?? "both"),
         product_name: String(r6.product_name ?? ""),
@@ -2206,6 +2207,7 @@ var ErpKitchenDisplay = class extends i3 {
     this.rows = [];
     this.allDay = [];
     this.settings = { ...DEFAULT_SETTINGS };
+    this.stationsById = /* @__PURE__ */ new Map();
     this.error = "";
     this.loading = false;
     this.now = Date.now();
@@ -2326,12 +2328,16 @@ var ErpKitchenDisplay = class extends i3 {
   async load() {
     this.loading = true;
     try {
-      const [rows2, allDay] = await Promise.all([
+      const [rows2, allDay, stations] = await Promise.all([
         erplora().query("kitchen.orders.display"),
-        erplora().query("kitchen.orders.all_day")
+        erplora().query("kitchen.orders.all_day"),
+        // kitchen#45: names in the hub's language. Optional: without it (no permission, no SDK)
+        // the frozen snapshot names still paint — degraded, never broken.
+        erplora().query("kitchen.stations.list").catch(() => [])
       ]);
       this.rows = Array.isArray(rows2) ? rows2 : [];
       this.allDay = Array.isArray(allDay) ? allDay : [];
+      this.stationsById = new Map((Array.isArray(stations) ? stations : []).map((s5) => [String(s5.id), s5]));
     } catch (e5) {
       this.error = errorText(e5, "ui.loadError");
     } finally {
@@ -2342,17 +2348,31 @@ var ErpKitchenDisplay = class extends i3 {
   get tickets() {
     return groupTickets(this.rows);
   }
-  /** Station names present on the line, for the segment (snapshot names, sorted). */
+  /** The station's name in the hub's language, with the line's frozen snapshot as the fallback:
+   *  the station may carry no translation, be deleted, or the list may not have loaded. */
+  stationName(l3) {
+    const row = l3.station_id ? this.stationsById.get(l3.station_id) : void 0;
+    if (!row) return l3.station;
+    return String(row.name_es || row.name || l3.station);
+  }
+  /** The stations present on the line, for the segment: keyed by ID (stable across renames and
+   *  locale switches), labelled in the hub's language. '' = lines without a station. */
   get stations() {
-    const set = /* @__PURE__ */ new Set();
-    for (const t7 of this.tickets) for (const l3 of t7.lines) set.add(l3.station);
-    return Array.from(set).sort((a3, b3) => a3 === "" ? 1 : b3 === "" ? -1 : a3.localeCompare(b3));
+    const byId = /* @__PURE__ */ new Map();
+    for (const t7 of this.tickets)
+      for (const l3 of t7.lines) {
+        const key = l3.station_id ?? "";
+        if (!byId.has(key)) byId.set(key, this.stationName(l3));
+      }
+    return Array.from(byId, ([id, label]) => ({ id, label })).sort(
+      (a3, b3) => a3.id === "" ? 1 : b3.id === "" ? -1 : a3.label.localeCompare(b3.label)
+    );
   }
   /** The lines of a ticket this screen shows: all of them (expo) or the station's. */
   visibleLines(t7) {
     if (!this.station) return t7.lines;
-    const want = this.station === NO_STATION ? "" : this.station;
-    return t7.lines.filter((l3) => l3.station === want);
+    const wantNone = this.station === NO_STATION;
+    return t7.lines.filter((l3) => (l3.station_id ?? "") === (wantNone ? "" : this.station));
   }
   elapsed(t7) {
     const since = Date.parse(t7.since);
@@ -2398,7 +2418,7 @@ var ErpKitchenDisplay = class extends i3 {
     const t_ = (k2) => erplora().t(CATALOG, k2);
     const actionable = can("kitchen.change_order") && (COOKING.includes(l3.status) || l3.status === "ready");
     const seat = l3.seat !== null ? b2`<span>${t_("ui.seat")} ${l3.seat}</span>` : A;
-    const station = !this.station && l3.station ? b2`<span>${l3.station}</span>` : A;
+    const station = !this.station && l3.station_id ? b2`<span>${this.stationName(l3)}</span>` : A;
     const printer = l3.destination === "printer" ? b2`<ion-icon name="print-outline" aria-label=${t_("ui.printerOnly")}></ion-icon>` : A;
     return b2`<li class="line" data-item=${l3.id} data-status=${l3.status} role="button" tabindex=${actionable ? 0 : -1}
         aria-disabled=${actionable ? "false" : "true"}
@@ -2469,17 +2489,32 @@ var ErpKitchenDisplay = class extends i3 {
       ${ready.length ? b2`<h3 class="section-title">${t_("ui.readyRail")} (${ready.length})</h3>
                <div class="grid">${ready.map((t7) => this.renderTicket(t7))}</div>` : A}`;
   }
+  /** An All-Day row's station name, in the hub's language: rows group by the FROZEN name, so this
+   *  reverses it through the stations list (a row frozen as `Bar` or as `Barra` both render
+   *  «Barra»). Unknown names (station deleted, list not loaded) stay as they were frozen. */
+  allDayStation(name) {
+    const frozen = String(name ?? "");
+    if (!frozen) return frozen;
+    for (const s5 of this.stationsById.values()) {
+      if (frozen === s5.name_es || frozen === s5.name) return String(s5.name_es || s5.name);
+    }
+    return frozen;
+  }
   renderAllDay() {
     const t_ = (k2) => erplora().t(CATALOG, k2);
-    const want = this.station === NO_STATION ? "" : this.station;
-    const rows2 = this.station ? this.allDay.filter((r6) => String(r6.station_name ?? "") === want) : this.allDay;
+    let rows2 = this.allDay;
+    if (this.station) {
+      const selected = this.station === NO_STATION ? null : this.stationsById.get(this.station);
+      const names = selected ? /* @__PURE__ */ new Set([String(selected.name_es || ""), String(selected.name || "")]) : /* @__PURE__ */ new Set([""]);
+      rows2 = this.allDay.filter((r6) => names.has(String(r6.station_name ?? "")));
+    }
     if (!rows2.length) return b2`<ok-empty-state icon="restaurant-outline" .title=${t_("ui.emptyAllDay")}></ok-empty-state>`;
     return b2`<table class="allday">
       <thead><tr><th>${t_("ui.colProduct")}</th><th></th><th></th></tr></thead>
       <tbody>${rows2.map(
       (r6) => b2`<tr data-allday=${r6.product_name}>
           <td>${r6.product_name}</td>
-          <td class="s">${!this.station && r6.station_name ? r6.station_name : ""}</td>
+          <td class="s">${!this.station && r6.station_name ? this.allDayStation(r6.station_name) : ""}</td>
           <td class="q">${formatQty(Number(r6.quantity) || 0, erplora().locale)}</td>
         </tr>`
     )}</tbody>
@@ -2500,7 +2535,7 @@ var ErpKitchenDisplay = class extends i3 {
       ${stations.length > 1 || this.station ? b2`<div class="bar">
             <ion-segment scrollable .value=${this.station || "__all"} @ionChange=${(e5) => this.station = e5.detail.value === "__all" ? "" : String(e5.detail.value ?? "")}>
               <ion-segment-button value="__all"><ion-label>${t_("ui.stationAll")}</ion-label></ion-segment-button>
-              ${stations.map((s5) => b2`<ion-segment-button value=${s5 || NO_STATION}><ion-label>${s5 || t_("ui.stationNone")}</ion-label></ion-segment-button>`)}
+              ${stations.map((s5) => b2`<ion-segment-button value=${s5.id || NO_STATION}><ion-label>${s5.id ? s5.label : t_("ui.stationNone")}</ion-label></ion-segment-button>`)}
             </ion-segment>
           </div>` : A}
       ${this.error ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.error}</ok-inline-feedback>` : A}
@@ -2523,6 +2558,9 @@ __decorateClass([
 __decorateClass([
   r5()
 ], ErpKitchenDisplay.prototype, "settings", 2);
+__decorateClass([
+  r5()
+], ErpKitchenDisplay.prototype, "stationsById", 2);
 __decorateClass([
   r5()
 ], ErpKitchenDisplay.prototype, "error", 2);
@@ -4714,6 +4752,9 @@ function erplora5() {
   if (!c5) throw new Error("erplora SDK no inicializado por el shell");
   return c5;
 }
+function stationName(s5) {
+  return String(s5.name_es || s5.name || "\u2014");
+}
 var ErpKitchenOrdersStations = class extends i3 {
   constructor() {
     super(...arguments);
@@ -4731,6 +4772,8 @@ var ErpKitchenOrdersStations = class extends i3 {
     this.routeStationId = "";
     this.routeProductId = "";
     this.routeCategoryId = "";
+    this.productOptions = [];
+    this.categoryOptions = [];
     this.pendingCounts = /* @__PURE__ */ new Map();
     this.onLocaleChange = () => this.requestUpdate();
   }
@@ -4756,7 +4799,9 @@ var ErpKitchenOrdersStations = class extends i3 {
   get columns() {
     const t7 = (k2) => erplora5().t(CATALOG5, k2);
     return [
-      { key: "name", header: t7("ui.colStation"), sortable: true, filterable: true, filterType: "text" },
+      // kitchen#45: la columna pinta el nombre EN EL IDIOMA DEL HUB (name_es con caída a name); la
+      // query ya proyectaba name_es y nadie lo miraba. El filtro/sort acompañan a lo que se ve.
+      { key: "name_es", header: t7("ui.colStation"), sortable: true, filterable: true, filterType: "text", format: (r6) => stationName(r6) },
       {
         key: "printer_name",
         header: t7("ui.colPrinter"),
@@ -4824,6 +4869,16 @@ var ErpKitchenOrdersStations = class extends i3 {
       this.requestUpdate();
     } catch {
     }
+    try {
+      const [products, categories] = await Promise.all([
+        erplora5().query("inventory.products.list", { limit: 500 }).catch(() => []),
+        erplora5().query("inventory.categories.list", { limit: 500 }).catch(() => [])
+      ]);
+      this.productOptions = Array.isArray(products) ? products.filter((p4) => p4?.id && p4?.name) : [];
+      this.categoryOptions = Array.isArray(categories) ? categories.filter((c5) => c5?.id && c5?.name) : [];
+      this.requestUpdate();
+    } catch {
+    }
   }
   // Referencia al ok-data-table para cerrar su panel lateral (drawer) tras el alta.
   dataTable() {
@@ -4884,15 +4939,15 @@ var ErpKitchenOrdersStations = class extends i3 {
   }
   async saveRouting(ev) {
     ev.preventDefault();
-    if (!this.routeStationId || !this.routeProductId.trim() && !this.routeCategoryId.trim()) return;
+    if (!this.routeStationId || !this.routeProductId && !this.routeCategoryId) return;
     this.saving = true;
     this.formError = "";
     this.formMsg = "";
     try {
       await erplora5().command("kitchen.stations.set_routing", {
         station_id: this.routeStationId,
-        product_id: this.routeProductId.trim(),
-        category_id: this.routeCategoryId.trim()
+        product_id: this.routeProductId,
+        category_id: this.routeCategoryId
       });
       this.formMsg = erplora5().t(CATALOG5, "ui.routingSaved");
       this.routeProductId = "";
@@ -4930,7 +4985,7 @@ var ErpKitchenOrdersStations = class extends i3 {
     if (!this.editing) return A;
     const t7 = (k2) => erplora5().t(CATALOG5, k2);
     return b2`<section class="panel">
-      <h3>${t7("ui.editStationTitle")} · ${this.editing.name}</h3>
+      <h3>${t7("ui.editStationTitle")} · ${stationName(this.editing)}</h3>
       <form class="form" @submit=${(e5) => this.saveEdit(e5)}>
         <ion-input mode="md" fill="outline" label=${t7("ui.labelName")} label-placement="floating" .value=${this.editName} @ionInput=${(e5) => this.editName = e5.target.value}></ion-input>
         <ion-input mode="md" fill="outline" label=${t7("ui.labelColor")} label-placement="floating" placeholder="#F97316" .value=${this.editColor} @ionInput=${(e5) => this.editColor = e5.target.value}></ion-input>
@@ -4948,11 +5003,15 @@ var ErpKitchenOrdersStations = class extends i3 {
       <h3>${t7("ui.routingTitle")}</h3>
       <form class="form" @submit=${(e5) => this.saveRouting(e5)}>
         <ion-select mode="md" fill="outline" label-placement="floating" label=${t7("ui.colStation")} .value=${this.routeStationId} @ionChange=${(e5) => this.routeStationId = e5.target.value}>
-          ${stations.map((s5) => b2`<ion-select-option value=${s5.id}>${s5.name}</ion-select-option>`)}
+          ${stations.map((s5) => b2`<ion-select-option value=${s5.id}>${stationName(s5)}</ion-select-option>`)}
         </ion-select>
-        <ion-input mode="md" fill="outline" label=${t7("ui.labelProductId")} label-placement="floating" placeholder=${t7("ui.placeholderOptional")} .value=${this.routeProductId} @ionInput=${(e5) => this.routeProductId = e5.target.value}></ion-input>
-        <ion-input mode="md" fill="outline" label=${t7("ui.labelCategoryId")} label-placement="floating" placeholder=${t7("ui.placeholderOptional")} .value=${this.routeCategoryId} @ionInput=${(e5) => this.routeCategoryId = e5.target.value}></ion-input>
-        <ion-button type="submit" size="small" ?disabled=${this.saving || !this.routeStationId || !this.routeProductId.trim() && !this.routeCategoryId.trim()}>${this.saving ? t7("ui.saving") : t7("ui.saveRouting")}</ion-button>
+        <ion-select mode="md" fill="outline" interface="popover" label-placement="floating" label=${t7("ui.labelProduct")} placeholder=${t7("ui.placeholderOptional")} .value=${this.routeProductId} @ionChange=${(e5) => this.routeProductId = e5.target.value ?? ""}>
+          ${this.productOptions.map((p4) => b2`<ion-select-option value=${p4.id}>${p4.name}</ion-select-option>`)}
+        </ion-select>
+        <ion-select mode="md" fill="outline" interface="popover" label-placement="floating" label=${t7("ui.labelCategory")} placeholder=${t7("ui.placeholderOptional")} .value=${this.routeCategoryId} @ionChange=${(e5) => this.routeCategoryId = e5.target.value ?? ""}>
+          ${this.categoryOptions.map((c5) => b2`<ion-select-option value=${c5.id}>${c5.name}</ion-select-option>`)}
+        </ion-select>
+        <ion-button type="submit" size="small" ?disabled=${this.saving || !this.routeStationId || !this.routeProductId && !this.routeCategoryId}>${this.saving ? t7("ui.saving") : t7("ui.saveRouting")}</ion-button>
       </form>
     </section>`;
   }
@@ -4967,7 +5026,7 @@ var ErpKitchenOrdersStations = class extends i3 {
         ${this.formMsg ? b2`<p class="ok">${this.formMsg}</p>` : A}
         ${this.formError ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
         ${this.ctrl?.error ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
-        <ok-data-table .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.name ?? "\u2014")} .cardIcon=${() => "flame-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchStations")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyStations")} .actions=${this.rowActions} .rowClickable=${true} @rowAction=${(e5) => this.onRowAction(e5)} @rowClick=${(e5) => this.onRowAction({ detail: { actionId: "edit", row: e5.detail.row } })} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @pageSizeChange=${(e5) => this.ctrl.setPageSize(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}>
+        <ok-data-table .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => stationName(r6)} .cardIcon=${() => "flame-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchStations")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyStations")} .actions=${this.rowActions} .rowClickable=${true} @rowAction=${(e5) => this.onRowAction(e5)} @rowClick=${(e5) => this.onRowAction({ detail: { actionId: "edit", row: e5.detail.row } })} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @pageSizeChange=${(e5) => this.ctrl.setPageSize(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}>
           <!-- Alta de estación: se proyecta SIEMPRE (aunque el panel esté cerrado); si se renderizara
                solo con el panel abierto, el «+» de la barra abriría un panel vacío. -->
           <form slot="create" class="create-form" @submit=${(e5) => this.createStation(e5)}>
@@ -5021,6 +5080,12 @@ __decorateClass([
 __decorateClass([
   r5()
 ], ErpKitchenOrdersStations.prototype, "routeCategoryId", 2);
+__decorateClass([
+  r5()
+], ErpKitchenOrdersStations.prototype, "productOptions", 2);
+__decorateClass([
+  r5()
+], ErpKitchenOrdersStations.prototype, "categoryOptions", 2);
 define("erp-kitchen-orders-stations", ErpKitchenOrdersStations);
 
 // ui/components/erp-kitchen-pos-comandas/erp-kitchen-pos-comandas.ts

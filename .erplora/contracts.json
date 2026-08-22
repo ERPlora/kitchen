@@ -3,6 +3,8 @@
   "module": "kitchen",
   "consumes": {
     "queries": [
+      "inventory.categories.list",
+      "inventory.products.list",
       "kitchen.logs.list",
       "kitchen.orders.all_day",
       "kitchen.orders.display",

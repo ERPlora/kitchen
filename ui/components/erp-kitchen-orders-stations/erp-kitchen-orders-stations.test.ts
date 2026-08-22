@@ -13,15 +13,36 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 const PENDING = [{ station_id: 'st1', pending_count: 3 }];
 
+// kitchen#45: the routing panel picks from the hub's REAL products and categories (inventory's
+// public lists), and the stations speak the hub's language (`name_es` with `name` as fallback —
+// st2 carries no translation, so the base name must survive, never a blank).
+const STATIONS = [
+  { id: 'st1', name: 'Bar', name_es: 'Barra', color: '#F97316', icon: 'flame', printer_name: 'COCINA-1', is_active: 1 },
+  { id: 'st2', name: 'Kitchen', name_es: '', color: '#2DD36F', icon: 'restaurant', printer_name: 'COCINA-2', is_active: 1 },
+];
+const CATEGORIES = [
+  { id: 'cat-1', name: 'Refrescos' },
+  { id: 'cat-2', name: 'Café' },
+];
+const PRODUCTS = [
+  { id: 'p-1', name: 'Alitas de pollo', sku: 'ALI-1' },
+  { id: 'p-2', name: 'Arroz a banda', sku: 'ARB-1' },
+];
+
 const comandos: { name: string; payload: Record<string, unknown> }[] = [];
 
 beforeEach(() => {
   comandos.length = 0;
   (globalThis as Record<string, unknown>).erplora = {
-    query: async (name: string) => (name === 'kitchen.stations.pending_counts' ? PENDING : []),
+    query: async (name: string) => {
+      if (name === 'kitchen.stations.pending_counts') return PENDING;
+      if (name === 'inventory.categories.list') return CATEGORIES;
+      if (name === 'inventory.products.list') return PRODUCTS;
+      return [];
+    },
     queryPage: async () => ({
-      rows: [{ id: 'st1', name: 'Plancha', color: '#F97316', icon: 'flame', printer_name: 'COCINA-1', is_active: 1 }],
-      total: 1,
+      rows: STATIONS,
+      total: STATIONS.length,
     }),
     command: async (name: string, payload: Record<string, unknown>) => {
       comandos.push({ name, payload });
@@ -149,5 +170,97 @@ describe('clicking the row opens the station (pm#155)', () => {
     await (el as unknown as { updateComplete: Promise<unknown> }).updateComplete;
     const wc = el as unknown as { editing: unknown };
     expect(wc.editing, 'the row was clicked and the edit panel did not take the station').toBeTruthy();
+  });
+});
+
+// ── kitchen#45: el enrutado se elige por NOMBRE, y las estaciones hablan el idioma del hub ─────
+//
+// El panel de enrutado pedía «ID de producto» / «ID de categoría» como TEXTO LIBRE: para mandar
+// las bebidas a la Barra había que TECLEAR un UUID, y no había forma en la aplicación de
+// averiguar cuál era el de «Refrescos». Así lo hace el mercado (Toast «Prep station routing»,
+// Square «Ticket routing»): se elige de una lista con el nombre. Y en la misma pantalla las
+// estaciones se listaban como Bar/Kitchen —inglés— con la fila teniendo name_es («Barra»,
+// «Cocina») relleno y sin usar, aunque kitchen.stations.list YA lo proyecta.
+describe('el enrutado se elige por NOMBRE de una lista, no tecleando ids (kitchen#45)', () => {
+  const routingForm = (el: HTMLElement & { shadowRoot: ShadowRoot }) =>
+    Array.from(el.shadowRoot.querySelectorAll('form'))
+      .find((f) => f.textContent?.includes('ui.routingTitle') || f.querySelector('ion-select')) as HTMLFormElement | undefined;
+
+  it('producto y categoría son ion-select con las opciones REALES del hub (inventory)', async () => {
+    const el = await montar();
+    const form = routingForm(el);
+    expect(form, 'no hay formulario de enrutado').toBeTruthy();
+    // Ya no queda NINGÚN ion-input de texto libre en el panel de enrutado.
+    expect(form!.querySelectorAll('ion-input').length, 'el panel sigue pidiendo ids a pelo').toBe(0);
+    const selects = Array.from(form!.querySelectorAll('ion-select'));
+    expect(selects.length).toBe(3); // estación + producto + categoría
+    const optionsOf = (s: HTMLElement) => Array.from(s.querySelectorAll('ion-select-option'));
+    const byOptions = selects.find((s) => optionsOf(s).some((o) => o.getAttribute('value') === 'p-1'));
+    expect(byOptions, 'no hay select de producto con las opciones de inventory.products.list').toBeTruthy();
+    const texts = optionsOf(byOptions!).map((o) => o.textContent?.trim());
+    expect(texts).toEqual(['Alitas de pollo', 'Arroz a banda']);
+    const byCategories = selects.find((s) => optionsOf(s).some((o) => o.getAttribute('value') === 'cat-1'));
+    expect(byCategories, 'no hay select de categoría con las opciones de inventory.categories.list').toBeTruthy();
+    expect(optionsOf(byCategories!).map((o) => o.textContent?.trim())).toEqual(['Refrescos', 'Café']);
+  });
+
+  it('guardar manda el id ELEGIDO y cadena vacía en el que no se tocó', async () => {
+    const el = await montar();
+    const wc = el as unknown as {
+      routeStationId: string;
+      routeProductId: string;
+      routeCategoryId: string;
+      saveRouting: (ev: Event) => Promise<void>;
+    };
+    wc.routeStationId = 'st1';
+    wc.routeProductId = 'p-2';
+    wc.routeCategoryId = '';
+    await wc.saveRouting(new Event('submit'));
+    const ruta = comandos.find((c) => c.name === 'kitchen.stations.set_routing');
+    expect(ruta, 'no se mandó el enrutado').toBeTruthy();
+    expect(ruta!.payload).toEqual({ station_id: 'st1', product_id: 'p-2', category_id: '' });
+  });
+
+  it('sin producto NI categoría no se manda nada (el command lo rechazaría)', async () => {
+    const el = await montar();
+    const wc = el as unknown as { routeStationId: string; routeProductId: string; routeCategoryId: string; saveRouting: (ev: Event) => Promise<void> };
+    wc.routeStationId = 'st1';
+    wc.routeProductId = '';
+    wc.routeCategoryId = '';
+    await wc.saveRouting(new Event('submit'));
+    expect(comandos.find((c) => c.name === 'kitchen.stations.set_routing')).toBeUndefined();
+  });
+});
+
+describe('las estaciones se muestran en el idioma del hub (kitchen#45)', () => {
+  it('la columna ESTACIÓN usa name_es con caída a name', async () => {
+    const el = await montar();
+    const cols = (el as unknown as { columns: { key: string; format?: (r: Record<string, unknown>) => unknown }[] }).columns;
+    const col = cols.find((c) => c.key === 'name_es');
+    expect(col?.format, 'la columna de nombre no formatea: pintaría `name` a secas').toBeTypeOf('function');
+    expect(col!.format!({ name: 'Bar', name_es: 'Barra' })).toBe('Barra');
+    expect(col!.format!({ name: 'Kitchen', name_es: '' })).toBe('Kitchen');
+    expect(col!.format!({ name: 'Pase', name_es: null })).toBe('Pase');
+  });
+
+  it('el select de estación del enrutado también muestra name_es', async () => {
+    const el = await montar();
+    const selects = Array.from(el.shadowRoot.querySelectorAll('form ion-select'));
+    const byStation = selects.find((s) => Array.from(s.querySelectorAll('ion-select-option')).some((o) => o.getAttribute('value') === 'st1'));
+    expect(byStation, 'no hay select de estación en el panel de enrutado').toBeTruthy();
+    const texts = Array.from(byStation!.querySelectorAll('ion-select-option')).map((o) => o.textContent?.trim());
+    expect(texts).toEqual(['Barra', 'Kitchen']);
+  });
+
+  it('la tarjeta móvil y el título de edición muestran el nombre localizado', async () => {
+    const el = await montar();
+    const t = tabla(el) as unknown as { cardTitle: (r: Record<string, unknown>) => string };
+    expect(t.cardTitle({ name: 'Bar', name_es: 'Barra' })).toBe('Barra');
+    tabla(el)!.dispatchEvent(new CustomEvent('rowClick', { detail: { row: { id: 'st1', name: 'Bar', name_es: 'Barra', is_active: 1 } } }));
+    await new Promise((r) => setTimeout(r, 0));
+    await (el as unknown as { updateComplete: Promise<unknown> }).updateComplete;
+    const h3 = el.shadowRoot.querySelector('h3');
+    expect(h3?.textContent).toContain('Barra');
+    expect(h3?.textContent).not.toContain('Bar·');
   });
 });
