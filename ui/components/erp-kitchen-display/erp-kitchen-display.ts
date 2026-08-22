@@ -14,8 +14,9 @@ const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
 // Fresh, TouchBistro, Odoo, LS Central, Simphony; decision in kitchen#4, 2026-08-15):
 //   · one card per ticket: label ("Mesa 4"), number, round, priority, and its lines with quantity,
 //     modifiers, notes and seat;
-//   · station filter on the SNAPSHOT `station_name` of the line (never a live join), plus an
-//     expo/pass view that shows every station;
+//   · station filter on the SNAPSHOT station of the line — by `station_id`, its name PAINTED in
+//     the hub's language (`name_es` with `name` as fallback, kitchen#45), plus an expo/pass view
+//     that shows every station;
 //   · one tap on a line = bump (`kitchen.items.bump`); one tap on a struck line = recall
 //     (`kitchen.items.recall`); a header tap bumps ONLY the lines on screen (station-scoped —
 //     Tek-Tips: a bar bump must never clear the grill's lines from the expo). The ticket follows
@@ -66,6 +67,9 @@ interface DisplayRow {
 
 interface Line {
   id: string;
+  /** The station the line went to, resolved at render by id (localized); the snapshot name is the
+   *  fallback when the station is gone or the list did not load (kitchen#45). */
+  station_id: string | null;
   station: string;
   destination: string;
   product_name: string;
@@ -74,6 +78,13 @@ interface Line {
   notes: string;
   status: string;
   seat: number | null;
+}
+
+/** One row of `kitchen.stations.list`, for rendering names in the hub's language. */
+interface StationRow {
+  id: string;
+  name: string;
+  name_es: string | null;
 }
 
 interface Ticket {
@@ -169,6 +180,7 @@ export function groupTickets(rows: DisplayRow[]): Ticket[] {
     if (r.item_id) {
       t.lines.push({
         id: r.item_id,
+        station_id: r.station_id === null || r.station_id === undefined || r.station_id === '' ? null : String(r.station_id),
         station: String(r.station_name ?? ''),
         destination: String(r.destination ?? 'both'),
         product_name: String(r.product_name ?? ''),
@@ -279,7 +291,9 @@ export class ErpKitchenDisplay extends LitElement {
   `;
 
   /** Station filter: '' = expo/pass (every station); `NO_STATION` = lines without station. Set from
-   *  the segment; a public property so a fixed screen (the bar's tablet) can be pinned by attribute. */
+   *  the segment; a public property so a fixed screen (the bar's tablet) can be pinned by attribute.
+   *  Carries a station ID (kitchen#45): an id survives renames and locale switches, a name does
+   *  not — a pinned Spanish name would stop matching the moment the hub changed language. */
   @property({ type: String, reflect: true }) station = '';
 
   /** 'tickets' (the pass) or 'allday' (what is left to cook, per product). */
@@ -290,6 +304,11 @@ export class ErpKitchenDisplay extends LitElement {
   @state() private allDay: AllDayRow[] = [];
 
   @state() private settings: DisplaySettings = { ...DEFAULT_SETTINGS };
+
+  /** The hub's stations by id, to paint station names in the hub's language (kitchen#45). A comanda
+   *  freezes its station NAME at send time (ADR-0145) and old lines froze the seed column — the ID
+   *  is the fact; the name is presentation, resolved here with the frozen one as fallback. */
+  @state() private stationsById = new Map<string, StationRow>();
 
   @state() private error = '';
 
@@ -358,12 +377,16 @@ export class ErpKitchenDisplay extends LitElement {
   private async load() {
     this.loading = true;
     try {
-      const [rows, allDay] = await Promise.all([
+      const [rows, allDay, stations] = await Promise.all([
         erplora().query<DisplayRow[]>('kitchen.orders.display'),
         erplora().query<AllDayRow[]>('kitchen.orders.all_day'),
+        // kitchen#45: names in the hub's language. Optional: without it (no permission, no SDK)
+        // the frozen snapshot names still paint — degraded, never broken.
+        erplora().query<StationRow[]>('kitchen.stations.list').catch(() => [] as StationRow[]),
       ]);
       this.rows = Array.isArray(rows) ? rows : [];
       this.allDay = Array.isArray(allDay) ? allDay : [];
+      this.stationsById = new Map((Array.isArray(stations) ? stations : []).map((s) => [String(s.id), s]));
     } catch (e) {
       this.error = errorText(e, 'ui.loadError');
     } finally {
@@ -377,18 +400,33 @@ export class ErpKitchenDisplay extends LitElement {
     return groupTickets(this.rows);
   }
 
-  /** Station names present on the line, for the segment (snapshot names, sorted). */
-  private get stations(): string[] {
-    const set = new Set<string>();
-    for (const t of this.tickets) for (const l of t.lines) set.add(l.station);
-    return Array.from(set).sort((a, b) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)));
+  /** The station's name in the hub's language, with the line's frozen snapshot as the fallback:
+   *  the station may carry no translation, be deleted, or the list may not have loaded. */
+  private stationName(l: Line): string {
+    const row = l.station_id ? this.stationsById.get(l.station_id) : undefined;
+    if (!row) return l.station;
+    return String(row.name_es || row.name || l.station);
+  }
+
+  /** The stations present on the line, for the segment: keyed by ID (stable across renames and
+   *  locale switches), labelled in the hub's language. '' = lines without a station. */
+  private get stations(): { id: string; label: string }[] {
+    const byId = new Map<string, string>();
+    for (const t of this.tickets)
+      for (const l of t.lines) {
+        const key = l.station_id ?? '';
+        if (!byId.has(key)) byId.set(key, this.stationName(l));
+      }
+    return Array.from(byId, ([id, label]) => ({ id, label })).sort((a, b) =>
+      a.id === '' ? 1 : b.id === '' ? -1 : a.label.localeCompare(b.label),
+    );
   }
 
   /** The lines of a ticket this screen shows: all of them (expo) or the station's. */
   private visibleLines(t: Ticket): Line[] {
     if (!this.station) return t.lines;
-    const want = this.station === NO_STATION ? '' : this.station;
-    return t.lines.filter((l) => l.station === want);
+    const wantNone = this.station === NO_STATION;
+    return t.lines.filter((l) => (l.station_id ?? '') === (wantNone ? '' : this.station));
   }
 
   private elapsed(t: Ticket): number {
@@ -445,7 +483,7 @@ export class ErpKitchenDisplay extends LitElement {
     const t_ = (k: string): string => erplora().t(CATALOG, k);
     const actionable = can('kitchen.change_order') && (COOKING.includes(l.status) || l.status === 'ready');
     const seat = l.seat !== null ? html`<span>${t_('ui.seat')} ${l.seat}</span>` : nothing;
-    const station = !this.station && l.station ? html`<span>${l.station}</span>` : nothing;
+    const station = !this.station && l.station_id ? html`<span>${this.stationName(l)}</span>` : nothing;
     const printer = l.destination === 'printer' ? html`<ion-icon name="print-outline" aria-label=${t_('ui.printerOnly')}></ion-icon>` : nothing;
     return html`<li class="line" data-item=${l.id} data-status=${l.status} role="button" tabindex=${actionable ? 0 : -1}
         aria-disabled=${actionable ? 'false' : 'true'}
@@ -513,10 +551,29 @@ export class ErpKitchenDisplay extends LitElement {
         : nothing}`;
   }
 
+  /** An All-Day row's station name, in the hub's language: rows group by the FROZEN name, so this
+   *  reverses it through the stations list (a row frozen as `Bar` or as `Barra` both render
+   *  «Barra»). Unknown names (station deleted, list not loaded) stay as they were frozen. */
+  private allDayStation(name: string | null): string {
+    const frozen = String(name ?? '');
+    if (!frozen) return frozen;
+    for (const s of this.stationsById.values()) {
+      if (frozen === s.name_es || frozen === s.name) return String(s.name_es || s.name);
+    }
+    return frozen;
+  }
+
   private renderAllDay() {
     const t_ = (k: string): string => erplora().t(CATALOG, k);
-    const want = this.station === NO_STATION ? '' : this.station;
-    const rows = this.station ? this.allDay.filter((r) => String(r.station_name ?? '') === want) : this.allDay;
+    // The filter carries a station ID (kitchen#45); rows carry frozen names. A row belongs to the
+    // selection when its frozen name is the station's localized OR seed name — the feed mixes
+    // comandas sent before and after the locale was set.
+    let rows = this.allDay;
+    if (this.station) {
+      const selected = this.station === NO_STATION ? null : this.stationsById.get(this.station);
+      const names = selected ? new Set([String(selected.name_es || ''), String(selected.name || '')]) : new Set(['']);
+      rows = this.allDay.filter((r) => names.has(String(r.station_name ?? '')));
+    }
     if (!rows.length) return html`<ok-empty-state icon="restaurant-outline" .title=${t_('ui.emptyAllDay')}></ok-empty-state>`;
     // Same product on two stations (expo view) → two rows, each with its station: the fryer and
     // the grill do not share a batch.
@@ -525,7 +582,7 @@ export class ErpKitchenDisplay extends LitElement {
       <tbody>${rows.map(
         (r) => html`<tr data-allday=${r.product_name}>
           <td>${r.product_name}</td>
-          <td class="s">${!this.station && r.station_name ? r.station_name : ''}</td>
+          <td class="s">${!this.station && r.station_name ? this.allDayStation(r.station_name) : ''}</td>
           <td class="q">${formatQty(Number(r.quantity) || 0, erplora().locale)}</td>
         </tr>`,
       )}</tbody>
@@ -548,7 +605,7 @@ export class ErpKitchenDisplay extends LitElement {
         ? html`<div class="bar">
             <ion-segment scrollable .value=${this.station || '__all'} @ionChange=${(e: CustomEvent<{ value: string }>) => (this.station = e.detail.value === '__all' ? '' : String(e.detail.value ?? ''))}>
               <ion-segment-button value="__all"><ion-label>${t_('ui.stationAll')}</ion-label></ion-segment-button>
-              ${stations.map((s) => html`<ion-segment-button value=${s || NO_STATION}><ion-label>${s || t_('ui.stationNone')}</ion-label></ion-segment-button>`)}
+              ${stations.map((s) => html`<ion-segment-button value=${s.id || NO_STATION}><ion-label>${s.id ? s.label : t_('ui.stationNone')}</ion-label></ion-segment-button>`)}
             </ion-segment>
           </div>`
         : nothing}

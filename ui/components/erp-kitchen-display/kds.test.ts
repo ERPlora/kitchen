@@ -15,6 +15,7 @@ type Row = Record<string, unknown>;
 let displayRows: Row[] = [];
 let allDayRows: Row[] = [];
 let settings: Row = {};
+let stationRows: Row[] = [];
 let permissions: string[] = ['kitchen.view_order', 'kitchen.change_order', 'kitchen.complete_order'];
 let commands: Array<{ name: string; payload: Record<string, unknown> }> = [];
 let listeners: Record<string, Array<(p: unknown) => void>> = {};
@@ -41,6 +42,12 @@ function seed() {
     { product_name: 'Hamburguesa', station_name: 'Plancha', quantity: 1_000_000, lines: 1 },
   ];
   settings = { show_timer: 1, warning_time_minutes: 15, critical_time_minutes: 30, color_coding_enabled: 1 };
+  // The hub's stations: `name` is the seed language, `name_es` what a Spanish hub must show.
+  // s-grill carries NO translation: the base name is the fallback, never a blank.
+  stationRows = [
+    { id: 's-bar', name: 'Bar', name_es: 'Barra', is_active: 1 },
+    { id: 's-grill', name: 'Plancha', name_es: '', is_active: 1 },
+  ];
 }
 
 beforeEach(() => {
@@ -58,6 +65,7 @@ beforeEach(() => {
       if (name === 'kitchen.orders.display') return displayRows;
       if (name === 'kitchen.orders.all_day') return allDayRows;
       if (name === 'kitchen.settings.get') return [settings];
+      if (name === 'kitchen.stations.list') return stationRows;
       return [];
     },
     queryPage: async () => ({ rows: [], total: 0, limit: 50, offset: 0 }),
@@ -125,10 +133,63 @@ describe('a grid of tickets, one card per order, lines inside', () => {
 
   it('the station filter shows only that station\'s lines and hides tickets without any', async () => {
     const el = await mount();
-    el.station = 'Plancha';
+    el.station = 's-grill';
     await settle(el);
     expect(cards(el).map((c) => c.dataset.order)).toEqual(['k1']);
     expect(lines(card(el, 'k1')).map((l) => l.dataset.item)).toEqual(['i2', 'i3']);
+  });
+});
+
+// ── kitchen#45: the station names speak the hub's language ───────────────────────────────────
+//
+// The line freezes its station NAME at send time (ADR-0145 snapshot), and until now it froze the
+// SEED column (`name`: Bar, Kitchen) — so a Spanish hub showed a segment reading «Todas las
+// estaciones | Bar | Sin estación», two labels in Spanish and one in English, and `Bar` under every
+// product. The freeze now takes the localized column (COALESCE of name_es over name), and the KDS
+// RESOLVES the name by station_id when it paints: a comanda sent BEFORE the change (or before the
+// language was set) still renders localized, because the id is the fact and the name is
+// presentation. When the stations list cannot be loaded, the frozen snapshot is the fallback.
+describe('kitchen#45: station names in the hub language, resolved by station_id', () => {
+  const segmentButtons = (el: Host) =>
+    Array.from(el.shadowRoot.querySelectorAll<HTMLElement>('ion-segment-button')).filter((b) => b.value !== '__all');
+
+  it('the segment and the line meta show name_es even when the snapshot froze the seed name', async () => {
+    const el = await mount();
+    const labels = segmentButtons(el).map((b) => b.textContent?.trim());
+    expect(labels, 'the segment still shows the frozen seed name (Bar)').toContain('Barra');
+    expect(labels).not.toContain('Bar');
+    // …and a station without name_es keeps its base name (never blank).
+    expect(labels).toContain('Plancha');
+    // The line meta under the product speaks the same language as the segment.
+    expect(lines(card(el, 'k1'))[0].textContent).toContain('Barra');
+  });
+
+  it('the segment keys by station_id: filtering still works after a rename or a locale switch', async () => {
+    const el = await mount();
+    const byBar = segmentButtons(el).find((b) => b.textContent?.trim() === 'Barra');
+    expect(byBar?.getAttribute('value'), 'the segment value is the station id, not its (localized) name').toBe('s-bar');
+    el.station = 's-bar';
+    await settle(el);
+    expect(cards(el).map((c) => c.dataset.order)).toEqual(['k1', 'k2']);
+    expect(lines(card(el, 'k1')).map((l) => l.dataset.item)).toEqual(['i1']);
+  });
+
+  it('a comanda whose station no longer exists keeps its frozen snapshot name', async () => {
+    stationRows = [{ id: 's-grill', name: 'Plancha', name_es: 'Plancha', is_active: 1 }]; // s-bar deleted
+    const el = await mount();
+    expect(el.shadowRoot.textContent).toContain('Bar');
+  });
+
+  it('without the stations list (query failed) the snapshot name is the fallback', async () => {
+    (globalThis as { erplora: { query: unknown } }).erplora.query = async (name: string) => {
+      if (name === 'kitchen.stations.list') throw new Error('no permissions / no SDK');
+      if (name === 'kitchen.orders.display') return displayRows;
+      if (name === 'kitchen.orders.all_day') return allDayRows;
+      if (name === 'kitchen.settings.get') return [settings];
+      return [];
+    };
+    const el = await mount();
+    expect(segmentButtons(el).map((b) => b.textContent?.trim())).toContain('Bar');
   });
 });
 
@@ -149,7 +210,7 @@ describe('one tap = bump; one tap on a struck line = recall; never a dialog', ()
 
   it('the header bump of a station-filtered ticket bumps ONLY that station\'s cooking lines', async () => {
     const el = await mount();
-    el.station = 'Plancha';
+    el.station = 's-grill';
     await settle(el);
     card(el, 'k1').querySelector<HTMLElement>('[data-action="bump"]')!.click();
     await settle(el);
@@ -225,7 +286,9 @@ describe('All-Day: what is left to cook, summed per product', () => {
     const rows = Array.from(el.shadowRoot.querySelectorAll<HTMLElement>('[data-allday]'));
     expect(rows.map((r) => r.dataset.allday)).toEqual(['Caña', 'Hamburguesa']);
     expect(rows[0].textContent).toMatch(/3[.,]5/);
-    el.station = 'Plancha';
+    // kitchen#45: the station column speaks the hub language too (Bar → Barra).
+    expect(rows[0].textContent).toContain('Barra');
+    el.station = 's-grill';
     await settle(el);
     expect(Array.from(el.shadowRoot.querySelectorAll<HTMLElement>('[data-allday]')).map((r) => r.dataset.allday)).toEqual(['Hamburguesa']);
   });

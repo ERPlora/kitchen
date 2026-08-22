@@ -24,6 +24,8 @@ interface ErploraClientLike extends ListClient {
 interface Station {
   id: string;
   name: string;
+  /** The hub-language name; empty when the station carries no translation (kitchen#45). */
+  name_es: string | null;
   color: string;
   icon: string;
   printer_name: string;
@@ -36,10 +38,23 @@ interface PendingCount {
   pending_count: number;
 }
 
+/** A hub product / category, as `inventory`'s public lists return them (kitchen#45: the routing
+ *  panel picks by NAME from these — nobody types a UUID). */
+interface InventoryOption {
+  id: string;
+  name: string;
+}
+
 function erplora(): ErploraClientLike {
   const c = (globalThis as { erplora?: ErploraClientLike }).erplora;
   if (!c) throw new Error('erplora SDK no inicializado por el shell');
   return c;
+}
+
+/** The station's name in the hub's language, with the base name as the fallback: an untranslated
+ *  row keeps its `name`, never a blank (kitchen#45). */
+function stationName(s: { name?: unknown; name_es?: unknown }): string {
+  return String(s.name_es || s.name || '—');
 }
 
 export class ErpKitchenOrdersStations extends LitElement {
@@ -90,6 +105,14 @@ export class ErpKitchenOrdersStations extends LitElement {
 
   @state() routeCategoryId = '';
 
+  /** Las opciones del enrutado (kitchen#45): los productos y categorías REALES del hub, de las
+   *  listas públicas de `inventory` — lo que el resto del hub hace para elegir (appointments con
+   *  customers/services/staff). Vacías si la query falla: el panel degrada a estación-sola, no
+   *  rompe la pantalla de estaciones. */
+  @state() productOptions: InventoryOption[] = [];
+
+  @state() categoryOptions: InventoryOption[] = [];
+
   private ctrl!: ListController<Station>;
 
   private unsub?: () => void;
@@ -100,7 +123,9 @@ export class ErpKitchenOrdersStations extends LitElement {
   private get columns(): DataTableColumn[] {
     const t = (k: string): string => erplora().t(CATALOG, k);
     return [
-    { key: 'name', header: t('ui.colStation'), sortable: true, filterable: true, filterType: 'text' },
+    // kitchen#45: la columna pinta el nombre EN EL IDIOMA DEL HUB (name_es con caída a name); la
+    // query ya proyectaba name_es y nadie lo miraba. El filtro/sort acompañan a lo que se ve.
+    { key: 'name_es', header: t('ui.colStation'), sortable: true, filterable: true, filterType: 'text', format: (r) => stationName(r) },
     {
       key: 'printer_name',
       header: t('ui.colPrinter'),
@@ -177,6 +202,19 @@ export class ErpKitchenOrdersStations extends LitElement {
     } catch {
       /* recuento opcional; la lista sigue funcionando sin él */
     }
+    // kitchen#45: las opciones del enrutado. `limit` generoso como el resto del hub (appointments):
+    // un hub de barrio no pagina sus categorías en este panel.
+    try {
+      const [products, categories] = await Promise.all([
+        erplora().query<InventoryOption[]>('inventory.products.list', { limit: 500 }).catch(() => [] as InventoryOption[]),
+        erplora().query<InventoryOption[]>('inventory.categories.list', { limit: 500 }).catch(() => [] as InventoryOption[]),
+      ]);
+      this.productOptions = Array.isArray(products) ? products.filter((p) => p?.id && p?.name) : [];
+      this.categoryOptions = Array.isArray(categories) ? categories.filter((c) => c?.id && c?.name) : [];
+      this.requestUpdate();
+    } catch {
+      /* sin catálogo (permiso/inventario inactivo): el panel degrada, la pantalla no rompe */
+    }
   }
 
   // Referencia al ok-data-table para cerrar su panel lateral (drawer) tras el alta.
@@ -244,15 +282,17 @@ export class ErpKitchenOrdersStations extends LitElement {
 
   private async saveRouting(ev: Event) {
     ev.preventDefault();
-    if (!this.routeStationId || (!this.routeProductId.trim() && !this.routeCategoryId.trim())) return;
+    // Los ids vienen de selects (kitchen#45): cadena vacía = «no se eligió» — el schema del
+    // command espera strings con "" como ausencia.
+    if (!this.routeStationId || (!this.routeProductId && !this.routeCategoryId)) return;
     this.saving = true;
     this.formError = '';
     this.formMsg = '';
     try {
       await erplora().command('kitchen.stations.set_routing', {
         station_id: this.routeStationId,
-        product_id: this.routeProductId.trim(),
-        category_id: this.routeCategoryId.trim(),
+        product_id: this.routeProductId,
+        category_id: this.routeCategoryId,
       });
       this.formMsg = erplora().t(CATALOG, 'ui.routingSaved');
       this.routeProductId = '';
@@ -292,7 +332,7 @@ export class ErpKitchenOrdersStations extends LitElement {
     if (!this.editing) return nothing;
     const t = (k: string): string => erplora().t(CATALOG, k);
     return html`<section class="panel">
-      <h3>${t('ui.editStationTitle')} · ${this.editing.name}</h3>
+      <h3>${t('ui.editStationTitle')} · ${stationName(this.editing)}</h3>
       <form class="form" @submit=${(e: Event) => this.saveEdit(e)}>
         <ion-input mode="md" fill="outline" label=${t('ui.labelName')} label-placement="floating" .value=${this.editName} @ionInput=${(e: any) => (this.editName = e.target.value)}></ion-input>
         <ion-input mode="md" fill="outline" label=${t('ui.labelColor')} label-placement="floating" placeholder="#F97316" .value=${this.editColor} @ionInput=${(e: any) => (this.editColor = e.target.value)}></ion-input>
@@ -307,15 +347,23 @@ export class ErpKitchenOrdersStations extends LitElement {
   private renderRoutingPanel() {
     const t = (k: string): string => erplora().t(CATALOG, k);
     const stations = this.ctrl?.rows ?? [];
+    // kitchen#45: se elige por NOMBRE de una lista — las listas públicas de inventory — igual que
+    // el resto del hub resuelve sus referencias (appointments: customers/services/staff). Nadie
+    // teclea un UUID para mandar las bebidas a la Barra; con `interface-options` Ion pintará su
+    // buscador nativo cuando la lista crezca.
     return html`<section class="panel">
       <h3>${t('ui.routingTitle')}</h3>
       <form class="form" @submit=${(e: Event) => this.saveRouting(e)}>
         <ion-select mode="md" fill="outline" label-placement="floating" label=${t('ui.colStation')} .value=${this.routeStationId} @ionChange=${(e: any) => (this.routeStationId = e.target.value)}>
-          ${stations.map((s) => html`<ion-select-option value=${s.id}>${s.name}</ion-select-option>`)}
+          ${stations.map((s) => html`<ion-select-option value=${s.id}>${stationName(s)}</ion-select-option>`)}
         </ion-select>
-        <ion-input mode="md" fill="outline" label=${t('ui.labelProductId')} label-placement="floating" placeholder=${t('ui.placeholderOptional')} .value=${this.routeProductId} @ionInput=${(e: any) => (this.routeProductId = e.target.value)}></ion-input>
-        <ion-input mode="md" fill="outline" label=${t('ui.labelCategoryId')} label-placement="floating" placeholder=${t('ui.placeholderOptional')} .value=${this.routeCategoryId} @ionInput=${(e: any) => (this.routeCategoryId = e.target.value)}></ion-input>
-        <ion-button type="submit" size="small" ?disabled=${this.saving || !this.routeStationId || (!this.routeProductId.trim() && !this.routeCategoryId.trim())}>${this.saving ? t('ui.saving') : t('ui.saveRouting')}</ion-button>
+        <ion-select mode="md" fill="outline" interface="popover" label-placement="floating" label=${t('ui.labelProduct')} placeholder=${t('ui.placeholderOptional')} .value=${this.routeProductId} @ionChange=${(e: any) => (this.routeProductId = e.target.value ?? '')}>
+          ${this.productOptions.map((p) => html`<ion-select-option value=${p.id}>${p.name}</ion-select-option>`)}
+        </ion-select>
+        <ion-select mode="md" fill="outline" interface="popover" label-placement="floating" label=${t('ui.labelCategory')} placeholder=${t('ui.placeholderOptional')} .value=${this.routeCategoryId} @ionChange=${(e: any) => (this.routeCategoryId = e.target.value ?? '')}>
+          ${this.categoryOptions.map((c) => html`<ion-select-option value=${c.id}>${c.name}</ion-select-option>`)}
+        </ion-select>
+        <ion-button type="submit" size="small" ?disabled=${this.saving || !this.routeStationId || (!this.routeProductId && !this.routeCategoryId)}>${this.saving ? t('ui.saving') : t('ui.saveRouting')}</ion-button>
       </form>
     </section>`;
   }
@@ -331,7 +379,7 @@ export class ErpKitchenOrdersStations extends LitElement {
         ${this.formMsg ? html`<p class="ok">${this.formMsg}</p>` : nothing}
         ${this.formError ? html`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : nothing}
         ${this.ctrl?.error ? html`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : nothing}
-        <ok-data-table .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.name ?? '—')} .cardIcon=${() => 'flame-outline'} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .searchPlaceholder=${t('ui.searchStations')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyStations')} .actions=${this.rowActions} .rowClickable=${true} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @rowClick=${(e: CustomEvent<{ row: Record<string, unknown> }>) => this.onRowAction({ detail: { actionId: 'edit', row: e.detail.row } } as CustomEvent<{ actionId: string; row: Record<string, unknown> }>)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @pageSizeChange=${(e: CustomEvent<number>) => this.ctrl.setPageSize(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}>
+        <ok-data-table .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => stationName(r)} .cardIcon=${() => 'flame-outline'} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .searchPlaceholder=${t('ui.searchStations')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyStations')} .actions=${this.rowActions} .rowClickable=${true} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @rowClick=${(e: CustomEvent<{ row: Record<string, unknown> }>) => this.onRowAction({ detail: { actionId: 'edit', row: e.detail.row } } as CustomEvent<{ actionId: string; row: Record<string, unknown> }>)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @pageSizeChange=${(e: CustomEvent<number>) => this.ctrl.setPageSize(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}>
           <!-- Alta de estación: se proyecta SIEMPRE (aunque el panel esté cerrado); si se renderizara
                solo con el panel abierto, el «+» de la barra abriría un panel vacío. -->
           <form slot="create" class="create-form" @submit=${(e: Event) => this.createStation(e)}>
