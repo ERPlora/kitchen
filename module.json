@@ -720,6 +720,9 @@
       "kitchen.order.fired": {
         "command": "kitchen.logs.create"
       },
+      "kitchen.order.received": {
+        "command": "kitchen.logs.create"
+      },
       "kitchen.order.ready": {
         "command": "kitchen.logs.create"
       },
@@ -748,6 +751,7 @@
       "kitchen.order.fired",
       "kitchen.order.ready",
       "kitchen.order.recalled",
+      "kitchen.order.received",
       "kitchen.order.served",
       "kitchen.order.updated",
       "kitchen.routing.changed",

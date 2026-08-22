@@ -222,6 +222,16 @@ fn order_event(name: &str, order_id: &str, action: &str, notes: &str, user_id: &
     )
 }
 
+/// kitchen#43 — la RECEPCIÓN también entra en el rastro. `kitchen.order.created` viaja con claves
+/// propias (`total`, `items_count`, `order_type`…), y el relay entrega el payload del evento TAL
+/// CUAL al listener: `schemas/log_create.json` es `additionalProperties: false`, así que enrutarlo
+/// al log sería una entrega que reintentaría hasta morir en el dead-letter (kitchen#29). Este
+/// gemelo estrecho —solo las claves del schema del log— es el que `events.listen` enruta a
+/// `kitchen.logs.create`: sin él, el filtro «Recibida» del Historial lee un valor que nadie escribe.
+fn received_log_event(order_id: &str, user_id: &str) -> Event {
+    order_event("kitchen.order.received", order_id, "received", "", user_id)
+}
+
 /// Construye las intenciones `_bump_counter` + `_insert_order` + N×`_insert_item`.
 /// Devuelve (ops, total). `items` ya viene normalizado (snapshot en el payload).
 #[allow(clippy::too_many_arguments)]
@@ -379,7 +389,7 @@ pub fn create_order_pure(input: Value) -> Result<Output, String> {
 
     Ok(Output {
         operations: ops,
-        events: vec![ev],
+        events: vec![ev, received_log_event(&order_id, &ctx.user_id)],
         ..Default::default()
     })
 }
@@ -873,7 +883,7 @@ pub fn create_order_from_sale_pure(input: Value) -> Result<Output, String> {
     }
     Ok(Output {
         operations: ops,
-        events: vec![ev],
+        events: vec![ev, received_log_event(&order_id, &ctx.user_id)],
         ..Default::default()
     })
 }
@@ -1074,7 +1084,7 @@ pub fn create_order_from_order_pure(input: Value) -> Result<Output, String> {
     }
     Ok(Output {
         operations: ops,
-        events: vec![ev],
+        events: vec![ev, received_log_event(&kitchen_order_id, &ctx.user_id)],
         ..Default::default()
     })
 }
@@ -1582,6 +1592,12 @@ mod tests {
             run("recall", "ready"),
             bump_items_pure(lines_input("preparing", &[("i1", "pending", "bar")], &["i1"])),
             recall_items_pure(lines_input("ready", &[("i1", "ready", "bar")], &["i1"])),
+            // kitchen#43: the reception twin — a creation path, the one the TPV walks.
+            create_order_from_order_pure(fired(
+                "Mesa 4",
+                "dine_in",
+                json!([{ "product_name": "Croquetas", "quantity": 1_000_000, "unit_price": 350 }]),
+            )),
         ];
 
         let mut covered: Vec<String> = Vec::new();
@@ -1683,5 +1699,82 @@ mod tests {
         let out = create_order_from_order_pure(fired("Mesa 4", "dine_in", item_con_mods(json!([]))))
             .expect("comanda válida");
         assert_eq!(primer_item(&out)["modifiers"], json!(""));
+    }
+
+    // ── kitchen#43: the audit trail starts at RECEPTION ─────────────────────────────────
+
+    /// The exact key set `schemas/log_create.json` accepts. The schema is
+    /// `additionalProperties: false` and the relay hands an event payload to the listener
+    /// VERBATIM, so ONE extra key is a delivery that retries until it dies in the dead-letter
+    /// (kitchen#29) — the reason `kitchen.order.created`, rich with `total`/`items_count`, can
+    /// never be routed to the log directly.
+    const LOG_CREATE_KEYS: [&str; 6] = [
+        "order_id", "order_item_id", "station_id", "action", "performed_by_id", "notes",
+    ];
+
+    fn assert_received_log_event(out: &Output, order_id: &str) {
+        let ev = out
+            .events
+            .iter()
+            .find(|e| e.name == "kitchen.order.received")
+            .expect(
+                "every creation path must emit kitchen.order.received: it is the only event \
+                 narrow enough for the log, and without it the History's «Recibida» filter \
+                 reads a value nobody ever writes (kitchen#43)",
+            );
+        assert_eq!(ev.payload["action"], json!("received"));
+        assert_eq!(ev.payload["order_id"], json!(order_id));
+        let mut keys: Vec<&str> = ev
+            .payload
+            .as_object()
+            .expect("an object payload")
+            .keys()
+            .map(|k| k.as_str())
+            .collect();
+        keys.sort_unstable();
+        let mut expected = LOG_CREATE_KEYS;
+        expected.sort_unstable();
+        assert_eq!(
+            keys, expected,
+            "the payload must be EXACTLY what schemas/log_create.json accepts — the relay \
+             delivers it verbatim, one extra key kills the delivery"
+        );
+        // The rich twin survives: whoever listens to the creation still gets its total/items_count.
+        assert!(
+            out.events.iter().any(|e| e.name == "kitchen.order.created"),
+            "kitchen.order.created keeps being emitted with its own payload"
+        );
+    }
+
+    #[test]
+    fn every_creation_path_emits_the_narrow_received_event() {
+        // 1. Manual create (`kitchen.orders.create`).
+        let manual = json!({
+            "payload": { "order_type": "dine_in",
+                         "items": [ { "product_name": "Croquetas", "quantity": 1_000_000, "unit_price": 350 } ] },
+            "context": { "hub_id": "h1", "current_user_id": "u1",
+                         "now": "2026-08-22T10:00:00+00:00", "new_ids": ["k-manual"] }
+        });
+        let out = create_order_pure(manual).expect("a valid manual create");
+        assert_received_log_event(&out, "k-manual");
+
+        // 2. From a completed sale (event `sale.completed`).
+        let sale = json!({
+            "payload": { "sale_id": "s1",
+                         "items": [ { "product_name": "Caña", "quantity": 1_000_000, "unit_price": 250 } ] },
+            "context": { "hub_id": "h1", "current_user_id": "u1",
+                         "now": "2026-08-22T10:00:00+00:00", "new_ids": ["k-sale"] }
+        });
+        let out = create_order_from_sale_pure(sale).expect("a valid sale create");
+        assert_received_log_event(&out, "k-sale");
+
+        // 3. From a fired order — the path the TPV walks (ADR-0141/0144).
+        let out = create_order_from_order_pure(fired(
+            "Mesa 4",
+            "dine_in",
+            json!([{ "product_name": "Croquetas", "quantity": 2_000_000, "unit_price": 350 }]),
+        ))
+        .expect("a valid fired-order create");
+        assert_received_log_event(&out, "kit-1");
     }
 }

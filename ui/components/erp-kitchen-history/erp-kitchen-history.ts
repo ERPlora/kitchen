@@ -90,6 +90,7 @@ export class ErpKitchenHistory extends LitElement {
       const reload = () => this.ctrl.load();
       const offs = [
         erplora().on('kitchen.order.created', reload),
+        erplora().on('kitchen.order.received', reload),
         erplora().on('kitchen.order.fired', reload),
         erplora().on('kitchen.order.ready', reload),
         erplora().on('kitchen.order.served', reload),
