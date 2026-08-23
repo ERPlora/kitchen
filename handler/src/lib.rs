@@ -1037,6 +1037,25 @@ pub fn create_order_from_order_pure(input: Value) -> Result<Output, String> {
         .cloned()
         .collect();
 
+    // kitchen#54 — **una comanda que no se puede llenar no se abre.**
+    //
+    // El KDS enseñaba tarjetas VACÍAS: número, estado y cronómetro, cero productos, sin rejilla
+    // por estación y sin botón «Listo». El cocinero no puede saber qué cocinar, y nada avisaba —
+    // la comanda se creaba igual, con `total` 0. La causa raíz vivía en `sales` (mandaba las
+    // líneas del PAYLOAD, no las suyas), pero cocina no puede depender de que TODO el que emita
+    // `order.fired` —un flujo, el asistente, una integración de terceros— venga bien.
+    //
+    // Rechazo de DOMINIO, no un panic: el listener no revienta y el fallo se VE, que es
+    // exactamente lo contrario de la tarjeta en blanco.
+    if items.is_empty() {
+        return Ok(Output::new().with_error(DomainError::new(
+            "kitchen.nothing_to_cook",
+            format!(
+                "Order `{source_order_id}` was fired with nothing to cook: no lines reached the kitchen."
+            ),
+        )));
+    }
+
     let channel = as_str(payload.get("channel").unwrap_or(&Value::Null));
     let order_type = if ORDER_TYPES.contains(&channel.as_str()) {
         channel
@@ -1182,6 +1201,38 @@ mod tests {
         let items: Vec<_> = out.operations.iter().filter(|o| o.command == "kitchen._insert_item").collect();
         assert_eq!(items[0].params["category_id"], json!("cat-bebidas"));
         assert_eq!(items[1].params["category_id"], Value::Null, "an unclassified line routes by product only (or nowhere)");
+    }
+
+    #[test]
+    fn an_order_fired_with_nothing_to_cook_does_not_open_a_blank_ticket() {
+        // kitchen#54 — el KDS enseñaba tarjetas VACÍAS: número, estado y cronómetro, cero
+        // productos, sin rejilla por estación y sin botón «Listo». El cocinero no puede saber qué
+        // cocinar, y nada avisaba: la comanda se creaba igual, con `total` 0.
+        //
+        // La causa raíz vive en `sales` (disparaba las líneas del PAYLOAD, no las suyas), pero
+        // cocina no puede depender de que TODO el que emita `order.fired` —un flujo, el
+        // asistente, una integración— venga bien. Aquí se cierra la puerta: una comanda que no se
+        // puede llenar no se abre. Es un rechazo de dominio (`Output.error`), no un panic: el
+        // listener no revienta y el fallo SE VE, que es lo contrario de la tarjeta en blanco.
+        for (case, items) in [
+            ("sin líneas", json!([])),
+            ("clave ausente", Value::Null),
+            // Solo servicio: cocina las descarta (no se cocinan), así que no queda nada que
+            // mandar a ninguna estación. Una comanda vacía tampoco vale aquí.
+            ("solo servicio", json!([{ "product_name": "Servicio de sala", "quantity": 1_000_000, "is_service": true }])),
+        ] {
+            let mut inp = fired("Mesa 4", "dine_in", json!([]));
+            if items.is_null() {
+                inp["payload"].as_object_mut().unwrap().remove("items");
+            } else {
+                inp["payload"]["items"] = items;
+            }
+            let out = create_order_from_order_pure(inp).expect("un rechazo es un Output, no una trampa");
+            let err = out.error.as_ref().unwrap_or_else(|| panic!("{case}: tenía que rechazar"));
+            assert_eq!(err.code, "kitchen.nothing_to_cook", "{case}");
+            assert!(out.operations.is_empty(), "{case}: no se escribe nada");
+            assert!(out.events.is_empty(), "{case}: sin evento, nadie oye una comanda que no existe");
+        }
     }
 
     #[test]
