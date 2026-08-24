@@ -178,7 +178,11 @@
     "emptyAllDay": "Nothing left to cook.",
     "colProduct": "Product",
     "actionItemBumped": "Line ready",
-    "actionItemRecalled": "Line recalled"
+    "actionItemRecalled": "Line recalled",
+    "tapMenuToBump": "Tap to mark this menu's dishes ready",
+    "comboAria": "Menu {name}, {n} dishes",
+    "comboCount": "{n} dishes",
+    "comboFallbackName": "Menu"
   },
   "errors": {
     "kitchen.invalid_transition": "That kitchen order is no longer in the state this action requires. Refresh and try again.",

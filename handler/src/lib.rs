@@ -234,6 +234,11 @@ fn received_log_event(order_id: &str, user_id: &str) -> Event {
 
 /// Construye las intenciones `_bump_counter` + `_insert_order` + N×`_insert_item`.
 /// Devuelve (ops, total). `items` ya viene normalizado (snapshot en el payload).
+///
+/// kitchen#57 — **una línea de venta puede abrir VARIAS líneas de comanda.** Un menú del día
+/// `service` llega como UNA sola línea (precio cerrado, un solo tipo de IVA — ADR-0381) con sus
+/// componentes en el snapshot: aquí se expanden a una fila por componente, porque cada uno tiene
+/// que enrutarse por SU artículo. Falla con `DomainError` en vez de escribir a medias.
 #[allow(clippy::too_many_arguments)]
 fn build_order_ops(
     ctx: &Ctx,
@@ -242,7 +247,7 @@ fn build_order_ops(
     header: &Value,
     sale_id: Value,
     items: &[Value],
-) -> (Vec<Operation>, i64) {
+) -> Result<(Vec<Operation>, i64), DomainError> {
     let mut ops: Vec<Operation> = Vec::new();
 
     let mut bump = Map::new();
@@ -253,7 +258,15 @@ fn build_order_ops(
     ops.push(Operation::sql("kitchen._insert_order", Map::new())); // placeholder
 
     let mut subtotal: i64 = 0; // céntimos
-    for (i, item) in items.iter().enumerate() {
+    // Cursor de ids: ya no hay correspondencia 1:1 entre línea de venta y fila de comanda (un
+    // menú abre una por componente), así que el id se toma en ORDEN de fila, no por índice de
+    // línea. `new_ids[0]` sigue siendo la comanda.
+    let mut next_id = 1usize;
+    // Posición de la fila DENTRO de la comanda. Todas las filas nacen en la misma transacción con
+    // el mismo `created_at`, así que sin esto el orden de elección —lo que el foro de Square pide
+    // desde hace años— lo decidiría el planificador de Postgres.
+    let mut line_seq = 0i64;
+    for item in items.iter() {
         // ADR-0147: la cantidad llega como PUNTO FIJO entero, escala global 10⁶ (0,5 = 500000) —
         // nunca un float. Esta es la FRONTERA de cocina: aquí se convierte a su representación
         // propia (Decimal exacto ÷ 10⁶; la columna sigue siendo REAL hasta la migración de este
@@ -269,33 +282,132 @@ fn build_order_ops(
         let line_total = money::mul_qty(unit_price, qty.value());
         subtotal += line_total;
 
-        let item_id = ctx.new_ids.get(i + 1).cloned().unwrap_or_default();
-        let mut p = Map::new();
-        p.insert("item_id".into(), json!(item_id));
-        p.insert("order_id".into(), json!(order_id));
-        p.insert("station_id".into(), opt_str(item, "station_id"));
-        p.insert("product_id".into(), opt_str(item, "product_id"));
-        p.insert("category_id".into(), opt_str(item, "category_id"));
-        // De qué línea de pedido salió esto: es lo que necesita la anulación para repartir
-        // cantidades entre las estaciones que recibieron cada ronda.
-        p.insert("sales_order_item_id".into(), opt_str(item, "order_item_id"));
-        p.insert(
-            "product_name".into(),
-            json!(str_or(item, "product_name", "")),
-        );
-        p.insert("unit_price".into(), json!(unit_price)); // céntimos
+        // ¿Esta línea de venta es un MENÚ que trae sus componentes en el snapshot? (ADR-0381,
+        // `supply_kind = 'service'`: un solo tipo de IVA ⇒ una sola línea de venta.) Si sí, la
+        // línea NO se cocina: se cocinan sus componentes, uno por fila y cada uno por su ruta.
+        let rows: Vec<Value> = match item.get("combo_components") {
+            Some(Value::Array(components)) => {
+                if components.is_empty() {
+                    // Un menú disparado sin nada elegido. La puerta autoritativa del
+                    // `min_choices` es de `sales` (es quien lee `combos.*`); lo que cocina NO
+                    // puede permitir es abrir una tarjeta en blanco en el pase — kitchen#54,
+                    // mismo razonamiento y mismo rechazo de dominio.
+                    return Err(DomainError::new(
+                        "kitchen.combo_without_components",
+                        format!(
+                            "Menu `{}` was fired with no component chosen: there is nothing to cook.",
+                            str_or(item, "product_name", "?")
+                        ),
+                    ));
+                }
+                components.clone()
+            }
+            // Línea normal, y también el pack `goods` —ahí `sales` ya escribió una línea por
+            // componente, con su propio tipo—: nada que expandir, solo que agrupar.
+            _ => vec![item.clone()],
+        };
+        let expanded = item.get("combo_components").is_some();
+        // Sin componentes, el nombre de la propia línea de venta es el que se cocina.
+        let line_name = str_or(item, "product_name", "");
+
+        // La referencia de grupo la pone `sales` (`combo_group_ref`). Si un menú llega sin ella,
+        // se usa el id de la PRIMERA fila del grupo: opaca, estable dentro de la ronda y
+        // compartida por los hermanos, que es todo lo que la agrupación necesita.
+        let combo_ref = match opt_str(item, "combo_group_ref") {
+            Value::Null if expanded => ctx
+                .new_ids
+                .get(next_id)
+                .map(|id| json!(id))
+                .unwrap_or(Value::Null),
+            other => other,
+        };
+        // `kitchen_name` manda sobre el comercial (regla de Toast, la misma que ya usan los
+        // suplementos). Sin ninguno de los dos, el nombre de la línea de venta ES el del menú.
+        let combo_name = if combo_ref.is_null() {
+            String::new()
+        } else {
+            let by_kitchen = str_or(item, "combo_kitchen_name", "");
+            if !by_kitchen.is_empty() {
+                by_kitchen
+            } else {
+                str_or(item, "combo_name", &str_or(item, "product_name", ""))
+            }
+        };
+
+        for row in &rows {
+            let item_id = match ctx.new_ids.get(next_id) {
+                Some(id) if !id.is_empty() => id.clone(),
+                // El host entrega un lote finito de ids (256). Antes se caía a `""` y la fila
+                // se escribía con clave vacía; una comanda a medias es peor que ninguna.
+                _ => {
+                    return Err(DomainError::new(
+                        "kitchen.too_many_lines",
+                        "This order has more lines than the kitchen can number in one go: split it into two rounds.",
+                    ))
+                }
+            };
+            next_id += 1;
+            line_seq += 1;
+
+            // Cantidad de la FILA: la del componente multiplicada por la del menú (dos menús son
+            // dos primeros). Punto fijo 10⁶ en los dos factores, así que el producto se divide
+            // una vez por la escala — con `Decimal`, nunca con `f64`.
+            let row_qty_raw = if expanded {
+                let component_qty = match row.get("quantity") {
+                    Some(Value::Number(n)) => n.as_i64().unwrap_or(QUANTITY_SCALE),
+                    Some(Value::String(s)) => s.trim().parse::<i64>().unwrap_or(QUANTITY_SCALE),
+                    _ => QUANTITY_SCALE,
+                };
+                let product = Decimal::from(component_qty) * Decimal::from(qty_raw)
+                    / Decimal::from(QUANTITY_SCALE);
+                product.round().try_into().unwrap_or(component_qty)
+            } else {
+                qty_raw
+            };
+
+            let mut p = Map::new();
+            p.insert("item_id".into(), json!(item_id));
+            p.insert("order_id".into(), json!(order_id));
+            p.insert("station_id".into(), opt_str(row, "station_id"));
+            // 🔴 La ruta sale del artículo de LA FILA, nunca del menú que la contiene: enrutar un
+            // menú entero por su propio id es el fallo documentado de TouchBistro (la ensalada
+            // acaba en la parrilla porque hereda la impresora del plato principal).
+            p.insert("product_id".into(), opt_str(row, "product_id"));
+            p.insert("category_id".into(), opt_str(row, "category_id"));
+            // De qué línea de pedido salió esto: es lo que necesita la anulación para repartir
+            // cantidades entre las estaciones que recibieron cada ronda. Un componente cuelga de
+            // la línea del MENÚ, que es la que existe en la venta.
+            p.insert("sales_order_item_id".into(), opt_str(item, "order_item_id"));
+            p.insert(
+                "product_name".into(),
+                json!(cooking_name(row, if expanded { "" } else { &line_name })),
+            );
+            // El dinero del grupo es el de la línea de venta, y se cuenta UNA vez: los
+            // componentes van a 0. Repetir el precio cerrado en cada fila haría leer 40,50 € en
+            // un menú de 13,50 — el espejo del fallo de Odoo (el combo a 0 € en el informe).
+            let (row_unit_price, row_total) = if expanded { (0, 0) } else { (unit_price, line_total) };
+            p.insert("unit_price".into(), json!(row_unit_price)); // céntimos
                                                           // Punto fijo 10⁶ TAMBIÉN en la fila (ADR-0147 §2.1: REAL prohibido para cantidades de
                                                           // negocio; la migración 005 reescala la columna). El lógico solo existe al pintar.
-        p.insert("quantity".into(), json!(qty_raw));
-        p.insert("total".into(), json!(line_total)); // céntimos
-        p.insert("modifiers".into(), json!(modifiers_for_display(item)));
-        p.insert("notes".into(), json!(str_or(item, "notes", "")));
-        p.insert("status".into(), json!("pending"));
-        p.insert(
-            "seat_number".into(),
-            item.get("seat_number").cloned().unwrap_or(Value::Null),
-        );
-        ops.push(Operation::sql("kitchen._insert_item", p));
+            p.insert("quantity".into(), json!(row_qty_raw));
+            p.insert("total".into(), json!(row_total)); // céntimos
+            // Los suplementos cuelgan de SU componente, no del menú (ADR-0376 intacto dentro de
+            // un combo): «el segundo, sin cebolla» es del segundo.
+            p.insert("modifiers".into(), json!(modifiers_for_display(row)));
+            p.insert("notes".into(), json!(str_or(row, "notes", "")));
+            p.insert("status".into(), json!("pending"));
+            p.insert(
+                "seat_number".into(),
+                row.get("seat_number")
+                    .or_else(|| item.get("seat_number"))
+                    .cloned()
+                    .unwrap_or(Value::Null),
+            );
+            p.insert("combo_ref".into(), combo_ref.clone());
+            p.insert("combo_name".into(), json!(combo_name));
+            p.insert("line_seq".into(), json!(line_seq));
+            ops.push(Operation::sql("kitchen._insert_item", p));
+        }
     }
 
     let total = subtotal; // céntimos; tax/discount llegan 0 en el flujo actual (legacy idéntico)
@@ -335,7 +447,22 @@ fn build_order_ops(
     h.insert("total".into(), json!(total)); // céntimos
     ops[header_idx] = Operation::sql("kitchen._insert_order", h);
 
-    (ops, total)
+    Ok((ops, total))
+}
+
+/// Nombre que lee el cocinero: `kitchen_name` → nombre comercial → id del artículo → `fallback`.
+///
+/// Misma escalera que los suplementos (regla de Toast), y por el mismo motivo: un hueco en la
+/// comanda es lo mismo que no haberla impreso, y un cocinero que ve un código PREGUNTA mientras
+/// que uno que no ve nada sirve el plato mal.
+fn cooking_name(row: &Value, fallback: &str) -> String {
+    for key in ["kitchen_name", "product_name", "name", "product_id"] {
+        let v = str_or(row, key, "");
+        if !v.is_empty() {
+            return v;
+        }
+    }
+    fallback.to_string()
 }
 
 // ── create_order (command kitchen.orders.create) ───────────────────────────
@@ -366,7 +493,10 @@ pub fn create_order_pure(input: Value) -> Result<Output, String> {
         h.insert("order_type".into(), json!(order_type));
         h.insert("priority".into(), json!(priority));
     }
-    let (ops, total) = build_order_ops(&ctx, &order_id, &day, &header, Value::Null, items);
+    let (ops, total) = match build_order_ops(&ctx, &order_id, &day, &header, Value::Null, items) {
+        Ok(built) => built,
+        Err(e) => return Ok(Output::new().with_error(e)),
+    };
 
     let mut ev = order_event(
         "kitchen.order.created",
@@ -866,7 +996,11 @@ pub fn create_order_from_sale_pure(input: Value) -> Result<Output, String> {
     });
     // Idempotencia: uq_kitchen_order_sale (hub_id, sale_id) rechaza el duplicado si el
     // bus reentrega (además del marcador _event_delivery del runtime).
-    let (ops, total) = build_order_ops(&ctx, &order_id, &day, &header, json!(sale_id), &items);
+    let (ops, total) = match build_order_ops(&ctx, &order_id, &day, &header, json!(sale_id), &items)
+    {
+        Ok(built) => built,
+        Err(e) => return Ok(Output::new().with_error(e)),
+    };
 
     let mut ev = order_event(
         "kitchen.order.created",
@@ -1071,7 +1205,10 @@ pub fn create_order_from_order_pure(input: Value) -> Result<Output, String> {
         "round_number": 0, // 0 = "numérala tú" (subconsulta en _insert_order)
     });
     let (mut ops, total) =
-        build_order_ops(&ctx, &kitchen_order_id, &day, &header, Value::Null, &items);
+        match build_order_ops(&ctx, &kitchen_order_id, &day, &header, Value::Null, &items) {
+            Ok(built) => built,
+            Err(e) => return Ok(Output::new().with_error(e)),
+        };
 
     // El pedido de origen y la etiqueta se añaden a la cabecera ya construida: son lo único que
     // este flujo aporta sobre el legacy, y así `build_order_ops` sigue sirviendo a los dos.
@@ -1800,11 +1937,17 @@ mod tests {
     #[test]
     fn every_creation_path_emits_the_narrow_received_event() {
         // 1. Manual create (`kitchen.orders.create`).
+        //
+        // kitchen#57 — the fixture used to declare ONE id for a ticket AND its line. It only
+        // ever passed because the missing id fell back to `""` and the row was written with an
+        // EMPTY primary key; the host hands every handler 256 (`NEW_IDS_BATCH`), so no hub has
+        // ever seen that shape. Now the shortage is a loud rejection, and the fixture says the
+        // truth: one id for the ticket, one per line.
         let manual = json!({
             "payload": { "order_type": "dine_in",
                          "items": [ { "product_name": "Croquetas", "quantity": 1_000_000, "unit_price": 350 } ] },
             "context": { "hub_id": "h1", "current_user_id": "u1",
-                         "now": "2026-08-22T10:00:00+00:00", "new_ids": ["k-manual"] }
+                         "now": "2026-08-22T10:00:00+00:00", "new_ids": ["k-manual", "k-manual-1"] }
         });
         let out = create_order_pure(manual).expect("a valid manual create");
         assert_received_log_event(&out, "k-manual");
@@ -1814,7 +1957,7 @@ mod tests {
             "payload": { "sale_id": "s1",
                          "items": [ { "product_name": "Caña", "quantity": 1_000_000, "unit_price": 250 } ] },
             "context": { "hub_id": "h1", "current_user_id": "u1",
-                         "now": "2026-08-22T10:00:00+00:00", "new_ids": ["k-sale"] }
+                         "now": "2026-08-22T10:00:00+00:00", "new_ids": ["k-sale", "k-sale-1"] }
         });
         let out = create_order_from_sale_pure(sale).expect("a valid sale create");
         assert_received_log_event(&out, "k-sale");
@@ -1827,5 +1970,239 @@ mod tests {
         ))
         .expect("a valid fired-order create");
         assert_received_log_event(&out, "kit-1");
+    }
+
+    // ── kitchen#57 · EACH COMPONENT OF THE MENU REACHES ITS OWN STATION ──────────────────────
+    //
+    // ADR-0381. A combo is NOT one line: it is a GROUP of sibling lines. Two shapes reach the
+    // kitchen and both have to end up the same way — one row per COOKABLE component:
+    //
+    //  * `supply_kind = 'service'` (the Spanish menu del dia, the majority case): `sales` writes
+    //    ONE sale line at the closed price and the components travel in its SNAPSHOT
+    //    (`combo_components`). Kitchen EXPANDS it: routing a whole menu by the combo's own
+    //    product id is the documented TouchBistro bug — the salad inside the combo ends up on
+    //    the grill because it inherits the main dish's printer.
+    //  * `supply_kind = 'goods'` (the corner-shop pack): `sales` already writes one line per
+    //    component, all sharing `combo_group_ref`. Nothing to expand — but they still have to be
+    //    GROUPED under the menu, or cooking sees three loose tickets and they leave the pass at
+    //    three different times.
+    //
+    // And the money stays where ADR-0381 put it: the closed price is the SOURCE line's, never
+    // duplicated onto the components (rule 4 — no parent row with money, and no N copies of it
+    // either, which would be the same lie with the sign flipped).
+
+    /// `order.fired` carrying a single menu with its chosen components, the shape ADR-0381 fixes
+    /// for `supply_kind = 'service'`. 16 ids: enough for the header and every component.
+    fn fired_combo(items: Value) -> Value {
+        json!({
+            "payload": { "order_id": "ord-9", "label": "Mesa 7", "channel": "dine_in", "items": items },
+            "context": {
+                "hub_id": "h1", "current_user_id": "u1", "now": "2026-08-24T13:00:00+00:00",
+                "new_ids": (0..16).map(|i| format!("kit-{i}")).collect::<Vec<_>>()
+            }
+        })
+    }
+
+    /// The menu del dia of the first real customer: starter (cold station), main (grill) and a
+    /// drink (bar), 13,50 EUR closed, `service` so `sales` sent ONE line.
+    fn menu_del_dia() -> Value {
+        json!([{
+            "order_item_id": "li-1",
+            "product_id": "combo-menu",
+            "product_name": "Menu del dia",
+            "quantity": 1_000_000,
+            "unit_price": 1350,
+            "combo_group_ref": "cg-1",
+            "combo_name": "Menu del dia",
+            "combo_kitchen_name": "MENU",
+            "combo_components": [
+                { "product_id": "p-gazpacho", "category_id": "cat-frio", "product_name": "Gazpacho",
+                  "kitchen_name": "GAZPACHO", "quantity": 1_000_000 },
+                { "product_id": "p-entrecot", "category_id": "cat-plancha", "product_name": "Entrecot",
+                  "kitchen_name": "ENTRECOT", "quantity": 1_000_000,
+                  "modifiers": [{ "option_id": "o1", "name": "Sin cebolla", "kitchen_name": "SIN CEBOLLA" }] },
+                { "product_id": "p-tinto", "category_id": "cat-barra", "product_name": "Vino tinto",
+                  "quantity": 1_000_000 }
+            ]
+        }])
+    }
+
+    fn items_of(out: &Output) -> Vec<&Map<String, Value>> {
+        out.operations
+            .iter()
+            .filter(|o| o.command == "kitchen._insert_item")
+            .map(|o| &o.params)
+            .collect()
+    }
+
+    #[test]
+    fn every_component_of_the_menu_is_routed_by_its_own_article() {
+        let out = create_order_from_order_pure(fired_combo(menu_del_dia())).expect("a valid comanda");
+        let items = items_of(&out);
+
+        // THREE rows, not one. One line would carry ONE product_id, so `_insert_item` would
+        // resolve ONE station for the whole menu: the TouchBistro bug.
+        assert_eq!(items.len(), 3, "a menu of three components must open three comanda lines");
+
+        // Each row carries ITS OWN article and category — that is what the routing CTE of
+        // `_insert_item` reads to find the station. Never the combo's own id.
+        let routed: Vec<(&Value, &Value)> = items
+            .iter()
+            .map(|p| (&p["product_id"], &p["category_id"]))
+            .collect();
+        assert_eq!(
+            routed,
+            vec![
+                (&json!("p-gazpacho"), &json!("cat-frio")),
+                (&json!("p-entrecot"), &json!("cat-plancha")),
+                (&json!("p-tinto"), &json!("cat-barra")),
+            ],
+            "a component must reach the station of ITS article, never the combo's"
+        );
+        for p in &items {
+            assert_ne!(p["product_id"], json!("combo-menu"), "no row may be routed by the combo itself");
+        }
+    }
+
+    #[test]
+    fn the_components_stay_grouped_under_the_menu_in_the_order_they_were_chosen() {
+        let out = create_order_from_order_pure(fired_combo(menu_del_dia())).expect("a valid comanda");
+        let items = items_of(&out);
+
+        // The group ref is what lets the KDS and the paper print a HEADER with its lines under
+        // it instead of three loose tickets that leave the pass out of sync.
+        for p in &items {
+            assert_eq!(p["combo_ref"], json!("cg-1"));
+            // `kitchen_name` wins over the commercial name (the Toast rule, same as `modifiers`).
+            assert_eq!(p["combo_name"], json!("MENU"));
+        }
+
+        // Order of CHOICE, not of catalogue — the recurring request in the Square forum. Rows
+        // land in one transaction, so `created_at` cannot order them: the sequence is explicit.
+        let seq: Vec<&Value> = items.iter().map(|p| &p["line_seq"]).collect();
+        assert_eq!(seq, vec![&json!(1), &json!(2), &json!(3)]);
+        let names: Vec<&Value> = items.iter().map(|p| &p["product_name"]).collect();
+        assert_eq!(names, vec![&json!("GAZPACHO"), &json!("ENTRECOT"), &json!("Vino tinto")],
+            "the kitchen name wins; without one the commercial name is printed, never a blank");
+    }
+
+    #[test]
+    fn a_modifier_hangs_from_its_component_not_from_the_menu() {
+        // ADR-0376 unchanged inside a combo: «the main course, no onion» belongs to the main
+        // course. Hanging it off the menu is how the cook ends up taking the onion out of the
+        // gazpacho.
+        let out = create_order_from_order_pure(fired_combo(menu_del_dia())).expect("a valid comanda");
+        let items = items_of(&out);
+        assert_eq!(items[0]["modifiers"], json!(""));
+        assert_eq!(items[1]["modifiers"], json!("SIN CEBOLLA"));
+        assert_eq!(items[2]["modifiers"], json!(""));
+    }
+
+    #[test]
+    fn the_closed_price_is_not_copied_onto_the_components() {
+        // ADR-0381 rule 4: no parent row with money. And no N copies of it either — a 13,50 menu
+        // must not read as 40,50 on the comanda. The money of the group is the SOURCE line's.
+        let out = create_order_from_order_pure(fired_combo(menu_del_dia())).expect("a valid comanda");
+        for p in items_of(&out) {
+            assert_eq!(p["unit_price"], json!(0));
+            assert_eq!(p["total"], json!(0));
+        }
+        let header = out
+            .operations
+            .iter()
+            .find(|o| o.command == "kitchen._insert_order")
+            .map(|o| &o.params)
+            .expect("the comanda header");
+        assert_eq!(header["total"], json!(1350), "the closed price is counted ONCE");
+    }
+
+    #[test]
+    fn two_menus_multiply_the_quantity_of_every_component() {
+        let mut items = menu_del_dia();
+        items[0]["quantity"] = json!(2_000_000);
+        let out = create_order_from_order_pure(fired_combo(items)).expect("a valid comanda");
+        for p in items_of(&out) {
+            assert_eq!(p["quantity"], json!(2_000_000), "two menus are two starters, two mains and two drinks");
+        }
+    }
+
+    #[test]
+    fn a_goods_pack_arrives_already_split_and_is_only_grouped() {
+        // `supply_kind = 'goods'`: `sales` already wrote one line per component (each with its
+        // own tax rate, art. 79.Dos). There is nothing to expand — kitchen only has to keep them
+        // together so they leave the pass at the same time.
+        let out = create_order_from_order_pure(fired_combo(json!([
+            { "order_item_id": "li-1", "product_id": "p-bocata", "category_id": "cat-frio",
+              "product_name": "Bocadillo", "quantity": 1_000_000, "unit_price": 240,
+              "combo_group_ref": "cg-2", "combo_name": "Bocata + cana" },
+            { "order_item_id": "li-2", "product_id": "p-cana", "category_id": "cat-barra",
+              "product_name": "Cana", "quantity": 1_000_000, "unit_price": 160,
+              "combo_group_ref": "cg-2", "combo_name": "Bocata + cana" }
+        ]))).expect("a valid comanda");
+        let items = items_of(&out);
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0]["product_id"], json!("p-bocata"));
+        assert_eq!(items[1]["product_id"], json!("p-cana"));
+        for p in &items {
+            assert_eq!(p["combo_ref"], json!("cg-2"));
+            assert_eq!(p["combo_name"], json!("Bocata + cana"));
+        }
+        // Its own money survives: these ARE the fiscal lines, one tax rate each.
+        assert_eq!(items[0]["total"], json!(240));
+        assert_eq!(items[1]["total"], json!(160));
+    }
+
+    #[test]
+    fn an_ordinary_line_carries_no_group_and_nothing_changes_for_it() {
+        // The control that matters: 24 modules and every non-combo hub keep working exactly as
+        // before. Breaking this breaks every kitchen there is.
+        let out = create_order_from_order_pure(fired(
+            "Mesa 4",
+            "dine_in",
+            json!([{ "product_id": "p-croquetas", "product_name": "Croquetas",
+                     "quantity": 2_000_000, "unit_price": 350, "notes": "sin gluten" }]),
+        ))
+        .expect("a valid comanda");
+        let items = items_of(&out);
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0]["combo_ref"], Value::Null);
+        assert_eq!(items[0]["combo_name"], json!(""));
+        assert_eq!(items[0]["line_seq"], json!(1));
+        assert_eq!(items[0]["total"], json!(700));
+    }
+
+    #[test]
+    fn a_comanda_that_runs_out_of_ids_is_rejected_instead_of_half_written() {
+        // The host hands a FINITE batch (`NEW_IDS_BATCH` = 256). Until kitchen#57 the shortage
+        // fell through to `unwrap_or_default()` and the line was written with an EMPTY primary
+        // key — a comanda half on the pass, which is worse than none.
+        let out = create_order_from_order_pure(json!({
+            "payload": { "order_id": "ord-x", "label": "Mesa 1", "channel": "dine_in", "items": [
+                { "product_id": "p-1", "product_name": "Uno", "quantity": 1_000_000, "unit_price": 100 },
+                { "product_id": "p-2", "product_name": "Dos", "quantity": 1_000_000, "unit_price": 100 }
+            ]},
+            "context": { "hub_id": "h1", "current_user_id": "u1",
+                         "now": "2026-08-24T13:00:00+00:00", "new_ids": ["kit-0", "kit-1"] }
+        })).expect("a domain rejection, never a panic");
+        assert_eq!(out.error.as_ref().expect("rejected").code, "kitchen.too_many_lines");
+        assert!(out.operations.is_empty());
+    }
+
+    #[test]
+    fn a_menu_fired_with_nothing_chosen_does_not_open_a_comanda() {
+        // The precondition of ADR-0381 as far as kitchen can honestly enforce it. The
+        // per-group `min_choices` gate is `sales`' (it is the one that reads `combos.*`); what
+        // kitchen owns is that a menu whose snapshot arrives EMPTY never becomes a blank card on
+        // the pass — same door and same reasoning as kitchen#54.
+        let out = create_order_from_order_pure(fired_combo(json!([{
+            "order_item_id": "li-1", "product_id": "combo-menu", "product_name": "Menu del dia",
+            "quantity": 1_000_000, "unit_price": 1350,
+            "combo_group_ref": "cg-3", "combo_name": "Menu del dia",
+            "combo_components": []
+        }]))).expect("a domain rejection, never a panic");
+        let err = out.error.as_ref().expect("the menu must be rejected, loudly");
+        assert_eq!(err.code, "kitchen.combo_without_components");
+        assert!(out.operations.is_empty(), "nothing is written");
+        assert!(out.events.is_empty(), "and no listener hears about a comanda that does not exist");
     }
 }

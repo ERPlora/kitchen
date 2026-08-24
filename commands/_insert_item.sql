@@ -25,6 +25,7 @@ INSERT INTO kitchen_order_item
   (id, hub_id, order_id, station_id, station_name, destination, printer_role,
    sales_order_item_id, product_id, product_name,
    unit_price, quantity, total, modifiers, notes, status, seat_number,
+   combo_ref, combo_name, line_seq,
    is_deleted, created_by, updated_by, created_at, updated_at)
 SELECT
    :item_id, :hub_id, :order_id, r.station_id,
@@ -39,6 +40,12 @@ SELECT
    COALESCE(st.printer_role, 'kitchen'),
    :sales_order_item_id, :product_id, :product_name,
    :unit_price, :quantity, :total, :modifiers, :notes, :status, :seat_number,
+   -- kitchen#57 · el MENÚ al que pertenece esta fila, congelado igual que la estación: dos filas
+   -- con el mismo `combo_ref` son un mismo menú de una misma mesa, y el KDS las pinta bajo una
+   -- cabecera en vez de como tres comandas sueltas que salen descompasadas. `line_seq` es el
+   -- ORDEN DE ELECCIÓN — todas las filas de un disparo comparten `created_at`, así que sin él lo
+   -- decidiría el planificador.
+   :combo_ref, :combo_name, :line_seq,
    0, :current_user_id, :current_user_id, :now, :now
 FROM ruta r
 LEFT JOIN kitchen_station st
