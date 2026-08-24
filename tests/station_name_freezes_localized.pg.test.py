@@ -31,6 +31,8 @@ import subprocess
 import sys
 import uuid
 
+from module_migrations import migration_entries, migration_sql
+
 MODULE_DIR = pathlib.Path(__file__).resolve().parent.parent
 MANIFEST = json.loads((MODULE_DIR / "module.json").read_text(encoding="utf-8"))
 COMMAND_SQL = (MODULE_DIR / "commands/_insert_item.sql").read_text(encoding="utf-8")
@@ -82,8 +84,10 @@ class ScratchDb:
     def create(self) -> None:
         self.psql(["-c", f'DROP DATABASE IF EXISTS "{self.name}"'])
         self.psql(["-c", f'CREATE DATABASE "{self.name}"'])
-        for rel in MANIFEST["migrations"]["postgres"]:
-            self.psql([], db=self.name, stdin=(MODULE_DIR / rel).read_text(encoding="utf-8"))
+        # Both shapes of `MigrationEntry`, and a `contract` translated the way the runtime
+        # applies it — see `module_migrations`.
+        for rel, kind in migration_entries():
+            self.psql([], db=self.name, stdin=migration_sql(rel, kind))
 
     def drop(self) -> None:
         try:

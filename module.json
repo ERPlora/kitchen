@@ -115,7 +115,12 @@
       "migrations/postgres/003_station_destination.sql",
       "migrations/postgres/004_dispatch_snapshot.sql",
       "migrations/postgres/005_quantity_fixed_point.sql",
-      "migrations/postgres/006_settings_thresholds.sql"
+      "migrations/postgres/006_settings_thresholds.sql",
+      {
+        "file": "migrations/postgres/007_retire_order_modifier.sql",
+        "kind": "contract",
+        "since": "1.0.0"
+      }
     ]
   },
   "queries": {
