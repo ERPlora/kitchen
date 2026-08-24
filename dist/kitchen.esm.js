@@ -9,7 +9,7 @@ var __decorateClass = (decorators, target, key, kind) => {
   return result;
 };
 
-// module-toolkit/node_modules/@lit-labs/ssr-dom-shim/lib/element-internals.js
+// ../../../module-toolkit/node_modules/@lit-labs/ssr-dom-shim/lib/element-internals.js
 var ElementInternalsShim = class ElementInternals {
   get shadowRoot() {
     return this.__host.__shadowRoot;
@@ -88,7 +88,7 @@ var ElementInternalsShim = class ElementInternals {
   }
 };
 
-// module-toolkit/node_modules/@lit-labs/ssr-dom-shim/lib/events.js
+// ../../../module-toolkit/node_modules/@lit-labs/ssr-dom-shim/lib/events.js
 var __classPrivateFieldSet = function(receiver, state, value, kind, f3) {
   if (kind === "m") throw new TypeError("Private method is not writable");
   if (kind === "a" && !f3) throw new TypeError("Private accessor was defined without a setter");
@@ -246,7 +246,7 @@ Object.defineProperties(CustomEventShim.prototype, {
 var EventShimWithRealType = EventShim;
 var CustomEventShimWithRealType = CustomEventShim;
 
-// module-toolkit/node_modules/@lit-labs/ssr-dom-shim/lib/css.js
+// ../../../module-toolkit/node_modules/@lit-labs/ssr-dom-shim/lib/css.js
 var _a2;
 var CSSRuleShim = (_a2 = class CSSRule {
   constructor() {
@@ -277,7 +277,7 @@ var CSSRuleShim = (_a2 = class CSSRule {
   }
 }, _a2.STYLE_RULE = 1, _a2.CHARSET_RULE = 2, _a2.IMPORT_RULE = 3, _a2.MEDIA_RULE = 4, _a2.FONT_FACE_RULE = 5, _a2.PAGE_RULE = 6, _a2.NAMESPACE_RULE = 10, _a2.KEYFRAMES_RULE = 7, _a2.KEYFRAME_RULE = 8, _a2.SUPPORTS_RULE = 12, _a2.COUNTER_STYLE_RULE = 11, _a2.FONT_FEATURE_VALUES_RULE = 14, _a2.MARGIN_RULE = 9, _a2);
 
-// module-toolkit/node_modules/@lit-labs/ssr-dom-shim/index.js
+// ../../../module-toolkit/node_modules/@lit-labs/ssr-dom-shim/index.js
 globalThis.Event ??= EventShimWithRealType;
 globalThis.CustomEvent ??= CustomEventShimWithRealType;
 var constructionToken = Symbol();
@@ -674,7 +674,7 @@ var CustomElementRegistryShimWithRealType = CustomElementRegistry;
 var customElements2 = new CustomElementRegistryShimWithRealType();
 var windowShim = new WindowShim(constructionToken);
 
-// module-toolkit/node_modules/@lit/reactive-element/node/css-tag.js
+// ../../../module-toolkit/node_modules/@lit/reactive-element/node/css-tag.js
 var t = globalThis;
 var e = t.ShadowRoot && (void 0 === t.ShadyCSS || t.ShadyCSS.nativeShadow) && "adoptedStyleSheets" in Document.prototype && "replace" in CSSStyleSheet.prototype;
 var s = Symbol();
@@ -719,7 +719,7 @@ var c = e || void 0 === t.CSSStyleSheet ? (t7) => t7 : (t7) => t7 instanceof CSS
   return r(e5);
 })(t7) : t7;
 
-// module-toolkit/node_modules/@lit/reactive-element/node/reactive-element.js
+// ../../../module-toolkit/node_modules/@lit/reactive-element/node/reactive-element.js
 var { is: h, defineProperty: r2, getOwnPropertyDescriptor: o2, getOwnPropertyNames: n2, getOwnPropertySymbols: a, getPrototypeOf: c2 } = Object;
 var l = globalThis;
 l.customElements ??= customElements2;
@@ -942,7 +942,7 @@ var g = class extends (globalThis.HTMLElement ?? HTMLElementShimWithRealType) {
 };
 g.elementStyles = [], g.shadowRootOptions = { mode: "open" }, g[f("elementProperties")] = /* @__PURE__ */ new Map(), g[f("finalized")] = /* @__PURE__ */ new Map(), u?.({ ReactiveElement: g }), (l.reactiveElementVersions ??= []).push("2.1.2");
 
-// modules-workspace/node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/lit-html.js
+// ../../node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/lit-html.js
 var t2 = globalThis;
 var i2 = (t7) => t7;
 var s2 = t2.trustedTypes;
@@ -1197,7 +1197,7 @@ var D = (t7, i7, s5) => {
   return h4._$AI(t7), h4;
 };
 
-// modules-workspace/node_modules/.pnpm/lit-element@4.2.2/node_modules/lit-element/lit-element.js
+// ../../node_modules/.pnpm/lit-element@4.2.2/node_modules/lit-element/lit-element.js
 var s3 = globalThis;
 var i3 = class extends g {
   constructor() {
@@ -1226,7 +1226,7 @@ var o4 = s3.litElementPolyfillSupport;
 o4?.({ LitElement: i3 });
 (s3.litElementVersions ??= []).push("4.2.2");
 
-// module-toolkit/node_modules/@lit/reactive-element/node/decorators/property.js
+// ../../../module-toolkit/node_modules/@lit/reactive-element/node/decorators/property.js
 var o5 = { attribute: true, type: String, converter: b, reflect: false, hasChanged: m };
 var r4 = (t7 = o5, e5, r6) => {
   const { kind: n6, metadata: i7 } = r6;
@@ -1256,19 +1256,19 @@ function n4(t7) {
   })(t7, e5, o7);
 }
 
-// module-toolkit/node_modules/@lit/reactive-element/node/decorators/state.js
+// ../../../module-toolkit/node_modules/@lit/reactive-element/node/decorators/state.js
 function r5(r6) {
   return n4({ ...r6, state: true, attribute: false });
 }
 
-// outfitkit/dist/define.js
+// ../../../outfitkit/dist/define.js
 function define(tag, ctor) {
   if (typeof customElements !== "undefined" && !customElements.get(tag)) {
     customElements.define(tag, ctor);
   }
 }
 
-// outfitkit/dist/shared/icons.js
+// ../../../outfitkit/dist/shared/icons.js
 var rawAdd = '<svg viewBox="0 0 512 512" width="1.2em" height="1.2em" ><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" d="M256 112v288m144-144H112"/></svg>';
 var rawAlertCircle = '<svg viewBox="0 0 512 512" width="1.2em" height="1.2em" ><path fill="currentColor" d="M256 48C141.31 48 48 141.31 48 256s93.31 208 208 208s208-93.31 208-208S370.69 48 256 48m0 319.91a20 20 0 1 1 20-20a20 20 0 0 1-20 20m21.72-201.15l-5.74 122a16 16 0 0 1-32 0l-5.74-121.94v-.05a21.74 21.74 0 1 1 43.44 0Z"/></svg>';
 var rawAlertCircleOutline = '<svg viewBox="0 0 512 512" width="1.2em" height="1.2em" ><path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="32" d="M448 256c0-106-86-192-192-192S64 150 64 256s86 192 192 192s192-86 192-192Z"/><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" d="M250.26 166.05L256 288l5.73-121.95a5.74 5.74 0 0 0-5.79-6h0a5.74 5.74 0 0 0-5.68 6"/><path fill="currentColor" d="M256 367.91a20 20 0 1 1 20-20a20 20 0 0 1-20 20"/></svg>';
@@ -1416,7 +1416,7 @@ function okIcon(value) {
   return BY_NAME[value] ?? value;
 }
 
-// outfitkit/dist/ok-inline-feedback.js
+// ../../../outfitkit/dist/ok-inline-feedback.js
 var __defProp2 = Object.defineProperty;
 var __decorateClass2 = (decorators, target, key, kind) => {
   var result = void 0;
@@ -1633,7 +1633,7 @@ __decorateClass2([
 ], OkInlineFeedback.prototype, "hasActions");
 define("ok-inline-feedback", OkInlineFeedback);
 
-// outfitkit/dist/ok-empty-state.js
+// ../../../outfitkit/dist/ok-empty-state.js
 var __defProp3 = Object.defineProperty;
 var __decorateClass3 = (decorators, target, key, kind) => {
   var result = void 0;
@@ -1733,7 +1733,7 @@ __decorateClass3([
 ], OkEmptyState.prototype, "message");
 define("ok-empty-state", OkEmptyState);
 
-// modules-workspace/modules/.wt-kitchen54/locales/es.json
+// locales/es.json
 var es_default = {
   name: "Cocina",
   description: "Pantalla de cocina y \xF3rdenes de producci\xF3n, seguidas desde que entran hasta que est\xE1n listas.",
@@ -1915,7 +1915,11 @@ var es_default = {
     emptyAllDay: "No queda nada por cocinar.",
     colProduct: "Producto",
     actionItemBumped: "L\xEDnea lista",
-    actionItemRecalled: "L\xEDnea recuperada"
+    actionItemRecalled: "L\xEDnea recuperada",
+    tapMenuToBump: "Toca para marcar listos los platos de este men\xFA",
+    comboAria: "Men\xFA {name}, {n} platos",
+    comboCount: "{n} platos",
+    comboFallbackName: "Men\xFA"
   },
   errors: {
     "kitchen.invalid_transition": "Esa comanda ya no est\xE1 en el estado que requiere esta acci\xF3n. Actualiza e int\xE9ntalo de nuevo.",
@@ -1923,7 +1927,7 @@ var es_default = {
   }
 };
 
-// modules-workspace/modules/.wt-kitchen54/locales/en.json
+// locales/en.json
 var en_default = {
   name: "Kitchen",
   navigation: {
@@ -2104,7 +2108,11 @@ var en_default = {
     emptyAllDay: "Nothing left to cook.",
     colProduct: "Product",
     actionItemBumped: "Line ready",
-    actionItemRecalled: "Line recalled"
+    actionItemRecalled: "Line recalled",
+    tapMenuToBump: "Tap to mark this menu's dishes ready",
+    comboAria: "Menu {name}, {n} dishes",
+    comboCount: "{n} dishes",
+    comboFallbackName: "Menu"
   },
   errors: {
     "kitchen.invalid_transition": "That kitchen order is no longer in the state this action requires. Refresh and try again.",
@@ -2112,7 +2120,7 @@ var en_default = {
   }
 };
 
-// modules-workspace/modules/.wt-kitchen54/ui/components/erp-kitchen-display/erp-kitchen-display.ts
+// ui/components/erp-kitchen-display/erp-kitchen-display.ts
 var CATALOG = { es: es_default, en: en_default };
 var DEFAULT_SETTINGS = {
   show_timer: true,
@@ -2174,11 +2182,25 @@ function groupTickets(rows2) {
         modifiers: String(r6.modifiers ?? ""),
         notes: String(r6.item_notes ?? ""),
         status: String(r6.item_status ?? "pending"),
-        seat: r6.seat_number === null || r6.seat_number === void 0 || r6.seat_number === "" ? null : Number(r6.seat_number)
+        seat: r6.seat_number === null || r6.seat_number === void 0 || r6.seat_number === "" ? null : Number(r6.seat_number),
+        combo_ref: r6.combo_ref === null || r6.combo_ref === void 0 || r6.combo_ref === "" ? null : String(r6.combo_ref),
+        combo_name: String(r6.combo_name ?? "")
       });
     }
   }
   return Array.from(byId.values());
+}
+function groupCombos(lines) {
+  const out = [];
+  for (const l3 of lines) {
+    const prev = out[out.length - 1];
+    if (l3.combo_ref && prev && prev.ref === l3.combo_ref) {
+      prev.lines.push(l3);
+      continue;
+    }
+    out.push({ ref: l3.combo_ref, name: l3.combo_ref ? l3.combo_name : "", lines: [l3] });
+  }
+  return out;
 }
 function formatQty(micro, locale) {
   const units = micro / QUANTITY_SCALE;
@@ -2256,6 +2278,25 @@ var ErpKitchenDisplay = class extends i3 {
     .line .meta { font-size:.75rem; opacity:.7; display:flex; gap:.5rem; }
     .line[data-status="ready"] .name, .line[data-status="ready"] .qty { text-decoration: line-through; opacity:.55; }
     .line .tick { font-size:1.4rem; line-height:1; color: var(--ion-color-success, #2dd36f); }
+    /* kitchen#57 · A MENU: a quiet header and its components indented behind a rule. The emphasis
+       stays on the DISH — the market highlights allergens and changes, never hierarchy — so the
+       header is smaller and dimmer than the lines it introduces, not louder. */
+    .combo { display:block; border-top:1px solid var(--ion-border-color, #e7e2d6); }
+    .combo-head { display:flex; align-items:center; gap:.4rem; min-height:44px; padding:.35rem .75rem;
+      font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; opacity:.75;
+      background: var(--ok-surface-2, rgba(0,0,0,.035)); cursor:pointer; }
+    .combo-head[aria-disabled="true"] { cursor:default; }
+    .combo-head:active { background: var(--ok-surface-3, rgba(0,0,0,.07)); }
+    .combo-name { font-weight:700; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .combo-count { font-variant-numeric: tabular-nums; }
+    .combo-head .tick { margin-left:auto; font-size:1.1rem; line-height:1; color: var(--ion-color-success, #2dd36f); }
+    .combo-lines { list-style:none; margin:0; padding:0 0 0 .75rem;
+      border-left:3px solid var(--ion-color-medium, #9d968a); margin-left:.75rem; }
+    /* The rule already says «these belong together»; a second border per component would only add
+       noise, so inside a menu the lines lose their own top border except between siblings. */
+    .combo-lines .line:first-child { border-top:0; }
+    .combo[data-combo-done="true"] .combo-head { opacity:.5; }
+    .combo[data-combo-done="true"] .combo-name { text-decoration: line-through; }
     .foot { display:flex; gap:.5rem; padding:.5rem .75rem; border-top:1px solid var(--ion-border-color, #e7e2d6); }
     .foot ion-button { flex:1; }
     /* kitchen#42 — el fondo del bump se declara AQUÍ, dentro del shadow root, y no con
@@ -2402,6 +2443,16 @@ var ErpKitchenDisplay = class extends i3 {
     if (!ids.length) return;
     return this.run(() => erplora().command("kitchen.items.bump", { order_id: t7.id, item_ids: ids }));
   }
+  /**
+   * kitchen#57 · header tap on a MENU: every component of THAT menu on screen, and nothing else.
+   * Bumping a menu is not bumping the ticket — the à-la-carte croquetas next to it stay put.
+   */
+  bumpGroup(t7, g3) {
+    if (!can("kitchen.change_order")) return;
+    const ids = g3.lines.filter((l3) => COOKING.includes(l3.status)).map((l3) => l3.id);
+    if (!ids.length) return;
+    return this.run(() => erplora().command("kitchen.items.bump", { order_id: t7.id, item_ids: ids }));
+  }
   /** Recall button: every line ON SCREEN already ready comes back. */
   recallTicket(t7) {
     if (!can("kitchen.change_order")) return;
@@ -2440,6 +2491,46 @@ var ErpKitchenDisplay = class extends i3 {
       ${l3.status === "ready" ? b2`<span class="tick" aria-hidden="true">✓</span>` : A}
     </li>`;
   }
+  /**
+   * A menu: its name as a quiet header, its components LISTED under it, indented behind a rule.
+   *
+   * The two typographic calls are ours and no product publishes them (checked across Toast,
+   * Square, Lightspeed, Odoo, Revel, Clover, TouchBistro, Fresh KDS, LS Central and Simphony).
+   * What the market DOES say is where the emphasis goes: Revel prints modifiers in red and Fresh
+   * styles by keyword — highlighting is for allergens and changes, never for hierarchy. So the
+   * header stays QUIET and the weight stays on the dish, which is what gets cooked. What the
+   * forum says is what not to do, and that is the flat paragraph.
+   *
+   * The header is painted at EVERY station that receives a piece of the menu: `lines` is already
+   * station-scoped, and a cook at the grill who cannot read «MENU» has no way to know their steak
+   * is coupled to a gazpacho. It is Simphony's `11 - Send to Combo Parent Order Devices` as a
+   * default instead of a switch, and Toast's headerless alternative is a mode you opt into.
+   */
+  renderGroup(t7, g3) {
+    const t_ = (k2, p4) => erplora().t(CATALOG, k2, p4);
+    if (!g3.ref) return g3.lines.map((l3) => this.renderLine(t7, l3));
+    const cooking = g3.lines.some((l3) => COOKING.includes(l3.status));
+    const done = g3.lines.every((l3) => l3.status === "ready");
+    const actionable = can("kitchen.change_order") && cooking;
+    return b2`<li class="combo" data-combo=${g3.ref} data-combo-done=${done ? "true" : "false"}>
+      <div class="combo-head" role=${actionable ? "button" : "presentation"} tabindex=${actionable ? 0 : -1}
+          aria-disabled=${actionable ? "false" : "true"}
+          title=${actionable ? t_("ui.tapMenuToBump") : ""}
+          aria-label=${t_("ui.comboAria", { name: g3.name, n: g3.lines.length })}
+          @click=${() => actionable ? this.bumpGroup(t7, g3) : void 0}
+          @keydown=${(e5) => {
+      if (actionable && (e5.key === "Enter" || e5.key === " ")) {
+        e5.preventDefault();
+        this.bumpGroup(t7, g3);
+      }
+    }}>
+        <span class="combo-name">${g3.name || t_("ui.comboFallbackName")}</span>
+        <span class="combo-count">${t_("ui.comboCount", { n: g3.lines.length })}</span>
+        ${done ? b2`<span class="tick" aria-hidden="true">✓</span>` : A}
+      </div>
+      <ul class="combo-lines">${g3.lines.map((l3) => this.renderLine(t7, l3))}</ul>
+    </li>`;
+  }
   renderTicket(t7) {
     const t_ = (k2, p4) => erplora().t(CATALOG, k2, p4);
     const lines = this.visibleLines(t7);
@@ -2467,7 +2558,7 @@ var ErpKitchenDisplay = class extends i3 {
         ${this.settings.show_timer ? b2`<span class="timer" data-timer>${formatElapsed(elapsed)}</span>` : A}
         <span class="num">#${short}</span>
       </header>
-      <ul class="lines">${lines.map((l3) => this.renderLine(t7, l3))}</ul>
+      <ul class="lines">${groupCombos(lines).map((g3) => this.renderGroup(t7, g3))}</ul>
       ${t7.notes ? b2`<div class="notes">${t7.notes}</div>` : A}
       ${canChange || canServe && t7.status === "ready" ? b2`<footer class="foot">
             ${canChange && cooking ? b2`<ion-button data-action="bump" @click=${() => this.bumpTicket(t7)}>${t_("ui.bump")}</ion-button>` : A}
@@ -2572,7 +2663,7 @@ __decorateClass([
 ], ErpKitchenDisplay.prototype, "now", 2);
 define("erp-kitchen-display", ErpKitchenDisplay);
 
-// modules-workspace/node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directive.js
+// ../../node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directive.js
 var t3 = { ATTRIBUTE: 1, CHILD: 2, PROPERTY: 3, BOOLEAN_ATTRIBUTE: 4, EVENT: 5, ELEMENT: 6 };
 var e4 = (t7) => (...e5) => ({ _$litDirective$: t7, values: e5 });
 var i4 = class {
@@ -2592,7 +2683,7 @@ var i4 = class {
   }
 };
 
-// modules-workspace/node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directive-helpers.js
+// ../../node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directive-helpers.js
 var { I: t4 } = j;
 var i5 = (o7) => o7;
 var s4 = () => document.createComment("");
@@ -2625,7 +2716,7 @@ var h3 = (o7) => {
   o7._$AR(), o7._$AA.remove();
 };
 
-// modules-workspace/node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directives/repeat.js
+// ../../node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directives/repeat.js
 var u4 = (e5, s5, t7) => {
   const r6 = /* @__PURE__ */ new Map();
   for (let l3 = s5; l3 <= t7; l3++) r6.set(e5[l3], l3);
@@ -2678,7 +2769,7 @@ var c4 = e4(class extends i4 {
   }
 });
 
-// modules-workspace/node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directives/style-map.js
+// ../../node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directives/style-map.js
 var n5 = "important";
 var i6 = " !" + n5;
 var o6 = e4(class extends i4 {
@@ -2707,7 +2798,7 @@ var o6 = e4(class extends i4 {
   }
 });
 
-// outfitkit/dist/ok-data-table.js
+// ../../../outfitkit/dist/ok-data-table.js
 var CSV_BOM = "\uFEFF";
 var WINDOWS_1252_C1 = [
   8364,
@@ -4249,7 +4340,7 @@ __decorateClass4([
 var OkDataTable = _OkDataTable;
 define("ok-data-table", OkDataTable);
 
-// hub/packages/module-sdk/src/index.ts
+// ../../../hub/packages/module-sdk/src/index.ts
 function isEmpty(v3) {
   return v3 === null || v3 === void 0 || v3 === "";
 }
@@ -4367,7 +4458,7 @@ function createListController(client, queryName, onChange = () => {
   return new ListController(client, queryName, onChange, opts);
 }
 
-// modules-workspace/modules/.wt-kitchen54/ui/components/erp-kitchen-history/erp-kitchen-history.ts
+// ui/components/erp-kitchen-history/erp-kitchen-history.ts
 var CATALOG2 = { es: es_default, en: en_default };
 function erplora2() {
   const c5 = globalThis.erplora;
@@ -4488,7 +4579,7 @@ var ErpKitchenHistory = class extends i3 {
 };
 define("erp-kitchen-history", ErpKitchenHistory);
 
-// modules-workspace/modules/.wt-kitchen54/ui/lib/enums.ts
+// ui/lib/enums.ts
 var CATALOG3 = { es: es_default, en: en_default };
 function erplora3() {
   const c5 = globalThis.erplora;
@@ -4514,7 +4605,7 @@ function enumOptions(keys) {
   return Object.keys(keys).map((value) => ({ value, label: enumLabel(keys, value) }));
 }
 
-// modules-workspace/modules/.wt-kitchen54/ui/components/erp-kitchen-orders-active/erp-kitchen-orders-active.ts
+// ui/components/erp-kitchen-orders-active/erp-kitchen-orders-active.ts
 var CATALOG4 = { es: es_default, en: en_default };
 function erplora4() {
   const c5 = globalThis.erplora;
@@ -4745,7 +4836,7 @@ __decorateClass([
 ], ErpKitchenOrdersActive.prototype, "tick", 2);
 define("erp-kitchen-orders-active", ErpKitchenOrdersActive);
 
-// modules-workspace/modules/.wt-kitchen54/ui/components/erp-kitchen-orders-stations/erp-kitchen-orders-stations.ts
+// ui/components/erp-kitchen-orders-stations/erp-kitchen-orders-stations.ts
 var CATALOG5 = { es: es_default, en: en_default };
 function erplora5() {
   const c5 = globalThis.erplora;
@@ -5088,7 +5179,7 @@ __decorateClass([
 ], ErpKitchenOrdersStations.prototype, "categoryOptions", 2);
 define("erp-kitchen-orders-stations", ErpKitchenOrdersStations);
 
-// modules-workspace/modules/.wt-kitchen54/ui/components/erp-kitchen-pos-comandas/erp-kitchen-pos-comandas.ts
+// ui/components/erp-kitchen-pos-comandas/erp-kitchen-pos-comandas.ts
 var CATALOG6 = { es: es_default, en: en_default };
 function rows(r6) {
   if (Array.isArray(r6)) return r6;
@@ -5281,7 +5372,7 @@ __decorateClass([
 ], ErpKitchenPosComandas.prototype, "open", 2);
 define("erp-kitchen-pos-comandas", ErpKitchenPosComandas);
 
-// modules-workspace/modules/.wt-kitchen54/ui/lib/pos-fire.ts
+// ui/lib/pos-fire.ts
 function pendingCount(state) {
   if (!state) return 0;
   return state.pending_count ?? state.items_count;
@@ -5290,7 +5381,7 @@ function canFire(state) {
   return pendingCount(state) > 0;
 }
 
-// modules-workspace/modules/.wt-kitchen54/ui/components/erp-kitchen-pos-fire/erp-kitchen-pos-fire.ts
+// ui/components/erp-kitchen-pos-fire/erp-kitchen-pos-fire.ts
 var CATALOG7 = { es: es_default, en: en_default };
 function t6(key) {
   const c5 = globalThis.erplora;

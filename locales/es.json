@@ -179,7 +179,11 @@
     "emptyAllDay": "No queda nada por cocinar.",
     "colProduct": "Producto",
     "actionItemBumped": "Línea lista",
-    "actionItemRecalled": "Línea recuperada"
+    "actionItemRecalled": "Línea recuperada",
+    "tapMenuToBump": "Toca para marcar listos los platos de este menú",
+    "comboAria": "Menú {name}, {n} platos",
+    "comboCount": "{n} platos",
+    "comboFallbackName": "Menú"
   },
   "errors": {
     "kitchen.invalid_transition": "Esa comanda ya no está en el estado que requiere esta acción. Actualiza e inténtalo de nuevo.",

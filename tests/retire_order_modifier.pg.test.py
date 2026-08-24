@@ -131,7 +131,11 @@ def check_declaration() -> None:
     files = [f for f, _ in entries]
     ok(
         "the migration chain is still ordered and gapless",
-        files == sorted(files) and files[-1] == CONTRACT_FILE,
+        # `in`, not `files[-1] ==`: the retirement being the LAST migration was true the day it
+        # was written and says nothing about what this battery guards. Pinning it made the next
+        # additive migration (008, kitchen#57) go red for existing — which is a battery that
+        # answers a question nobody asked, and the kind that gets disabled instead of read.
+        files == sorted(files) and CONTRACT_FILE in files,
         f"{files!r}",
     )
 
@@ -398,6 +402,11 @@ def run_the_snapshot_road_without_it() -> None:
                 "notes": "",
                 "status": "pending",
                 "seat_number": None,
+                # kitchen#57 — `_insert_item` now also freezes the MENU the line belongs to
+                # (ADR-0381). Not a menu here: NULL / '' / first line.
+                "combo_ref": None,
+                "combo_name": "",
+                "line_seq": 1,
             },
         )
         rows = db.rows(

@@ -28,10 +28,21 @@ SELECT o.id            AS order_id,
        i.notes         AS item_notes,
        i.status        AS item_status,
        i.seat_number,
-       i.completed_at
+       i.completed_at,
+       -- kitchen#57 · the MENU this line belongs to (ADR-0381). The WC groups by `combo_ref` and
+       -- paints `combo_name` as a header with its components listed under it — the cook has to
+       -- see that those three dishes are ONE menu of ONE table, or they leave the pass out of
+       -- sync. A run-on paragraph is the documented Square failure and is what this replaces.
+       i.combo_ref,
+       i.combo_name,
+       i.line_seq
 FROM kitchen_order o
 LEFT JOIN kitchen_order_item i
        ON i.order_id = o.id AND i.hub_id = o.hub_id AND i.is_deleted = 0
 WHERE o.hub_id = :hub_id AND o.is_deleted = 0
   AND o.status IN ('pending', 'preparing', 'ready')
-ORDER BY o.created_at ASC, i.created_at ASC;
+-- ORDER OF CHOICE inside the ticket. Every line of one dispatch is written in the same
+-- transaction with the SAME `created_at`, so sorting by it alone leaves the order to the planner
+-- and the components of a menu come back shuffled. `created_at` stays behind it for rounds fired
+-- before migration 008, which carry `line_seq = 0` and so keep their relative order.
+ORDER BY o.created_at ASC, i.line_seq ASC, i.created_at ASC, i.id ASC;

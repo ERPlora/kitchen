@@ -1,0 +1,44 @@
+ALTER TABLE kitchen_order_item ADD COLUMN IF NOT EXISTS combo_ref  TEXT;
+ALTER TABLE kitchen_order_item ADD COLUMN IF NOT EXISTS combo_name TEXT NOT NULL DEFAULT '';
+ALTER TABLE kitchen_order_item ADD COLUMN IF NOT EXISTS line_seq   INTEGER NOT NULL DEFAULT 0;
+
+-- Kitchen · migration 008 — a menu is a GROUP of comanda lines (kitchen#57, ADR-0381).
+--
+-- WHAT THIS BUYS. Until now a sale line and a comanda line were the same thing, so a menu del dia
+-- reached the kitchen as ONE line carrying ONE `product_id` — the combo's — and `_insert_item`
+-- resolved ONE station for the whole thing. That is the documented TouchBistro failure: the salad
+-- inside the combo prints on the grill because it inherits the main dish's printer. With the
+-- expansion in the handler each component becomes its OWN row, routed by its OWN article, and
+-- these three columns are what keeps them a menu instead of three loose dishes:
+--
+--   * `combo_ref`  — the opaque group reference `sales` puts on the sibling lines
+--                    (`combo_group_ref`, ADR-0381). NULL on an ordinary line, which is every line
+--                    of every hub that does not sell menus.
+--   * `combo_name` — the FROZEN name of the menu (its `kitchen_name` when it has one, the Toast
+--                    rule already used by the supplements). Frozen, not joined: renaming the menu
+--                    tomorrow must not rewrite yesterday's comanda — ADR-0140, and the very same
+--                    reason `station_name` and `destination` are frozen one migration back.
+--   * `line_seq`   — the position of the row inside the comanda. Every row of one dispatch is
+--                    written in a single transaction with the same `created_at`, so without an
+--                    explicit sequence the ORDER OF CHOICE — what the Square forum has been
+--                    asking for for years, because the catalogue order is useless in a kitchen —
+--                    would be decided by the query planner.
+--
+-- NO NEW TABLE, on purpose: the supplements already travel in a column of this same row
+-- (`modifiers`, migration 007) and the acceptance criterion of kitchen#57 says so out loud. A
+-- normalized table here would add a second write that can end up half done, for a snapshot that
+-- ADR-0381 rule 6 makes immutable anyway.
+--
+-- NO NEW INDEX either. The grouping happens over the lines of ONE comanda, which the KDS already
+-- fetches whole: `ix_kitchen_item_order (hub_id, order_id)` is the access path and the group is
+-- resolved in memory over a handful of rows. An index on `combo_ref` would earn nothing and cost
+-- a write on every line of every kitchen.
+--
+-- BACKWARDS COMPATIBLE BY CONSTRUCTION. Additive only, with defaults that mean «this is not a
+-- menu»: existing rows read `combo_ref IS NULL`, `combo_name = ''` and `line_seq = 0`, which is
+-- exactly how a comanda fired before this migration should render — a flat list, unchanged.
+-- `line_seq = 0` on every old row also keeps their relative order stable, because the queries
+-- sort by `line_seq` and fall back to `created_at`.
+--
+-- Reversible: three `DROP COLUMN`s and nothing is lost that was not written by this feature. No
+-- `DROP INDEX` anywhere — there is no index to drop.

@@ -120,7 +120,8 @@
         "file": "migrations/postgres/007_retire_order_modifier.sql",
         "kind": "contract",
         "since": "1.0.0"
-      }
+      },
+      "migrations/postgres/008_combo_group.sql"
     ]
   },
   "queries": {

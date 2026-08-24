@@ -117,6 +117,11 @@ def insert_item(db: ScratchDb, item_id: str, order_id: str, product_id: str, cat
         "notes": "",
         "status": "pending",
         "seat_number": None,
+        # kitchen#57 — `_insert_item` now also freezes the MENU the line belongs to
+        # (ADR-0381). Not a menu here: NULL / '' / first line.
+        "combo_ref": None,
+        "combo_name": "",
+        "line_seq": 1,
         "hub_id": HUB,
         "current_user_id": USER,
         "now": NOW,

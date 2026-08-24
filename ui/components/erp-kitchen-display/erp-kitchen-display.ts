@@ -63,9 +63,13 @@ interface DisplayRow {
   item_status: string | null;
   seat_number: number | string | null;
   completed_at: string | null;
+  /** kitchen#57 · the MENU this line belongs to (ADR-0381); NULL on an ordinary line. */
+  combo_ref: string | null;
+  combo_name: string | null;
+  line_seq: number | string | null;
 }
 
-interface Line {
+export interface Line {
   id: string;
   /** The station the line went to, resolved at render by id (localized); the snapshot name is the
    *  fallback when the station is gone or the list did not load (kitchen#45). */
@@ -78,6 +82,10 @@ interface Line {
   notes: string;
   status: string;
   seat: number | null;
+  /** The menu this line is a component of (`combo_group_ref`), or null when it is à la carte. */
+  combo_ref: string | null;
+  /** The FROZEN name of that menu — its kitchen name when it has one. */
+  combo_name: string;
 }
 
 /** One row of `kitchen.stations.list`, for rendering names in the hub's language. */
@@ -189,10 +197,44 @@ export function groupTickets(rows: DisplayRow[]): Ticket[] {
         notes: String(r.item_notes ?? ''),
         status: String(r.item_status ?? 'pending'),
         seat: r.seat_number === null || r.seat_number === undefined || r.seat_number === '' ? null : Number(r.seat_number),
+        combo_ref: r.combo_ref === null || r.combo_ref === undefined || r.combo_ref === '' ? null : String(r.combo_ref),
+        combo_name: String(r.combo_name ?? ''),
       });
     }
   }
   return Array.from(byId.values());
+}
+
+/** A menu with its components, or a single à-la-carte line (`ref === null`). */
+export interface LineGroup {
+  ref: string | null;
+  /** The menu's frozen name; '' when this is not a menu. */
+  name: string;
+  lines: Line[];
+}
+
+/**
+ * kitchen#57 · gathers the components of a menu so the card can paint a HEADER with its lines
+ * under it (ADR-0381). Square prints the combo as one run-on paragraph and a moderator confirms
+ * there is no way to get one component per line; this is the other road.
+ *
+ * CONSECUTIVE lines only, and that is deliberate. The feed arrives ordered by `line_seq` — the
+ * order the courses were CHOSEN, which is what a kitchen reads and what the catalogue order never
+ * gives you — so a menu's components are contiguous by construction. Grouping by reference
+ * anywhere in the ticket would merge two menus that happened to share a ref and, worse, would
+ * silently reorder the food.
+ */
+export function groupCombos(lines: Line[]): LineGroup[] {
+  const out: LineGroup[] = [];
+  for (const l of lines) {
+    const prev = out[out.length - 1];
+    if (l.combo_ref && prev && prev.ref === l.combo_ref) {
+      prev.lines.push(l);
+      continue;
+    }
+    out.push({ ref: l.combo_ref, name: l.combo_ref ? l.combo_name : '', lines: [l] });
+  }
+  return out;
 }
 
 /** Renders a fixed-point 10⁶ quantity as units: 2 000 000 → "2", 500 000 → "0,5". */
@@ -265,6 +307,25 @@ export class ErpKitchenDisplay extends LitElement {
     .line .meta { font-size:.75rem; opacity:.7; display:flex; gap:.5rem; }
     .line[data-status="ready"] .name, .line[data-status="ready"] .qty { text-decoration: line-through; opacity:.55; }
     .line .tick { font-size:1.4rem; line-height:1; color: var(--ion-color-success, #2dd36f); }
+    /* kitchen#57 · A MENU: a quiet header and its components indented behind a rule. The emphasis
+       stays on the DISH — the market highlights allergens and changes, never hierarchy — so the
+       header is smaller and dimmer than the lines it introduces, not louder. */
+    .combo { display:block; border-top:1px solid var(--ion-border-color, #e7e2d6); }
+    .combo-head { display:flex; align-items:center; gap:.4rem; min-height:44px; padding:.35rem .75rem;
+      font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; opacity:.75;
+      background: var(--ok-surface-2, rgba(0,0,0,.035)); cursor:pointer; }
+    .combo-head[aria-disabled="true"] { cursor:default; }
+    .combo-head:active { background: var(--ok-surface-3, rgba(0,0,0,.07)); }
+    .combo-name { font-weight:700; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .combo-count { font-variant-numeric: tabular-nums; }
+    .combo-head .tick { margin-left:auto; font-size:1.1rem; line-height:1; color: var(--ion-color-success, #2dd36f); }
+    .combo-lines { list-style:none; margin:0; padding:0 0 0 .75rem;
+      border-left:3px solid var(--ion-color-medium, #9d968a); margin-left:.75rem; }
+    /* The rule already says «these belong together»; a second border per component would only add
+       noise, so inside a menu the lines lose their own top border except between siblings. */
+    .combo-lines .line:first-child { border-top:0; }
+    .combo[data-combo-done="true"] .combo-head { opacity:.5; }
+    .combo[data-combo-done="true"] .combo-name { text-decoration: line-through; }
     .foot { display:flex; gap:.5rem; padding:.5rem .75rem; border-top:1px solid var(--ion-border-color, #e7e2d6); }
     .foot ion-button { flex:1; }
     /* kitchen#42 — el fondo del bump se declara AQUÍ, dentro del shadow root, y no con
@@ -464,6 +525,17 @@ export class ErpKitchenDisplay extends LitElement {
     return this.run(() => erplora().command('kitchen.items.bump', { order_id: t.id, item_ids: ids }));
   }
 
+  /**
+   * kitchen#57 · header tap on a MENU: every component of THAT menu on screen, and nothing else.
+   * Bumping a menu is not bumping the ticket — the à-la-carte croquetas next to it stay put.
+   */
+  private bumpGroup(t: Ticket, g: LineGroup) {
+    if (!can('kitchen.change_order')) return;
+    const ids = g.lines.filter((l) => COOKING.includes(l.status)).map((l) => l.id);
+    if (!ids.length) return;
+    return this.run(() => erplora().command('kitchen.items.bump', { order_id: t.id, item_ids: ids }));
+  }
+
   /** Recall button: every line ON SCREEN already ready comes back. */
   private recallTicket(t: Ticket) {
     if (!can('kitchen.change_order')) return;
@@ -501,6 +573,45 @@ export class ErpKitchenDisplay extends LitElement {
     </li>`;
   }
 
+  /**
+   * A menu: its name as a quiet header, its components LISTED under it, indented behind a rule.
+   *
+   * The two typographic calls are ours and no product publishes them (checked across Toast,
+   * Square, Lightspeed, Odoo, Revel, Clover, TouchBistro, Fresh KDS, LS Central and Simphony).
+   * What the market DOES say is where the emphasis goes: Revel prints modifiers in red and Fresh
+   * styles by keyword — highlighting is for allergens and changes, never for hierarchy. So the
+   * header stays QUIET and the weight stays on the dish, which is what gets cooked. What the
+   * forum says is what not to do, and that is the flat paragraph.
+   *
+   * The header is painted at EVERY station that receives a piece of the menu: `lines` is already
+   * station-scoped, and a cook at the grill who cannot read «MENU» has no way to know their steak
+   * is coupled to a gazpacho. It is Simphony's `11 - Send to Combo Parent Order Devices` as a
+   * default instead of a switch, and Toast's headerless alternative is a mode you opt into.
+   */
+  private renderGroup(t: Ticket, g: LineGroup) {
+    const t_ = (k: string, p?: Record<string, unknown>): string => erplora().t(CATALOG, k, p);
+    if (!g.ref) return g.lines.map((l) => this.renderLine(t, l));
+    const cooking = g.lines.some((l) => COOKING.includes(l.status));
+    // Odoo's closing rule: «The card automatically moves to the next stage once every item is
+    // crossed off». Nobody marks a menu ready by hand, and no product reviewed has an «a
+    // component is missing» alert either — the expo sees the whole thing and that is the answer.
+    const done = g.lines.every((l) => l.status === 'ready');
+    const actionable = can('kitchen.change_order') && cooking;
+    return html`<li class="combo" data-combo=${g.ref} data-combo-done=${done ? 'true' : 'false'}>
+      <div class="combo-head" role=${actionable ? 'button' : 'presentation'} tabindex=${actionable ? 0 : -1}
+          aria-disabled=${actionable ? 'false' : 'true'}
+          title=${actionable ? t_('ui.tapMenuToBump') : ''}
+          aria-label=${t_('ui.comboAria', { name: g.name, n: g.lines.length })}
+          @click=${() => (actionable ? this.bumpGroup(t, g) : undefined)}
+          @keydown=${(e: KeyboardEvent) => { if (actionable && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); this.bumpGroup(t, g); } }}>
+        <span class="combo-name">${g.name || t_('ui.comboFallbackName')}</span>
+        <span class="combo-count">${t_('ui.comboCount', { n: g.lines.length })}</span>
+        ${done ? html`<span class="tick" aria-hidden="true">✓</span>` : nothing}
+      </div>
+      <ul class="combo-lines">${g.lines.map((l) => this.renderLine(t, l))}</ul>
+    </li>`;
+  }
+
   private renderTicket(t: Ticket) {
     const t_ = (k: string, p?: Record<string, unknown>): string => erplora().t(CATALOG, k, p);
     const lines = this.visibleLines(t);
@@ -523,7 +634,7 @@ export class ErpKitchenDisplay extends LitElement {
         ${this.settings.show_timer ? html`<span class="timer" data-timer>${formatElapsed(elapsed)}</span>` : nothing}
         <span class="num">#${short}</span>
       </header>
-      <ul class="lines">${lines.map((l) => this.renderLine(t, l))}</ul>
+      <ul class="lines">${groupCombos(lines).map((g) => this.renderGroup(t, g))}</ul>
       ${t.notes ? html`<div class="notes">${t.notes}</div>` : nothing}
       ${canChange || (canServe && t.status === 'ready')
         ? html`<footer class="foot">
