@@ -23,12 +23,14 @@ import subprocess
 import sys
 import uuid
 
+from module_migrations import migration_entries, migration_sql
+
 MODULE_DIR = pathlib.Path(__file__).resolve().parent.parent
 MANIFEST = json.loads((MODULE_DIR / "module.json").read_text(encoding="utf-8"))
 COMMAND_SQL = (MODULE_DIR / MANIFEST["commands"]["kitchen.logs.create"]["sql"][0]).read_text(
     encoding="utf-8"
 )
-MIGRATIONS = MANIFEST["migrations"]["postgres"]
+MIGRATIONS = migration_entries()
 CONTAINER = os.environ.get("KITCHEN_TEST_PG_CONTAINER", "erplora-test-pg-5433")
 
 HUB = "hub-under-test"
@@ -77,8 +79,10 @@ class ScratchDb:
     def create(self) -> None:
         self.psql(["-c", f'DROP DATABASE IF EXISTS "{self.name}"'])
         self.psql(["-c", f'CREATE DATABASE "{self.name}"'])
-        for rel in MIGRATIONS:
-            self.psql([], db=self.name, stdin=(MODULE_DIR / rel).read_text(encoding="utf-8"))
+        # Both shapes of `MigrationEntry`, and a `contract` translated the way the runtime
+        # applies it — see `module_migrations`.
+        for rel, kind in MIGRATIONS:
+            self.psql([], db=self.name, stdin=migration_sql(rel, kind))
 
     def drop(self) -> None:
         try:
