@@ -40,6 +40,10 @@
     "admin": [
       "*"
     ],
+    "cashier": [
+      "kitchen.view_order",
+      "kitchen.add_order"
+    ],
     "manager": [
       "kitchen.view_order",
       "kitchen.add_order",
