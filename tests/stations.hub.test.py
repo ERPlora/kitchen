@@ -162,10 +162,13 @@ def test_an_old_round_reprints_where_it_actually_went(hub: Hub) -> None:
     hub.check(
         "…through the printer that received it", items[0].get("printer_role"), "kitchen"
     )
-    hub.check_true(
+    # Exact name, not a prefix: the renamed station is `Plancha retirada {tag}`, which STILL starts
+    # with "Plancha " — a prefix check stayed green with `station_name` read from a live join on
+    # `kitchen_station` (verified by mutation in the review of kitchen#65).
+    hub.check(
         "…with the name it had back then",
-        (items[0].get("station_name") or "").startswith("Plancha "),
-        str(items[0].get("station_name")),
+        items[0].get("station_name"),
+        f"Plancha {tag}",
     )
 
 

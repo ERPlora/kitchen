@@ -61,9 +61,9 @@ def test_each_component_reaches_its_station_and_they_stay_one_menu(hub: Hub) -> 
         f"p-entrecot-{tag}",
         f"p-tinto-{tag}",
     )
-    fríos = create_station(hub, f"Fríos {tag}", gazpacho_id)
-    plancha = create_station(hub, f"Plancha {tag}", entrecot_id)
-    barra = create_station(hub, f"Barra {tag}", tinto_id)
+    cold_station = create_station(hub, f"Fríos {tag}", gazpacho_id)
+    grill_station = create_station(hub, f"Plancha {tag}", entrecot_id)
+    bar_station = create_station(hub, f"Barra {tag}", tinto_id)
 
     order_id = unique("ord-menu")
     combo_ref = unique("cg")
@@ -135,7 +135,7 @@ def test_each_component_reaches_its_station_and_they_stay_one_menu(hub: Hub) -> 
         "each component reaches the station of ITS OWN article, never the dish next to it "
         "(the TouchBistro failure: the salad ends up on the grill)",
         station_by_product,
-        {"GAZPACHO": fríos, "ENTRECOT": plancha, "Vino tinto": barra},
+        {"GAZPACHO": cold_station, "ENTRECOT": grill_station, "Vino tinto": bar_station},
     )
 
     for l in lines:
