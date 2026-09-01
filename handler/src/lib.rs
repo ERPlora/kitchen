@@ -85,6 +85,16 @@ pub fn create_order_from_sale(input: Json<erplora_guest_sdk::Input>) -> FnResult
     to_fn_result(create_order_from_sale_pure(input.into_inner().into_value()))
 }
 
+/// kitchen#61: the check closed → its rounds come off the line. See
+/// `close_orders_from_order_pure`.
+#[cfg(feature = "guest")]
+#[plugin_fn]
+pub fn close_orders_from_order(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
+    to_fn_result(close_orders_from_order_pure(
+        input.into_inner().into_value(),
+    ))
+}
+
 #[cfg(feature = "guest")]
 #[plugin_fn]
 pub fn delete_station(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
@@ -720,6 +730,126 @@ fn transition_pure(input: &Value, action: &str) -> Result<Output, String> {
     Ok(Output {
         operations: ops,
         events: vec![ev],
+        ..Default::default()
+    })
+}
+
+// ── The check closed: its rounds come off the line (kitchen#61) ────────────
+//
+// The guest paid, `sales` closed the order and `tables` released the table — and the KDS kept
+// painting «Mesa S1» with the clock still running, for a table that is already seated by somebody
+// else. The cook has no way of knowing that food is not to be made.
+//
+// THE SEAM IS `order.completed`, NOT `sale.completed`, and the difference is the whole design.
+// `sales` emits `sale.completed` on EVERY leg of a split bill — «each one pays their own» leaves
+// the order open and the table seated, so closing the line there would take food away from guests
+// who are still sitting down. `order.completed` is emitted exactly once, when the order is finally
+// closed (`sales`' own comment: «el fin del PEDIDO es un hecho distinto del cobro de una venta, y
+// es el que esperan los satélites»); `tables._session_close_by_order` already hangs off it. Kitchen
+// joins the same seam, so it still knows nothing about tables, customers or money (ADR-0141).
+//
+// WHAT EACH ROUND BECOMES. Not one blanket status, because the two cases are different facts and
+// the state machine of kitchen#11 is authoritative for both:
+//   · `ready`                → `served`.   It was cooked and bumped; the pass just never marked it
+//                              handed over. This is the transition `kitchen.orders.mark_served`
+//                              makes, from the one state it accepts.
+//   · `pending`/`preparing`  → `cancelled`. It was never finished and now never will be. Calling
+//                              that «served» would put food that nobody made into the history as
+//                              delivered; `cancelled` is what the matrix allows from these two and
+//                              it is the honest one — the Historial keeps the round with its
+//                              reason, which is real waste data.
+//   · `served`/`cancelled`   → untouched. Terminal, and this is what makes a redelivery of the
+//                              event a clean no-op instead of a refusal that spins to dead-letter.
+
+/// The rounds of the order the runtime preloaded (`context.reads["kitchen.orders.list"]`, filtered
+/// by `source_order_id = payload.order_id`). `Err` = the runtime did not preload them, which is a
+/// manifest/runtime mismatch and never a business case: guessing here would report a delivery that
+/// changed nothing while the line keeps its zombies (ERPlora/appointments#100).
+fn preloaded_rounds(input: &Value) -> Result<Vec<Value>, String> {
+    let rows = input
+        .get("context")
+        .and_then(|c| c.get("reads"))
+        .and_then(|r| r.get("kitchen.orders.list"))
+        .ok_or_else(|| "missing_read: kitchen.orders.list (declare it in `reads`)".to_string())?;
+    Ok(match rows {
+        Value::Array(a) => a.clone(),
+        Value::Object(_) => rows
+            .get("rows")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default(),
+        _ => Vec::new(),
+    })
+}
+
+/// `kitchen.orders.close_from_order` — the listener of `order.completed`.
+pub fn close_orders_from_order_pure(input: Value) -> Result<Output, String> {
+    let (payload, ctx) = split_input(&input);
+    let order_id = as_str(payload.get("order_id").unwrap_or(&Value::Null));
+    if order_id.is_empty() {
+        return Err("missing_order_id".to_string());
+    }
+    let rounds = preloaded_rounds(&input)?;
+
+    let mut ops: Vec<Operation> = Vec::new();
+    let mut events: Vec<Event> = Vec::new();
+    for round in rounds {
+        // The read is filtered by the manifest, and the handler does not take its word for it: a
+        // ticket of another order — or one with no order at all, from the pre-ADR-0141
+        // `create_from_sale` flow — is never moved by a check closing somewhere else.
+        if as_str(round.get("source_order_id").unwrap_or(&Value::Null)) != order_id {
+            continue;
+        }
+        let ticket_id = as_str(round.get("id").unwrap_or(&Value::Null));
+        if ticket_id.is_empty() {
+            continue;
+        }
+        let current = as_str(round.get("status").unwrap_or(&Value::Null));
+        let (status, served_mode, cascade, event, log_action) = match current.as_str() {
+            "ready" => ("served", "set", false, "kitchen.order.served", "served"),
+            "pending" | "preparing" => {
+                ("cancelled", "keep", true, "kitchen.order.cancelled", "cancelled")
+            }
+            _ => continue,
+        };
+
+        let mut h = Map::new();
+        h.insert("order_id".into(), json!(ticket_id));
+        h.insert("status".into(), json!(status));
+        // Pinned to the state this decision was taken against (kitchen#11): a round somebody
+        // bumped between the read and the write matches ZERO rows instead of jumping states.
+        h.insert("require_status".into(), json!(current));
+        h.insert("set_fired".into(), json!(0));
+        h.insert("ready_mode".into(), json!("keep"));
+        h.insert("served_mode".into(), json!(served_mode));
+        h.insert("append_note".into(), json!(""));
+        h.insert("nl".into(), json!("\n"));
+        ops.push(Operation::sql("kitchen._set_order_status", h));
+
+        if cascade {
+            // Same cascade `kitchen.orders.cancel` makes: a cancelled ticket must not leave its
+            // lines cooking, or the station grid keeps them and All-Day keeps counting them.
+            let mut c = Map::new();
+            c.insert("order_id".into(), json!(ticket_id));
+            c.insert("from_status".into(), json!(""));
+            c.insert("to_status".into(), json!("cancelled"));
+            c.insert("set_fired".into(), json!(0));
+            c.insert("completed_mode".into(), json!("keep"));
+            ops.push(Operation::sql("kitchen._cascade_item_status", c));
+        }
+
+        events.push(order_event(
+            event,
+            &ticket_id,
+            log_action,
+            "",
+            &ctx.user_id,
+        ));
+    }
+
+    Ok(Output {
+        operations: ops,
+        events,
         ..Default::default()
     })
 }
@@ -1437,6 +1567,147 @@ mod tests {
         assert!(out.operations.iter().any(|o| o.command == "kitchen._cascade_item_status"));
         assert_eq!(out.events[0].name, "kitchen.order.cancelled");
         assert_eq!(out.events[0].payload["notes"], json!("guest left"));
+    }
+
+    // ── kitchen#61: a check that closes takes its rounds off the line ──────────────────
+
+    /// Input for `kitchen.orders.close_from_order` with the rounds the runtime preloads
+    /// (`reads` of `kitchen.orders.list` filtered by `payload.order_id`, ADR-0069).
+    fn with_rounds(order_id: &str, rounds: Value, payload: Value) -> Value {
+        json!({
+            "payload": payload,
+            "context": {
+                "hub_id": "h1", "current_user_id": "u1", "now": "2026-08-25T12:00:00+00:00",
+                "new_ids": [],
+                "reads": { "kitchen.orders.list": rounds }
+            },
+            "_order": order_id,
+        })
+    }
+
+    fn head_for(out: &Output, order_id: &str) -> Value {
+        out.operations
+            .iter()
+            .find(|o| {
+                o.command == "kitchen._set_order_status" && o.params["order_id"] == json!(order_id)
+            })
+            .unwrap_or_else(|| panic!("no _set_order_status for {order_id}: {:?}", out.operations))
+            .params
+            .clone()
+            .into()
+    }
+
+    #[test]
+    fn a_closed_check_takes_every_live_round_off_the_line() {
+        // The guest paid and left: a round already bumped was made and handed over (`served`), and
+        // one still on the line was never finished (`cancelled`). Both leave `orders.display`,
+        // which only feeds on pending/preparing/ready.
+        let out = close_orders_from_order_pure(with_rounds(
+            "o1",
+            json!([
+                { "id": "k-ready",     "status": "ready",     "source_order_id": "o1" },
+                { "id": "k-pending",   "status": "pending",   "source_order_id": "o1" },
+                { "id": "k-preparing", "status": "preparing", "source_order_id": "o1" },
+            ]),
+            json!({ "sender": "sales", "order_id": "o1" }),
+        ))
+        .expect("the listener closes the rounds of the order");
+
+        assert!(out.error.is_none(), "{:?}", out.error);
+        let ready = head_for(&out, "k-ready");
+        assert_eq!(ready["status"], json!("served"));
+        assert_eq!(ready["served_mode"], json!("set"));
+        // The SQL guard is pinned to the state the handler decided against (kitchen#11).
+        assert_eq!(ready["require_status"], json!("ready"));
+
+        for (id, from) in [("k-pending", "pending"), ("k-preparing", "preparing")] {
+            let head = head_for(&out, id);
+            assert_eq!(head["status"], json!("cancelled"), "{id}");
+            assert_eq!(head["require_status"], json!(from), "{id}");
+        }
+        // A cancelled ticket drags its lines with it, exactly as `kitchen.orders.cancel` does.
+        for id in ["k-pending", "k-preparing"] {
+            assert!(
+                out.operations.iter().any(|o| o.command == "kitchen._cascade_item_status"
+                    && o.params["order_id"] == json!(id)),
+                "{id} left its lines cooking"
+            );
+        }
+
+        let names: Vec<&str> = out.events.iter().map(|e| e.name.as_str()).collect();
+        assert_eq!(
+            names,
+            vec![
+                "kitchen.order.served",
+                "kitchen.order.cancelled",
+                "kitchen.order.cancelled"
+            ]
+        );
+        // Every event is the narrow twin the log listener accepts (kitchen#29).
+        assert_eq!(out.events[0].payload["order_id"], json!("k-ready"));
+        assert_eq!(out.events[0].payload["action"], json!("served"));
+        assert_eq!(out.events[1].payload["action"], json!("cancelled"));
+    }
+
+    #[test]
+    fn a_redelivered_close_writes_nothing() {
+        // The outbox retries. Terminal rounds are skipped, so the second delivery is a no-op
+        // instead of a refusal that would spin until the dead-letter.
+        let out = close_orders_from_order_pure(with_rounds(
+            "o1",
+            json!([
+                { "id": "k1", "status": "served",    "source_order_id": "o1" },
+                { "id": "k2", "status": "cancelled", "source_order_id": "o1" },
+            ]),
+            json!({ "sender": "sales", "order_id": "o1" }),
+        ))
+        .expect("a second delivery is not an error");
+        assert!(out.operations.is_empty(), "{:?}", out.operations);
+        assert!(out.events.is_empty());
+        assert!(out.error.is_none());
+    }
+
+    #[test]
+    fn only_the_rounds_of_the_order_that_closed_are_touched() {
+        // The read is filtered by `source_order_id`, but the handler does not take the manifest's
+        // word for it: a row of another order (or one with no order at all, from the pre-ADR-0141
+        // `create_from_sale` flow) is never moved by a check closing somewhere else.
+        let out = close_orders_from_order_pure(with_rounds(
+            "o1",
+            json!([
+                { "id": "k-mine",    "status": "pending", "source_order_id": "o1" },
+                { "id": "k-other",   "status": "pending", "source_order_id": "o2" },
+                { "id": "k-orphan",  "status": "pending", "source_order_id": null },
+            ]),
+            json!({ "order_id": "o1" }),
+        ))
+        .expect("closes only its own");
+        let touched: Vec<Value> = out
+            .operations
+            .iter()
+            .map(|o| o.params["order_id"].clone())
+            .collect();
+        assert_eq!(touched, vec![json!("k-mine"), json!("k-mine")]);
+    }
+
+    #[test]
+    fn closing_without_the_preloaded_rounds_is_a_contract_error() {
+        // No `reads` at all = a manifest/runtime mismatch. Guessing here would silently leave the
+        // line full of zombies with the delivery reported as OK (appointments#100).
+        let err = close_orders_from_order_pure(json!({
+            "payload": { "order_id": "o1" },
+            "context": { "hub_id": "h1", "current_user_id": "u1", "now": "2026-08-25T12:00:00+00:00", "new_ids": [] }
+        }))
+        .expect_err("a missing read is not a business case");
+        assert!(err.starts_with("missing_read"), "got {err}");
+
+        let missing = close_orders_from_order_pure(with_rounds(
+            "o1",
+            json!([]),
+            json!({ "order_id": "" }),
+        ))
+        .expect_err("an event with no order is not a business case");
+        assert_eq!(missing, "missing_order_id");
     }
 
     // ── kitchen#11: the state machine is authoritative ─────────────────────────────────
