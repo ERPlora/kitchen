@@ -70,7 +70,10 @@
       "id": "display",
       "label": "Display",
       "icon": "tv",
-      "component": "erp-kitchen-display"
+      "component": "erp-kitchen-display",
+      "chrome": [
+        "fullscreen"
+      ]
     },
     {
       "id": "active",

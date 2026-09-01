@@ -68,7 +68,6 @@
     }
   },
   "ui": {
-    "displayTitle": "Kitchen display",
     "colAction": "Action",
     "colOrder": "Order",
     "colNotes": "Notes",
@@ -157,7 +156,7 @@
     "loadError": "Could not load the kitchen display",
     "modeTickets": "Tickets",
     "modeAllDay": "All-Day",
-    "stationAll": "All stations",
+    "stationAll": "All",
     "stationNone": "No station",
     "bump": "Bump",
     "recall": "Recall",
@@ -176,6 +175,9 @@
     "orderType_delivery": "Delivery",
     "readyRail": "Ready",
     "emptyDisplay": "No tickets on the line.",
+    "emptyReady": "Nothing waiting to be picked up.",
+    "fullscreen": "Full screen",
+    "exitFullscreen": "Exit full screen",
     "emptyAllDay": "Nothing left to cook.",
     "colProduct": "Product",
     "actionItemBumped": "Line ready",

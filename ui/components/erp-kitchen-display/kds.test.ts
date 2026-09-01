@@ -281,6 +281,13 @@ describe('one tap = bump; one tap on a struck line = recall; never a dialog', ()
   it('a ready ticket offers recall (and served with complete_order), never in a dialog', async () => {
     displayRows = displayRows.map((r) => (r.order_id === 'k1' ? { ...r, order_status: 'ready', item_status: 'ready' } : r));
     const el = await mount();
+    // kitchen#60 — a finished ticket LEAVES the active board and waits in its own view, the way
+    // Square and Loyverse tab it away and Toast and Fresh bump it to a recall bar. Until then it
+    // was painted in a second grid under the cooking one, which is what dropped a ready ticket
+    // BELOW the one still being cooked. What this case pins is unchanged and is the point of the
+    // move: everything the ticket could do there, it can still do here.
+    el.mode = 'ready';
+    await settle(el);
     const c = card(el, 'k1');
     expect(c.dataset.status).toBe('ready');
     c.querySelector<HTMLElement>('[data-action="recall"]')!.click();
