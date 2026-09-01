@@ -69,7 +69,6 @@
     }
   },
   "ui": {
-    "displayTitle": "Pantalla de cocina",
     "colAction": "Acción",
     "colOrder": "Comanda",
     "colNotes": "Notas",
@@ -158,7 +157,7 @@
     "loadError": "No se pudo cargar la pantalla de cocina",
     "modeTickets": "Comandas",
     "modeAllDay": "Resumen",
-    "stationAll": "Todas las estaciones",
+    "stationAll": "Todas",
     "stationNone": "Sin estación",
     "bump": "Listo",
     "recall": "Recuperar",
@@ -177,6 +176,9 @@
     "orderType_delivery": "A domicilio",
     "readyRail": "Listas",
     "emptyDisplay": "No hay comandas en marcha.",
+    "emptyReady": "No hay nada esperando a recoger.",
+    "fullscreen": "Pantalla completa",
+    "exitFullscreen": "Salir de pantalla completa",
     "emptyAllDay": "No queda nada por cocinar.",
     "colProduct": "Producto",
     "actionItemBumped": "Línea lista",

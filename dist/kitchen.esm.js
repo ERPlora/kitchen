@@ -1805,7 +1805,6 @@ var es_default = {
     }
   },
   ui: {
-    displayTitle: "Pantalla de cocina",
     colAction: "Acci\xF3n",
     colOrder: "Comanda",
     colNotes: "Notas",
@@ -1894,7 +1893,7 @@ var es_default = {
     loadError: "No se pudo cargar la pantalla de cocina",
     modeTickets: "Comandas",
     modeAllDay: "Resumen",
-    stationAll: "Todas las estaciones",
+    stationAll: "Todas",
     stationNone: "Sin estaci\xF3n",
     bump: "Listo",
     recall: "Recuperar",
@@ -1913,6 +1912,9 @@ var es_default = {
     orderType_delivery: "A domicilio",
     readyRail: "Listas",
     emptyDisplay: "No hay comandas en marcha.",
+    emptyReady: "No hay nada esperando a recoger.",
+    fullscreen: "Pantalla completa",
+    exitFullscreen: "Salir de pantalla completa",
     emptyAllDay: "No queda nada por cocinar.",
     colProduct: "Producto",
     actionItemBumped: "L\xEDnea lista",
@@ -1999,7 +2001,6 @@ var en_default = {
     }
   },
   ui: {
-    displayTitle: "Kitchen display",
     colAction: "Action",
     colOrder: "Order",
     colNotes: "Notes",
@@ -2088,7 +2089,7 @@ var en_default = {
     loadError: "Could not load the kitchen display",
     modeTickets: "Tickets",
     modeAllDay: "All-Day",
-    stationAll: "All stations",
+    stationAll: "All",
     stationNone: "No station",
     bump: "Bump",
     recall: "Recall",
@@ -2107,6 +2108,9 @@ var en_default = {
     orderType_delivery: "Delivery",
     readyRail: "Ready",
     emptyDisplay: "No tickets on the line.",
+    emptyReady: "Nothing waiting to be picked up.",
+    fullscreen: "Full screen",
+    exitFullscreen: "Exit full screen",
     emptyAllDay: "Nothing left to cook.",
     colProduct: "Product",
     actionItemBumped: "Line ready",
@@ -2229,6 +2233,8 @@ var ErpKitchenDisplay = class extends i3 {
     super(...arguments);
     this.station = "";
     this.mode = "tickets";
+    this.chrome = "";
+    this.fullscreen = false;
     this.rows = [];
     this.allDay = [];
     this.settings = { ...DEFAULT_SETTINGS };
@@ -2242,13 +2248,36 @@ var ErpKitchenDisplay = class extends i3 {
   static {
     this.styles = i`
     :host { display:block; font-family: system-ui, sans-serif; color: var(--ion-text-color, #1c1b18); }
-    .bar { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; margin-bottom:.75rem; }
-    .bar h2 { margin:0; font-size:1.15rem; }
-    .bar .grow { flex:1; }
+    /* kitchen#60 · ONE command bar. It used to be two rows —an h2 plus a full-width mode segment,
+       then a full-width station segment— which is ~190 px of chrome before the first ticket; a KDS
+       header is ~48 px (Toast, Square, Fresh, Simphony). Sticky because a busy board scrolls, and
+       scrolling the station filter off the top strands whoever is at the pass. */
+    .bar { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; padding:0 0 .4rem;
+           position:sticky; top:0; z-index:2; background: var(--ion-background-color, #fff); }
     ion-segment { min-height:44px; }
-    ion-segment-button { min-height:44px; --padding-start:.75rem; --padding-end:.75rem; text-transform:none; }
+    /* Ionic gives the ion-segment host a width of 100%, so on its own each segment IS a full-width
+       row. A rule from the OUTER tree —this one— beats the component's own :host, which is what
+       lets the two controls share one line: views keeps its width, stations takes what is left. */
+    ion-segment.views { width:auto; flex:0 0 auto; }
+    /* Shrinks when the row is tight and SCROLLS after that, but never stretches: a four-station
+       kitchen whose chips were spread across 1180 px reads as four buttons, not as a filter. */
+    ion-segment.stations { width:auto; flex:0 1 auto; min-width:0; max-width:100%; }
+    ion-segment-button { min-height:44px; --padding-start:.6rem; --padding-end:.6rem; text-transform:none; }
+    .count { font-variant-numeric: tabular-nums; opacity:.7; margin-left:.35rem; }
+    /* Full screen: a plain button, not a ⋮ menu — this screen has exactly one chrome control and
+       the market answer to «two ways to do the same thing» is one way (ADR-0048 owns the rest).
+       It sits NEXT TO the view tabs, not pinned to the right edge: an auto left margin gave it a
+       third row of its own the moment the bar wrapped on a phone, and both controls are about the
+       SCREEN anyway, while the stations chips are about the food. */
+    .fs { min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center;
+          border:1px solid var(--ion-border-color, #e7e2d6); border-radius: var(--ok-radius-sm, 10px);
+          background:transparent; color:inherit; font-size:1.25rem; cursor:pointer; }
     ion-button { min-height:44px; --padding-start:1rem; --padding-end:1rem; margin:0; }
-    .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap:.75rem; align-items:start; }
+    /* kitchen#60 · the column grows with the screen instead of sitting at a fixed 17 rem: on a
+       1440 board that gave five narrow cards and ~70 % white. Equal tracks that do NOT resize with
+       the number of tickets — Toast and Fresh both fix the columns on purpose, because a card that
+       changes size every time an order lands is a card the cook has to find again. */
+    .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(clamp(15rem, 22vw, 22rem), 1fr)); gap:.6rem; align-items:start; }
     .card { border:1px solid var(--ion-border-color, #e7e2d6); border-top-width:6px; border-radius: var(--ok-radius-sm, 10px);
             background: var(--ion-item-background, var(--ion-background-color, #fff)); display:flex; flex-direction:column; overflow:hidden; }
     .card[data-sem="ok"] { border-top-color: var(--ion-color-success, #2dd36f); }
@@ -2258,18 +2287,25 @@ var ErpKitchenDisplay = class extends i3 {
     .card[data-sem="warning"] .timer { color: var(--ion-color-warning-shade, #e0ac08); }
     .card[data-sem="off"] { border-top-color: var(--ion-border-color, #e7e2d6); }
     .card[data-status="ready"] { opacity:.85; }
-    .head { display:flex; align-items:center; gap:.5rem; padding:.6rem .75rem; min-height:44px; cursor:pointer; user-select:none;
+    /* kitchen#60 · the header WRAPS instead of squeezing. With the type at kitchen size, a narrow
+       column had «Mesa 7» and «Camarero: Luis» both collapse to «M…» / «Ca…» once a RUSH pill and
+       the clock claimed the row — which is the one thing kitchen#67 exists to show. The table and
+       who fired it keep the first line; the pills, the clock and the number drop to a second one. */
+    .head { display:flex; align-items:center; flex-wrap:wrap; gap:.35rem .5rem; padding:.6rem .75rem; min-height:44px; cursor:pointer; user-select:none;
             background: var(--ok-surface-2, var(--ion-color-step-50, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.04))); }
     .head[aria-disabled="true"] { cursor:default; }
     /* The table and, under it, who fired the round (kitchen#63) — the header layout Toast, Square
        for Restaurants and Lightspeed use. A column so the waiter never competes with the pills for
        the row: on a 17rem card the label would be the first thing squeezed. */
-    .head .title { flex:1; min-width:0; display:flex; flex-direction:column; gap:.05rem; }
-    .head .label { font-weight:700; font-size:1.05rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .head .waiter { font-size:.78rem; font-weight:500; opacity:.72; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .head .num { font-variant-numeric: tabular-nums; font-size:.8rem; opacity:.75; }
-    .timer { font-variant-numeric: tabular-nums; font-weight:700; font-size:1rem; }
-    .pill { display:inline-block; padding:.1rem .5rem; border-radius: var(--ok-radius-pill, 999px); font-size:.7rem; font-weight:700; text-transform:uppercase; }
+    .head .title { flex:1 1 60%; min-width:0; display:flex; flex-direction:column; gap:.05rem; }
+    /* kitchen#60 · type for a kitchen: this is read from a metre away, standing, in a hurry. The
+       market sizes the dish and the quantity XL (Fresh, Square, Simphony) and leaves the rest
+       quiet — so the dish and the count grow, the pills and the ticket number do not. */
+    .head .label { font-weight:700; font-size:1.3rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .head .waiter { font-size:.95rem; font-weight:500; opacity:.72; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .head .num { font-variant-numeric: tabular-nums; font-size:.9rem; opacity:.75; }
+    .timer { font-variant-numeric: tabular-nums; font-weight:700; font-size:1.25rem; }
+    .pill { display:inline-block; padding:.1rem .5rem; border-radius: var(--ok-radius-pill, 999px); font-size:.75rem; font-weight:700; text-transform:uppercase; }
     .pill.rush { background: var(--ion-color-danger, #eb445a); color:#fff; }
     .pill.vip { background: var(--ion-color-tertiary, #6030ff); color:#fff; }
     .pill.round { background: var(--ok-surface-2, rgba(0,0,0,.06)); }
@@ -2279,12 +2315,12 @@ var ErpKitchenDisplay = class extends i3 {
             cursor:pointer; user-select:none; -webkit-tap-highlight-color: transparent; }
     .line[aria-disabled="true"] { cursor:default; }
     .line:active { background: var(--ok-surface-2, rgba(0,0,0,.05)); }
-    .line .qty { font-weight:800; font-size:1.05rem; min-width:2ch; text-align:right; font-variant-numeric: tabular-nums; }
+    .line .qty { font-weight:800; font-size:1.6rem; min-width:2ch; text-align:right; font-variant-numeric: tabular-nums; }
     .line .body { flex:1; min-width:0; }
-    .line .name { font-weight:600; font-size:1rem; }
-    .line .mods, .line .note { font-size:.85rem; opacity:.85; }
+    .line .name { font-weight:600; font-size:1.4rem; }
+    .line .mods, .line .note { font-size:1.05rem; opacity:.85; }
     .line .note { font-style:italic; }
-    .line .meta { font-size:.75rem; opacity:.7; display:flex; gap:.5rem; }
+    .line .meta { font-size:1rem; opacity:.7; display:flex; gap:.5rem; }
     .line[data-status="ready"] .name, .line[data-status="ready"] .qty { text-decoration: line-through; opacity:.55; }
     .line .tick { font-size:1.4rem; line-height:1; color: var(--ion-color-success, #2dd36f); }
     /* kitchen#57 · A MENU: a quiet header and its components indented behind a rule. The emphasis
@@ -2292,7 +2328,7 @@ var ErpKitchenDisplay = class extends i3 {
        header is smaller and dimmer than the lines it introduces, not louder. */
     .combo { display:block; border-top:1px solid var(--ion-border-color, #e7e2d6); }
     .combo-head { display:flex; align-items:center; gap:.4rem; min-height:44px; padding:.35rem .75rem;
-      font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; opacity:.75;
+      font-size:.95rem; text-transform:uppercase; letter-spacing:.04em; opacity:.75;
       background: var(--ok-surface-2, rgba(0,0,0,.035)); cursor:pointer; }
     .combo-head[aria-disabled="true"] { cursor:default; }
     .combo-head:active { background: var(--ok-surface-3, rgba(0,0,0,.07)); }
@@ -2326,8 +2362,7 @@ var ErpKitchenDisplay = class extends i3 {
     .allday { width:100%; border-collapse:collapse; }
     .allday td, .allday th { padding:.6rem .75rem; text-align:left; border-bottom:1px solid var(--ion-border-color, #e7e2d6); min-height:44px; }
     .allday td.q { font-weight:800; font-size:1.2rem; text-align:right; font-variant-numeric: tabular-nums; width:6ch; }
-    .allday td.s { opacity:.7; font-size:.85rem; }
-    .section-title { margin:1rem 0 .5rem; font-size:.9rem; text-transform:uppercase; letter-spacing:.04em; opacity:.7; }
+    .allday td.s { opacity:.7; font-size:.95rem; }
     @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
   `;
   }
@@ -2433,6 +2468,20 @@ var ErpKitchenDisplay = class extends i3 {
     return Array.from(byId, ([id, label]) => ({ id, label })).sort(
       (a3, b3) => a3.id === "" ? 1 : b3.id === "" ? -1 : a3.label.localeCompare(b3.label)
     );
+  }
+  /** The tickets this screen shows at all: the station's, or every one in the expo view. */
+  get visibleTickets() {
+    return this.tickets.filter((t7) => this.visibleLines(t7).length > 0 || !this.station && t7.lines.length === 0);
+  }
+  /** The active board: what the kitchen still has to cook. */
+  get cookingTickets() {
+    return this.visibleTickets.filter((t7) => t7.status !== "ready");
+  }
+  /** Done and waiting to be picked up. Out of the active board, one tap away (kitchen#60). The
+   *  divider is the SERVER's ticket status, which is what closes the ticket when its last line is
+   *  bumped — the screen does not get to decide when a ticket is finished. */
+  get readyTickets() {
+    return this.visibleTickets.filter((t7) => t7.status === "ready");
   }
   /** The lines of a ticket this screen shows: all of them (expo) or the station's. */
   visibleLines(t7) {
@@ -2596,18 +2645,11 @@ var ErpKitchenDisplay = class extends i3 {
           </footer>` : A}
     </article>`;
   }
-  renderTickets() {
+  /** ONE grid of equal columns, or the empty state. Never two grids stacked down the page. */
+  renderBoard(tickets, emptyKey) {
     const t_ = (k2) => erplora().t(CATALOG, k2);
-    const visible = this.tickets.filter((t7) => this.visibleLines(t7).length > 0 || !this.station && t7.lines.length === 0);
-    const cooking = visible.filter((t7) => t7.status !== "ready");
-    const ready = visible.filter((t7) => t7.status === "ready");
-    if (!visible.length) {
-      return b2`<ok-empty-state icon="restaurant-outline" .title=${t_("ui.emptyDisplay")}></ok-empty-state>`;
-    }
-    return b2`
-      <div class="grid">${cooking.map((t7) => this.renderTicket(t7))}</div>
-      ${ready.length ? b2`<h3 class="section-title">${t_("ui.readyRail")} (${ready.length})</h3>
-               <div class="grid">${ready.map((t7) => this.renderTicket(t7))}</div>` : A}`;
+    if (!tickets.length) return b2`<ok-empty-state icon="restaurant-outline" .title=${t_(emptyKey)}></ok-empty-state>`;
+    return b2`<div class="grid">${tickets.map((t7) => this.renderTicket(t7))}</div>`;
   }
   /** An All-Day row's station name, in the hub's language: rows group by the FROZEN name, so this
    *  reverses it through the stations list (a row frozen as `Bar` or as `Barra` both render
@@ -2640,26 +2682,52 @@ var ErpKitchenDisplay = class extends i3 {
     )}</tbody>
     </table>`;
   }
+  /** Chrome controls the shell says it honours here (`chrome="fullscreen …"`). */
+  get chromeControls() {
+    return this.chrome.split(/\s+/).filter(Boolean);
+  }
+  /**
+   * Asks the SHELL for a chrome control (ADR-0048: the module is content, the chrome is the
+   * shell's). `composed` to leave the shadow root and `bubbles` to reach the module host — without
+   * both the request dies inside the component. Nothing is toggled here: whoever does not listen
+   * does not answer, which is why the button is not painted unless the capability was announced.
+   */
+  requestChrome(control) {
+    this.dispatchEvent(new CustomEvent("erp:chrome-request", {
+      detail: { control, action: "toggle" },
+      bubbles: true,
+      composed: true
+    }));
+  }
+  renderFullscreen() {
+    const t_ = (k2) => erplora().t(CATALOG, k2);
+    if (!this.chromeControls.includes("fullscreen")) return A;
+    const label = t_(this.fullscreen ? "ui.exitFullscreen" : "ui.fullscreen");
+    return b2`<button type="button" class="fs" data-action="fullscreen" title=${label} aria-label=${label}
+        @click=${() => this.requestChrome("fullscreen")}>
+      <ion-icon name=${this.fullscreen ? "contract-outline" : "expand-outline"} aria-hidden="true"></ion-icon>
+    </button>`;
+  }
   render() {
     const t_ = (k2) => erplora().t(CATALOG, k2);
     const stations = this.stations;
+    const cooking = this.cookingTickets;
+    const ready = this.readyTickets;
     return b2`<div>
       <div class="bar">
-        <h2>${t_("ui.displayTitle")}</h2>
-        <span class="grow"></span>
-        <ion-segment .value=${this.mode} @ionChange=${(e5) => this.mode = e5.detail.value || "tickets"}>
-          <ion-segment-button value="tickets"><ion-label>${t_("ui.modeTickets")}</ion-label></ion-segment-button>
+        <ion-segment class="views" .value=${this.mode} @ionChange=${(e5) => this.mode = e5.detail.value || "tickets"}>
+          <ion-segment-button value="tickets"><ion-label>${t_("ui.modeTickets")}<span class="count" data-count="cooking">${cooking.length}</span></ion-label></ion-segment-button>
+          <ion-segment-button value="ready"><ion-label>${t_("ui.readyRail")}<span class="count" data-count="ready">${ready.length}</span></ion-label></ion-segment-button>
           <ion-segment-button value="allday"><ion-label>${t_("ui.modeAllDay")}</ion-label></ion-segment-button>
         </ion-segment>
-      </div>
-      ${stations.length > 1 || this.station ? b2`<div class="bar">
-            <ion-segment scrollable .value=${this.station || "__all"} @ionChange=${(e5) => this.station = e5.detail.value === "__all" ? "" : String(e5.detail.value ?? "")}>
+        ${this.renderFullscreen()}
+        ${stations.length > 1 || this.station ? b2`<ion-segment class="stations" scrollable .value=${this.station || "__all"} @ionChange=${(e5) => this.station = e5.detail.value === "__all" ? "" : String(e5.detail.value ?? "")}>
               <ion-segment-button value="__all"><ion-label>${t_("ui.stationAll")}</ion-label></ion-segment-button>
               ${stations.map((s5) => b2`<ion-segment-button value=${s5.id || NO_STATION}><ion-label>${s5.id ? s5.label : t_("ui.stationNone")}</ion-label></ion-segment-button>`)}
-            </ion-segment>
-          </div>` : A}
+            </ion-segment>` : A}
+      </div>
       ${this.error ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.error}</ok-inline-feedback>` : A}
-      ${this.mode === "allday" ? this.renderAllDay() : this.renderTickets()}
+      ${this.mode === "allday" ? this.renderAllDay() : this.mode === "ready" ? this.renderBoard(ready, "ui.emptyReady") : this.renderBoard(cooking, "ui.emptyDisplay")}
     </div>`;
   }
 };
@@ -2669,6 +2737,12 @@ __decorateClass([
 __decorateClass([
   n4({ type: String, reflect: true })
 ], ErpKitchenDisplay.prototype, "mode", 2);
+__decorateClass([
+  n4()
+], ErpKitchenDisplay.prototype, "chrome", 2);
+__decorateClass([
+  n4({ type: Boolean })
+], ErpKitchenDisplay.prototype, "fullscreen", 2);
 __decorateClass([
   r5()
 ], ErpKitchenDisplay.prototype, "rows", 2);

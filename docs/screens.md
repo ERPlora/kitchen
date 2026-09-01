@@ -11,19 +11,34 @@ A grid of tickets, one card per order (kitchen#4). Each card shows the label the
 quantity, modifiers, notes and seat. Requires `kitchen.view_order`; bumping needs
 `kitchen.change_order`, serving `kitchen.complete_order`.
 
-- **Stations.** A segment filters the cards by the station frozen on each line; the first entry is
+- **One command bar** (kitchen#60). A single row, ~50 px: the three views (**Tickets** ·
+  **Ready** · **All-Day**, each with its live count), the full-screen button, and the station
+  chips. It sticks to the top, so a busy board never scrolls the station filter out of reach.
+- **Stations.** The chips filter the cards by the station frozen on each line; the first entry is
   the expo/pass view (every station). A card only shows the lines of the station you are on.
 - **One tap = bump.** Tap a line to mark it ready (it is struck through); tap a struck line to
   recall it. Tap the card header (or **Bump**) to bump every line on screen still cooking — only
   those: a bump on the bar never clears the grill's lines from the expo. When no line of the ticket
-  is left cooking, the ticket goes **ready** by itself and moves to the **Ready** rail, where
-  **Recall** brings it back and **Served** hands it over. There is never a confirmation dialog:
-  recall is the undo.
+  is left cooking, the ticket goes **ready** by itself and **leaves the active board** for the
+  **Ready** view, where **Recall** brings it back and **Served** hands it over. There is never a
+  confirmation dialog: recall is the undo.
+- **Ready is a view, not a section.** It used to be a second grid painted under the first one, so a
+  finished ticket dropped *below* the one still cooking instead of leaving the line. Every KDS
+  reviewed moves it out of the active board — a tab in Square and Loyverse, a recall bar in Toast
+  and Fresh — and this is the tab, one tap away with its count.
+- **Full screen.** The KDS is the one screen of this module that is a wall display, so its
+  navigation entry declares `chrome: ["fullscreen"]` and the bar offers the control. The shell
+  hides its sidebar, topbar and tabbar and calls the Fullscreen API; the module only asks
+  (ADR-0048). Against a shell that does not announce the capability, no button is painted.
 - **Semaphore.** Each card ages from the moment it was fired: green, then amber past
   `warning_time_minutes`, then red past `critical_time_minutes` (settings). The clock keeps
   counting in red; `show_timer` hides the clock and `color_coding_enabled` turns the colours off.
-- **All-Day.** The second mode sums what is left to cook per product (and per station in the expo
+- **All-Day.** The third view sums what is left to cook per product (and per station in the expo
   view), so the fryer fires one batch instead of six.
+- **Read from a metre away.** Equal columns sized against the viewport (`clamp(15rem, 22vw, 22rem)`
+  — four tickets across a 1440 screen, one on a phone) and type at kitchen size: the dish 1.4 rem,
+  the quantity 1.6 rem, the station 1 rem. The ticket header wraps rather than shrink, so the table
+  and the waiter who fired the round always read in full.
 - Reloads by itself on every `kitchen.order.*` / `kitchen.item.*` event — no polling.
 
 ## History — the audit trail
