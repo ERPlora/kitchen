@@ -566,6 +566,27 @@
         "description": "Creates a kitchen ticket from a FIRED ORDER (event `order.fired`, ADR-0141) — the ticket is born when the waiter takes the order, not when the customer pays. Carries an opaque label (e.g. \"Table 4\") that kitchen prints verbatim, so kitchen depends on neither tables nor customers. Each fire is a new round of the same order."
       }
     },
+    "kitchen.orders.close_from_order": {
+      "permission": "kitchen.complete_order",
+      "schema": "schemas/order_close_from_order.json",
+      "reads": [
+        {
+          "query": "kitchen.orders.list",
+          "params": {
+            "source_order_id": "payload.order_id"
+          },
+          "required": true
+        }
+      ],
+      "handler": {
+        "type": "wasm",
+        "file": "dist/handler.wasm",
+        "function": "close_orders_from_order"
+      },
+      "ai": {
+        "description": "Takes the rounds of a CLOSED ORDER off the line (event `order.completed`, ADR-0146): a round already bumped becomes served, one still cooking becomes cancelled, and both leave the KDS. Never hangs off `sale.completed`, which also fires on a partial leg of a split bill where the guests are still seated."
+      }
+    },
     "kitchen.stations.create": {
       "permission": "kitchen.manage_settings",
       "transaction": true,
@@ -726,6 +747,9 @@
     "listen": {
       "order.fired": {
         "command": "kitchen.orders.create_from_order"
+      },
+      "order.completed": {
+        "command": "kitchen.orders.close_from_order"
       },
       "kitchen.order.fired": {
         "command": "kitchen.logs.create"
