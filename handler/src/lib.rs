@@ -1328,11 +1328,33 @@ pub fn create_order_from_order_pure(input: Value) -> Result<Output, String> {
     };
     let label = str_or(&payload, "label", "");
 
+    // kitchen#63 — **the ticket says who fired it.** `kitchen_order.waiter_id` has existed since
+    // migration 001 and the manifest already sorts and filters by it, but this path — the one that
+    // actually creates the rounds — built its header from scratch and never filled it: at the pass
+    // nobody knew who to call when the plate was ready, and a void had nobody to attribute it to.
+    // sales#179 closed the other half: `order.fired` now carries `waiter_id`, resolved by the
+    // SERVER. It is an OPAQUE id: kitchen forwards it without interpreting it, like `label`.
+    //
+    // Same ladder as `attributed_person` in `sales`, and for the same reason: kitchen cannot
+    // depend on every emitter of `order.fired` — an old runtime, a flow, a third-party
+    // integration — getting it right (kitchen#54). With no waiter named, the session wins, which
+    // in a listener is the EMITTER's (ADR-0288: the relay keeps the `user_id` of whoever fired,
+    // not a system account). With no session either, NULL: nobody is invented.
+    let waiter_id = {
+        let named = str_or(&payload, "waiter_id", "");
+        if named.is_empty() {
+            ctx.user_id.clone()
+        } else {
+            named
+        }
+    };
+
     let header = json!({
         "order_type": order_type,
         "priority": "normal",
         "notes": "",
         "round_number": 0, // 0 = "numérala tú" (subconsulta en _insert_order)
+        "waiter_id": waiter_id, // '' → NULL in `build_order_ops` (opt_str)
     });
     let (mut ops, total) =
         match build_order_ops(&ctx, &kitchen_order_id, &day, &header, Value::Null, &items) {
@@ -1361,6 +1383,11 @@ pub fn create_order_from_order_pure(input: Value) -> Result<Output, String> {
     if let Value::Object(p) = &mut ev.payload {
         p.insert("source_order_id".into(), json!(source_order_id));
         p.insert("label".into(), json!(label));
+        // kitchen#63: the attribution travels with the event too, so a flow, the assistant or an
+        // integration downstream gets it without re-reading the row. Nobody outside this module
+        // listens to `kitchen.order.created` (the narrow twin `kitchen.order.received` is what the
+        // log listens to), so an extra key here cannot break a delivery — kitchen#29.
+        p.insert("waiter_id".into(), opt_str(&header, "waiter_id"));
         p.insert("total".into(), json!(total)); // céntimos
         p.insert("items_count".into(), json!(items.len()));
         p.insert(
@@ -1420,6 +1447,91 @@ mod tests {
             Value::Null,
             "todavía no hay venta: nadie ha pagado"
         );
+    }
+
+    #[test]
+    fn the_ticket_says_which_waiter_fired_it() {
+        // kitchen#63 — the pass had nobody to call. `kitchen_order.waiter_id` has existed since
+        // the first migration and the manifest already sorts and filters by it, but the path that
+        // actually creates the rounds (`order.fired`, ADR-0141) built its header from scratch and
+        // never filled it: every KDS ticket came back with `waiter_id: null`.
+        //
+        // sales#179 closed the other half: `order.fired` now carries `waiter_id`, resolved by the
+        // SERVER (the table's waiter when the till sends one, the session user otherwise). It is
+        // an OPAQUE id — kitchen forwards it without interpreting it, exactly like `label`.
+        let mut inp = fired(
+            "Mesa 4",
+            "dine_in",
+            json!([{ "product_name": "Croquetas", "quantity": 2_000_000, "unit_price": 350 }]),
+        );
+        inp["payload"]["waiter_id"] = json!("u-luis");
+        let out = create_order_from_order_pure(inp).expect("crear la comanda");
+
+        let header = out
+            .operations
+            .iter()
+            .find(|o| o.command == "kitchen._insert_order")
+            .expect("cabecera de comanda");
+        assert_eq!(
+            header.params["waiter_id"],
+            json!("u-luis"),
+            "the waiter the till attributed the check to is the one on the ticket: {:?}",
+            header.params
+        );
+        // The trail downstream (flows, the assistant, an integration) gets the same fact without
+        // having to re-read the row.
+        let created = out
+            .events
+            .iter()
+            .find(|e| e.name == "kitchen.order.created")
+            .expect("evento de creación");
+        assert_eq!(created.payload["waiter_id"], json!("u-luis"));
+    }
+
+    #[test]
+    fn a_fire_without_a_named_waiter_falls_back_to_the_session_user() {
+        // Degradation, same ladder `sales` uses (`attributed_person`): an `order.fired` from an
+        // old runtime, a flow or a third-party integration must not cost the attribution. The
+        // relay runs the listener with the EMITTER's user (hub#686/ADR-0288 `listener_ctx`), so
+        // `current_user_id` here is whoever fired the round — not a system account.
+        let out = create_order_from_order_pure(fired(
+            "Mesa 4",
+            "dine_in",
+            json!([{ "product_name": "Croquetas", "quantity": 2_000_000, "unit_price": 350 }]),
+        ))
+        .expect("crear la comanda");
+
+        let header = out
+            .operations
+            .iter()
+            .find(|o| o.command == "kitchen._insert_order")
+            .expect("cabecera de comanda");
+        assert_eq!(
+            header.params["waiter_id"],
+            json!("u1"),
+            "sin camarero nombrado manda la sesión, no un hueco: {:?}",
+            header.params
+        );
+    }
+
+    #[test]
+    fn with_neither_a_waiter_nor_a_session_the_column_stays_null() {
+        // Nobody is invented. A fire with no session at all (a scheduled flow) writes NULL, which
+        // is what the column has allowed since 001 — never a made-up id.
+        let mut inp = fired(
+            "Mesa 4",
+            "dine_in",
+            json!([{ "product_name": "Croquetas", "quantity": 2_000_000, "unit_price": 350 }]),
+        );
+        inp["context"]["current_user_id"] = json!("");
+        let out = create_order_from_order_pure(inp).expect("crear la comanda");
+
+        let header = out
+            .operations
+            .iter()
+            .find(|o| o.command == "kitchen._insert_order")
+            .expect("cabecera de comanda");
+        assert_eq!(header.params["waiter_id"], Value::Null);
     }
 
     #[test]

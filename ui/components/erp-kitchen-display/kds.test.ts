@@ -16,6 +16,7 @@ let displayRows: Row[] = [];
 let allDayRows: Row[] = [];
 let settings: Row = {};
 let stationRows: Row[] = [];
+let hubUsers: Row[] | Error = [];
 let permissions: string[] = ['kitchen.view_order', 'kitchen.change_order', 'kitchen.complete_order'];
 let commands: Array<{ name: string; payload: Record<string, unknown> }> = [];
 let listeners: Record<string, Array<(p: unknown) => void>> = {};
@@ -27,8 +28,8 @@ function line(order: Row, item: Row): Row {
   return { ...order, ...item };
 }
 
-const T4 = { order_id: 'k1', order_number: '20260818-0001', order_status: 'preparing', order_type: 'dine_in', priority: 'normal', label: 'Mesa 4', round_number: 1, order_notes: '', order_fired_at: minutesAgo(5), ready_at: null, order_created_at: minutesAgo(5) };
-const BAR = { order_id: 'k2', order_number: '20260818-0002', order_status: 'pending', order_type: 'takeaway', priority: 'rush', label: 'Barra', round_number: 1, order_notes: '', order_fired_at: null, ready_at: null, order_created_at: minutesAgo(20) };
+const T4 = { order_id: 'k1', order_number: '20260818-0001', order_status: 'preparing', order_type: 'dine_in', priority: 'normal', label: 'Mesa 4', round_number: 1, order_notes: '', order_fired_at: minutesAgo(5), ready_at: null, order_created_at: minutesAgo(5), waiter_id: 'u-ana' };
+const BAR = { order_id: 'k2', order_number: '20260818-0002', order_status: 'pending', order_type: 'takeaway', priority: 'rush', label: 'Barra', round_number: 1, order_notes: '', order_fired_at: null, ready_at: null, order_created_at: minutesAgo(20), waiter_id: null };
 
 function seed() {
   displayRows = [
@@ -48,6 +49,9 @@ function seed() {
     { id: 's-bar', name: 'Bar', name_es: 'Barra', is_active: 1 },
     { id: 's-grill', name: 'Plancha', name_es: '', is_active: 1 },
   ];
+  // kitchen#63 — the hub's people, the core's reserved namespace (ADR-0192). Personnel belongs to
+  // the hub, not to a module, and `waiter_id` is an OPAQUE id: the NAME is resolved here.
+  hubUsers = [{ id: 'u-ana', name: 'Ana', role: 'employee', is_active: true }];
 }
 
 beforeEach(() => {
@@ -66,6 +70,10 @@ beforeEach(() => {
       if (name === 'kitchen.orders.all_day') return allDayRows;
       if (name === 'kitchen.settings.get') return [settings];
       if (name === 'kitchen.stations.list') return stationRows;
+      if (name === 'hub.users.list') {
+        if (hubUsers instanceof Error) throw hubUsers;
+        return hubUsers;
+      }
       return [];
     },
     queryPage: async () => ({ rows: [], total: 0, limit: 50, offset: 0 }),
@@ -190,6 +198,51 @@ describe('kitchen#45: station names in the hub language, resolved by station_id'
     };
     const el = await mount();
     expect(segmentButtons(el).map((b) => b.textContent?.trim())).toContain('Bar');
+  });
+});
+
+// kitchen#63 — **the ticket says who fired it.** The KDS showed the round with no waiter, so at the
+// pass nobody knew who to call when the plate was ready. What the market does (Toast, Square for
+// Restaurants, Lightspeed): the server is pinned to the check and reads in the TICKET HEADER, next
+// to the table. Two rules that are the whole point of the fix: the header shows a NAME (resolved
+// from `hub.users.list`, the core's reserved namespace — `waiter_id` is opaque), and where there is
+// no name there is NOTHING, because a UUID on a screen read from two metres away is worse than a
+// blank: the cook reads it, cannot use it, and stops trusting the header.
+describe('kitchen#63: the ticket header says which waiter fired it', () => {
+  const waiterOf = (el: Host, id: string) =>
+    card(el, id).querySelector<HTMLElement>('[data-waiter]')?.textContent?.trim();
+
+  it('paints the waiter NAME in the header, resolved from hub.users.list', async () => {
+    const el = await mount();
+    expect(waiterOf(el, 'k1')).toBe('ui.firedBy:Ana');
+    expect(card(el, 'k1').textContent, 'the opaque id never reaches the pass').not.toContain('u-ana');
+  });
+
+  it('a round fired by nobody paints no waiter at all', async () => {
+    const el = await mount();
+    expect(waiterOf(el, 'k2')).toBeUndefined();
+  });
+
+  it('a waiter the hub no longer lists paints nothing — never a raw id', async () => {
+    hubUsers = [{ id: 'u-someone-else', name: 'Luis', role: 'employee', is_active: true }];
+    const el = await mount();
+    expect(waiterOf(el, 'k1')).toBeUndefined();
+    expect(card(el, 'k1').textContent).not.toContain('u-ana');
+  });
+
+  it('an INACTIVE waiter still reads: the round they fired is a historical fact', async () => {
+    hubUsers = [{ id: 'u-ana', name: 'Ana', role: 'employee', is_active: false }];
+    const el = await mount();
+    expect(waiterOf(el, 'k1')).toBe('ui.firedBy:Ana');
+  });
+
+  it('without hub.users.list (no permission, no SDK) the pass still works', async () => {
+    hubUsers = new Error('no permissions / no SDK');
+    const el = await mount();
+    // Degraded, never broken: the ticket, its lines and its bump are all still there.
+    expect(cards(el).map((c) => c.dataset.order)).toEqual(['k1', 'k2']);
+    expect(waiterOf(el, 'k1')).toBeUndefined();
+    expect(el.shadowRoot.textContent).not.toContain('u-ana');
   });
 });
 

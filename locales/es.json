@@ -143,6 +143,7 @@
     "emptyStations": "Sin estaciones.",
     "colLabel": "Destino",
     "fireToKitchen": "Enviar comanda",
+    "firedBy": "Camarero: {name}",
     "posComandas": "Comandas",
     "posComandasTitle": "Comandas de la cuenta",
     "comandaN": "Comanda {n}",

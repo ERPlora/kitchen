@@ -3,6 +3,7 @@
   "module": "kitchen",
   "consumes": {
     "queries": [
+      "hub.users.list",
       "inventory.categories.list",
       "inventory.products.list",
       "kitchen.logs.list",

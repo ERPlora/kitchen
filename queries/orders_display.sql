@@ -13,6 +13,11 @@ SELECT o.id            AS order_id,
        o.order_type,
        o.priority,
        o.label,
+       -- kitchen#63 · WHO fired the round. An OPAQUE id (`hub_user.id`), never joined here: the
+       -- name is presentation and the KDS resolves it through `hub.users.list`, the core's
+       -- reserved namespace (ADR-0192). Joining a core table from a module query would tie the
+       -- feed of the pass to the shape of the hub's own tables for a label.
+       o.waiter_id,
        o.round_number,
        o.notes         AS order_notes,
        o.fired_at      AS order_fired_at,

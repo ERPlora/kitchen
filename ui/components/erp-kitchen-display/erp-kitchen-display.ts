@@ -47,6 +47,8 @@ interface DisplayRow {
   order_type: string;
   priority: string;
   label: string;
+  /** kitchen#63 · who fired the round — an OPAQUE id, resolved to a name at render. */
+  waiter_id: string | null;
   round_number: number | string;
   order_notes: string;
   order_fired_at: string | null;
@@ -102,10 +104,21 @@ interface Ticket {
   order_type: string;
   priority: string;
   label: string;
+  /** kitchen#63 · the id of whoever fired this round; '' when nobody was attributed. */
+  waiter_id: string;
   round: number;
   notes: string;
   since: string; // fired_at ?? created_at
   lines: Line[];
+}
+
+/** One row of `hub.users.list` — the hub's people (ADR-0192, the core's reserved namespace).
+ *  Personnel belongs to the CORE, not to the `staff` module: same door `sales` uses for its
+ *  «who is serving this check» picker (sales#179). */
+interface HubUser {
+  id: string;
+  name: string;
+  is_active?: boolean;
 }
 
 interface AllDayRow {
@@ -178,6 +191,7 @@ export function groupTickets(rows: DisplayRow[]): Ticket[] {
         order_type: String(r.order_type ?? ''),
         priority: String(r.priority ?? 'normal'),
         label: String(r.label ?? ''),
+        waiter_id: String(r.waiter_id ?? ''),
         round: Number(r.round_number ?? 1) || 1,
         notes: String(r.order_notes ?? ''),
         since: String(r.order_fired_at ?? r.order_created_at ?? ''),
@@ -286,7 +300,12 @@ export class ErpKitchenDisplay extends LitElement {
     .head { display:flex; align-items:center; gap:.5rem; padding:.6rem .75rem; min-height:44px; cursor:pointer; user-select:none;
             background: var(--ok-surface-2, var(--ion-color-step-50, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.04))); }
     .head[aria-disabled="true"] { cursor:default; }
-    .head .label { font-weight:700; font-size:1.05rem; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    /* The table and, under it, who fired the round (kitchen#63) — the header layout Toast, Square
+       for Restaurants and Lightspeed use. A column so the waiter never competes with the pills for
+       the row: on a 17rem card the label would be the first thing squeezed. */
+    .head .title { flex:1; min-width:0; display:flex; flex-direction:column; gap:.05rem; }
+    .head .label { font-weight:700; font-size:1.05rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .head .waiter { font-size:.78rem; font-weight:500; opacity:.72; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .head .num { font-variant-numeric: tabular-nums; font-size:.8rem; opacity:.75; }
     .timer { font-variant-numeric: tabular-nums; font-weight:700; font-size:1rem; }
     .pill { display:inline-block; padding:.1rem .5rem; border-radius: var(--ok-radius-pill, 999px); font-size:.7rem; font-weight:700; text-transform:uppercase; }
@@ -371,6 +390,12 @@ export class ErpKitchenDisplay extends LitElement {
    *  is the fact; the name is presentation, resolved here with the frozen one as fallback. */
   @state() private stationsById = new Map<string, StationRow>();
 
+  /** kitchen#63 · the hub's people by id, to turn the ticket's opaque `waiter_id` into the name the
+   *  pass calls out. INACTIVE people stay in the map on purpose: who fired a round is a historical
+   *  fact, and a waiter who left the shift — or the company — still has to read on their tickets.
+   *  Empty when the query is not reachable, and then the header simply says nothing. */
+  @state() private waitersById = new Map<string, string>();
+
   @state() private error = '';
 
   @state() private loading = false;
@@ -438,16 +463,25 @@ export class ErpKitchenDisplay extends LitElement {
   private async load() {
     this.loading = true;
     try {
-      const [rows, allDay, stations] = await Promise.all([
+      const [rows, allDay, stations, waiters] = await Promise.all([
         erplora().query<DisplayRow[]>('kitchen.orders.display'),
         erplora().query<AllDayRow[]>('kitchen.orders.all_day'),
         // kitchen#45: names in the hub's language. Optional: without it (no permission, no SDK)
         // the frozen snapshot names still paint — degraded, never broken.
         erplora().query<StationRow[]>('kitchen.stations.list').catch(() => [] as StationRow[]),
+        // kitchen#63: the people behind `waiter_id`. Same door `sales` uses (`hub.users.list`,
+        // ADR-0192) and the same policy on failure: the pass keeps working and the header says
+        // nothing, because a UUID on the card would be worse than a blank.
+        erplora().query<HubUser[]>('hub.users.list').catch(() => [] as HubUser[]),
       ]);
       this.rows = Array.isArray(rows) ? rows : [];
       this.allDay = Array.isArray(allDay) ? allDay : [];
       this.stationsById = new Map((Array.isArray(stations) ? stations : []).map((s) => [String(s.id), s]));
+      this.waitersById = new Map(
+        (Array.isArray(waiters) ? waiters : [])
+          .filter((u) => u && u.id && String(u.name ?? '').trim())
+          .map((u) => [String(u.id), String(u.name).trim()]),
+      );
     } catch (e) {
       this.error = errorText(e, 'ui.loadError');
     } finally {
@@ -467,6 +501,16 @@ export class ErpKitchenDisplay extends LitElement {
     const row = l.station_id ? this.stationsById.get(l.station_id) : undefined;
     if (!row) return l.station;
     return String(row.name_es || row.name || l.station);
+  }
+
+  /** kitchen#63 · the NAME of the waiter who fired this round, or '' when there is none to show.
+   *
+   *  '' covers three cases on purpose, and all three paint the same nothing: the round carries no
+   *  waiter (an old ticket, a fire with no session), the hub does not list that id any more, or the
+   *  list could not be loaded. A raw id would be worse than a blank — the cook reads it from two
+   *  metres away, cannot use it, and stops trusting the header. */
+  private waiterName(t: Ticket): string {
+    return (t.waiter_id && this.waitersById.get(t.waiter_id)) || '';
   }
 
   /** The stations present on the line, for the segment: keyed by ID (stable across renames and
@@ -621,13 +665,17 @@ export class ErpKitchenDisplay extends LitElement {
     const canServe = can('kitchen.complete_order');
     const elapsed = this.elapsed(t);
     const sem = semaphore(elapsed, this.settings);
+    const waiter = this.waiterName(t);
     const short = t.number.includes('-') ? t.number.slice(t.number.lastIndexOf('-') + 1) : t.number;
     return html`<article class="card" data-order=${t.id} data-status=${t.status} data-sem=${sem} aria-label=${t_('ui.ticketAria', { n: short })}>
       <header class="head" role="button" tabindex=${canChange && cooking ? 0 : -1} aria-disabled=${canChange && cooking ? 'false' : 'true'}
           title=${canChange && cooking ? t_('ui.tapHeaderToBump') : ''}
           @click=${() => (cooking ? this.bumpTicket(t) : undefined)}
           @keydown=${(e: KeyboardEvent) => { if (cooking && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); this.bumpTicket(t); } }}>
-        <span class="label">${t.label || t_(`ui.orderType_${t.order_type}`) || t.order_type}</span>
+        <span class="title">
+          <span class="label">${t.label || t_(`ui.orderType_${t.order_type}`) || t.order_type}</span>
+          ${waiter ? html`<span class="waiter" data-waiter>${t_('ui.firedBy', { name: waiter })}</span>` : nothing}
+        </span>
         ${t.priority !== 'normal' ? html`<span class="pill ${t.priority}">${t_(`ui.priority_${t.priority}`)}</span>` : nothing}
         ${t.round > 1 ? html`<span class="pill round">${t_('ui.round', { n: t.round })}</span>` : nothing}
         ${t.status === 'ready' ? html`<span class="pill ready">${t_('ui.statusReady')}</span>` : nothing}

@@ -293,14 +293,22 @@ def open_order(hub: Hub, items: list[dict]) -> str:
 
 
 def fire(
-    hub: Hub, order_id: str, label: str = "Mesa 4", channel: str = "dine_in"
+    hub: Hub,
+    order_id: str,
+    label: str = "Mesa 4",
+    channel: str = "dine_in",
+    waiter_id: str | None = None,
 ) -> None:
     """Fires the order to production — `sales.order.fire` reads the lines from `sales_order_item`
-    itself (kitchen#54): nothing sent here can fake what actually got sent to the kitchen."""
-    hub.run(
-        "sales.order.fire",
-        {"order_id": order_id, "label": label, "channel": channel},
-    )
+    itself (kitchen#54): nothing sent here can fake what actually got sent to the kitchen.
+
+    `waiter_id` is the person the check is attributed to (sales#179): sent only when the caller
+    names one — the till does that after a check is transferred. Left out, `sales` resolves it
+    server-side to the session user, which is the default path and the one worth pinning."""
+    payload = {"order_id": order_id, "label": label, "channel": channel}
+    if waiter_id is not None:
+        payload["waiter_id"] = waiter_id
+    hub.run("sales.order.fire", payload)
 
 
 def wait_for_tickets(
