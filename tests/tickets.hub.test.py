@@ -27,6 +27,11 @@ what a table or a customer is, so the label stays opaque on purpose.
   5. A round that fires without a label inherits the order's own — the waiter fires the drinks with
      "Table 4", then resumes the order later from a different tablet where the label was never
      reloaded; the second ticket must not go out blank.
+  6. The ticket says WHO fired it (kitchen#63): `waiter_id` came back null on every round, so at
+     the pass nobody knew who to call when the plate was ready and a void had nobody to attribute
+     it to. Every leg of the chain existed — the column since migration 001, the event key since
+     sales#179 — except the copy in the handler, which is why only a test against the real kernel
+     covers it end to end.
 
 Usage: `erplora test <dir> --against-hub [dev|stable|sha256:…]` (module-toolkit#110). Never on its
 own: without a runtime it fails, it does not skip.
@@ -154,6 +159,42 @@ def test_a_round_without_a_label_inherits_the_orders(hub: Hub) -> None:
     )
 
 
+def test_the_ticket_says_which_waiter_fired_it(hub: Hub) -> None:
+    print(
+        "\n6 · the ticket says WHO fired it — the pass has somebody to call (kitchen#63)"
+    )
+    # The whole chain, against the real kernel: `sales` resolves the waiter server-side and puts it
+    # in `order.fired` (sales#179), the relay hands the event to kitchen with the EMITTER's user
+    # (ADR-0288), the handler copies it onto the header, and `kitchen.orders.list` gives it back.
+    # Every leg of that was in place except the copy — which is exactly why a unit test of the
+    # handler alone would not have caught the ticket coming back with `waiter_id: null`.
+    oid = open_order(
+        hub, [{"product_name": "Croquetas", "price": 350, "quantity": 2 * ONE}]
+    )
+    fire(hub, oid, label=unique("mesa"))
+
+    ticket = the_one_ticket(hub, oid)
+    hub.check(
+        "fired without naming anyone, the ticket carries the session user",
+        ticket.get("waiter_id"),
+        hub.user,
+    )
+
+    # The till names the waiter when the check has been transferred: that one wins, and kitchen
+    # forwards it without interpreting it — it is opaque here, exactly like `label`.
+    transferred = f"{hub.user}-luis"
+    oid2 = open_order(
+        hub, [{"product_name": "Cañas", "price": 250, "quantity": 2 * ONE}]
+    )
+    fire(hub, oid2, label=unique("mesa"), waiter_id=transferred)
+
+    hub.check(
+        "a transferred check reaches the kitchen attributed to whoever took it over",
+        the_one_ticket(hub, oid2).get("waiter_id"),
+        transferred,
+    )
+
+
 def main() -> int:
     hub = Hub("tickets.hub")
     print(
@@ -164,8 +205,10 @@ def main() -> int:
     test_a_fractional_quantity_survives_as_the_same_fixed_point_integer(hub)
     test_the_ticket_header_carries_what_gets_printed(hub)
     test_a_round_without_a_label_inherits_the_orders(hub)
+    test_the_ticket_says_which_waiter_fired_it(hub)
     return hub.finish(
-        "a ticket is born from the order, survives its fractions and keeps its label, against the real kernel"
+        "a ticket is born from the order, survives its fractions, keeps its label and says who "
+        "fired it, against the real kernel"
     )
 
 

@@ -142,6 +142,7 @@
     "emptyStations": "No stations.",
     "colLabel": "Where",
     "fireToKitchen": "Send order",
+    "firedBy": "Waiter: {name}",
     "posComandas": "Tickets",
     "posComandasTitle": "Order tickets",
     "comandaN": "Order ticket {n}",

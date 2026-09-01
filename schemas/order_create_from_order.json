@@ -9,6 +9,11 @@
     "order_id": { "type": "string", "minLength": 1 },
     "label": { "type": "string", "default": "" },
     "channel": { "type": "string", "default": "dine_in" },
+    "waiter_id": {
+      "type": ["string", "null"],
+      "default": null,
+      "description": "Quién mandó la ronda (kitchen#63 ← sales#179). Id OPACO, igual que `label`: cocina lo copia a la cabecera de la comanda sin interpretarlo, para que el pase sepa a quién llamar cuando el plato está listo y una anulación tenga a quién atribuirse. Lo resuelve el SERVIDOR en `sales` (el camarero de la mesa si el TPV lo manda, si no el usuario con sesión). Ausente o vacío no rompe la comanda: cocina cae al usuario del evento y, sin él, deja la columna a NULL."
+    },
     "items": {
       "type": "array",
       "default": [],
