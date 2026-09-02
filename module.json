@@ -128,7 +128,13 @@
         "kind": "contract",
         "since": "1.0.0"
       },
-      "migrations/postgres/008_combo_group.sql"
+      "migrations/postgres/008_combo_group.sql",
+      "migrations/postgres/009_pass_print_and_chime.sql",
+      {
+        "file": "migrations/postgres/010_pass_print_starts_off.sql",
+        "kind": "backfill",
+        "since": "2.3.33"
+      }
     ]
   },
   "queries": {

@@ -4,7 +4,8 @@ import { define } from '@erplora/outfitkit/define';
 import '@erplora/outfitkit/ok-inline-feedback';
 import '@erplora/outfitkit/ok-empty-state';
 // kitchen#48 · «Sonido» is a switch that MOVES something: the pass hears the ticket land.
-import { Chime } from '../../lib/chime';
+import { Chime, CHIME_TONES, DEFAULT_TONE, DEFAULT_VOLUME, type ChimeTone } from '../../lib/chime';
+import { printPass } from '../../lib/pass-print';
 // Module i18n catalog (ADR-0055): esbuild inlines these JSON into the WC `dist`.
 import esLocale from '../../../locales/es.json';
 import enLocale from '../../../locales/en.json';
@@ -46,6 +47,9 @@ interface ErploraClientLike {
   query<T = unknown>(name: string, params?: Record<string, unknown>): Promise<T>;
   command<T = unknown>(name: string, payload?: Record<string, unknown>): Promise<T>;
   on(event: string, cb: (payload: unknown) => void): () => void;
+  /** The hub's print door (kitchen#70), bolted on by the shell. Absent in the module preview and
+   *  on a shell older than the door: then the pass simply does not print, and nothing breaks. */
+  print?(req: Record<string, unknown>): Promise<{ via?: string; error?: string } | undefined | void>;
   locale: string;
   t(catalog: Record<string, unknown>, key: string, params?: Record<string, unknown>): string;
   /** Permission check of the SDK. Absent on old shells → everything is offered; the runtime gates. */
@@ -149,6 +153,12 @@ interface DisplaySettings {
   critical_time_minutes: number;
   /** kitchen#48 — ring when a ticket lands. ONE switch, the way all seven KDS that ring do it. */
   sound_enabled: boolean;
+  /** kitchen#72 — 0–100. The forums' complaint is that the ding does not carry over an extractor. */
+  sound_volume: number;
+  /** kitchen#72 — which of the synthesised tones rings (`chime` | `bell` | `buzzer`). */
+  sound_tone: ChimeTone;
+  /** kitchen#70 — print the PASS on the station's printer every time a ticket is bumped. */
+  auto_print_tickets: boolean;
 }
 
 const DEFAULT_SETTINGS: DisplaySettings = {
@@ -157,6 +167,10 @@ const DEFAULT_SETTINGS: DisplaySettings = {
   warning_time_minutes: 15,
   critical_time_minutes: 30,
   sound_enabled: true,
+  sound_volume: DEFAULT_VOLUME,
+  sound_tone: DEFAULT_TONE,
+  // Off, like Toast, Fresh KDS and MobiPOS ship it: paper nobody asked for is a regression.
+  auto_print_tickets: false,
 };
 
 /** Fixed-point 10⁶ (ADR-0147). */
@@ -180,6 +194,30 @@ function can(permission: string): boolean {
 
 function truthy(v: unknown): boolean {
   return v === true || v === 1 || v === '1' || v === 'true';
+}
+
+/** `sound_volume` as the chime takes it (kitchen#72). Zero stays zero — a kitchen may choose
+ *  silence — and only a value that is not a number at all falls back to the default. */
+function volumeOf(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : DEFAULT_VOLUME;
+}
+
+/** `sound_tone` as the chime takes it. A name this build does not know rings the default: a hub
+ *  upgrades on its own schedule and the list can grow, and a mute pass is the worse failure. */
+function toneOf(v: unknown): ChimeTone {
+  const name = String(v ?? '');
+  return (CHIME_TONES as string[]).includes(name) ? (name as ChimeTone) : DEFAULT_TONE;
+}
+
+/** The order a `kitchen.order.*` event is talking about, whatever shape the payload arrives in. */
+function orderIdOf(payload: unknown): string {
+  if (payload && typeof payload === 'object') {
+    const p = payload as Record<string, unknown>;
+    const id = p.order_id ?? p.id;
+    return id == null ? '' : String(id);
+  }
+  return '';
 }
 
 /** Business codes (`kitchen.*`) translate through the module catalog `errors`; anything else keeps
@@ -466,6 +504,11 @@ export class ErpKitchenDisplay extends LitElement {
 
   @state() private error = '';
 
+  /** kitchen#70 · the pass did not come out of a printer. It stays until a later pass does: a
+   *  warning that clears itself on the next reload — and this board reloads on every event — is a
+   *  warning nobody in a service ever reads. */
+  @state() private passWarning = '';
+
   @state() private loading = false;
 
   @state() private now = Date.now();
@@ -495,7 +538,13 @@ export class ErpKitchenDisplay extends LitElement {
         erplora().on('kitchen.order.created', reload),
         erplora().on('kitchen.order.updated', reload),
         erplora().on('kitchen.order.fired', reload),
-        erplora().on('kitchen.order.ready', reload),
+        // kitchen#70 · the bump is where the pass goes to paper (Toast, Fresh KDS, Lightspeed K,
+        // MobiPOS and Square all print here). The board reloads either way: a printer out of paper
+        // must never keep the screen from updating.
+        erplora().on('kitchen.order.ready', (payload) => {
+          void this.printPassFor(payload);
+          reload();
+        }),
         erplora().on('kitchen.order.served', reload),
         erplora().on('kitchen.order.recalled', reload),
         erplora().on('kitchen.order.cancelled', reload),
@@ -528,8 +577,18 @@ export class ErpKitchenDisplay extends LitElement {
         show_timer: row.show_timer === undefined || row.show_timer === null ? DEFAULT_SETTINGS.show_timer : truthy(row.show_timer),
         color_coding_enabled: row.color_coding_enabled === undefined || row.color_coding_enabled === null ? DEFAULT_SETTINGS.color_coding_enabled : truthy(row.color_coding_enabled),
         sound_enabled: row.sound_enabled === undefined || row.sound_enabled === null ? DEFAULT_SETTINGS.sound_enabled : truthy(row.sound_enabled),
+        // kitchen#70 · the pass on paper. A hub on an older row (the column existed long before it
+        // was read) falls back to OFF, never to «print», so an upgrade never starts spitting paper.
+        auto_print_tickets:
+          row.auto_print_tickets === undefined || row.auto_print_tickets === null
+            ? DEFAULT_SETTINGS.auto_print_tickets
+            : truthy(row.auto_print_tickets),
         warning_time_minutes: Number(row.warning_time_minutes ?? DEFAULT_SETTINGS.warning_time_minutes) || DEFAULT_SETTINGS.warning_time_minutes,
         critical_time_minutes: Number(row.critical_time_minutes ?? DEFAULT_SETTINGS.critical_time_minutes) || DEFAULT_SETTINGS.critical_time_minutes,
+        // kitchen#72 · zero is a legitimate volume, so `|| default` would silently un-mute a
+        // kitchen that chose silence: only a value that is not a number falls back.
+        sound_volume: volumeOf(row.sound_volume),
+        sound_tone: toneOf(row.sound_tone),
       };
     } catch {
       /* no settings row (or no permission): defaults */
@@ -585,10 +644,44 @@ export class ErpKitchenDisplay extends LitElement {
     if (!this.settings.sound_enabled) return;
     for (const id of onScreen) {
       if (!known.has(id)) {
-        this.chime.play();
+        // kitchen#72 · how loud and which notes are the hub's to choose; the defaults are exactly
+        // the chime this module rang before the controls existed.
+        this.chime.play({ volume: this.settings.sound_volume, tone: this.settings.sound_tone });
         return;
       }
     }
+  }
+
+  /**
+   * Puts the PASS of a bumped ticket on paper (kitchen#70) — the sheet that leaves with the food.
+   *
+   * Driven by `kitchen.order.ready`, not by the tap: a ticket goes ready when the LAST line still
+   * cooking is bumped, and that bump may happen on another station's screen, or from the ERP list.
+   * The `jobId` carries the (order, role) pair, so every mounted board asking for the same pass is
+   * one sheet in the queue, not one per screen.
+   *
+   * Never awaited by the event handler and never able to throw: the board reloads regardless.
+   */
+  private async printPassFor(payload: unknown) {
+    if (!this.settings.auto_print_tickets) return;
+    const orderId = orderIdOf(payload);
+    if (!orderId) return;
+    const outcome = await printPass(orderId, erplora(), {
+      // The board already resolved the hub's people for the card (kitchen#63) — asking again for
+      // every pass would be a query per bump for a name we are holding.
+      resolveWaiter: (id) => this.waitersById.get(id) ?? '',
+    });
+    if (outcome.ok) {
+      this.passWarning = '';
+      return;
+    }
+    if (outcome.reason === 'no_gate') {
+      // No print door at all (module preview, or a shell older than it). Not the kitchen's problem
+      // and not worth a banner on the pass, but it must leave a trace.
+      console.warn('[kitchen] this shell exposes no print door: the pass cannot be printed');
+      return;
+    }
+    this.passWarning = erplora().t(CATALOG, 'ui.passPrintFailed');
   }
 
   // ── derived ────────────────────────────────────────────────────────────────
@@ -908,6 +1001,9 @@ export class ErpKitchenDisplay extends LitElement {
           : nothing}
       </div>
       ${this.error ? html`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.error}</ok-inline-feedback>` : nothing}
+      ${this.passWarning
+        ? html`<ok-inline-feedback data-pass-warning tone="warning" icon="print-outline">${this.passWarning}</ok-inline-feedback>`
+        : nothing}
       ${this.mode === 'allday'
         ? this.renderAllDay()
         : this.mode === 'ready'

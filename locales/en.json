@@ -32,6 +32,18 @@
       "sound_enabled": {
         "label": "Sound on a new ticket"
       },
+      "sound_volume": {
+        "label": "Sound volume (0-100)",
+        "description": "How loud the chime rings. The default is the volume this module has always rung at; a kitchen with an extractor fan usually needs more."
+      },
+      "sound_tone": {
+        "label": "Sound tone",
+        "description": "Which sound a new ticket makes: chime, bell or buzzer. The buzzer is the one that carries over a hood at full blast."
+      },
+      "auto_print_tickets": {
+        "label": "Print the pass when marked ready",
+        "description": "Every time a ticket is bumped, prints the plates going out on the printer of their station. It is not the kitchen order at fire time, which station routing already prints."
+      },
       "default_order_type": {
         "label": "Default order type"
       }
@@ -155,6 +167,7 @@
     "tapMenuToBump": "Tap to mark this menu's dishes ready",
     "comboAria": "Menu {name}, {n} dishes",
     "comboCount": "{n} dishes",
+    "passPrintFailed": "The pass could not be printed. Check the printer of the station.",
     "comboFallbackName": "Menu"
   },
   "errors": {

@@ -1,0 +1,16 @@
+-- kitchen#70 — el pase empieza APAGADO también en los hubs que ya existen.
+--
+-- La 009 baja el `DEFAULT` de `auto_print_tickets` a 0, pero un `DEFAULT` solo gobierna las filas
+-- NUEVAS. La fila de ajustes de un hub que ya funciona lleva un `1` que **nadie eligió**: la creó
+-- `commands/settings_update.sql`, que nunca ha nombrado esta columna, así que tomó el `DEFAULT 1`
+-- de 001. Dejarla en 1 significaría que la primera actualización con kitchen#70 pone a imprimir
+-- una hoja en cada bump a toda cocina que hoy no imprime ninguna — papel que nadie pidió.
+--
+-- El interruptor tampoco movía nada mientras estuvo publicado (ése fue el motivo de kitchen#48),
+-- así que ese `1` no es una decisión sobre ESTE comportamiento: no existía. Quien lo quiera lo
+-- enciende en Ajustes → Cocina, que es donde vuelve a estar y ahora sí hace algo.
+--
+-- `WHERE auto_print_tickets <> 0` para no reescribir la mitad de las filas que ya están a 0 (las
+-- de quien apagó el interruptor viejo). `updated_at` NO se toca: esto no es una edición del
+-- usuario y sellarla como tal mentiría en la auditoría de la fila.
+UPDATE kitchen_settings SET auto_print_tickets = 0 WHERE auto_print_tickets <> 0;

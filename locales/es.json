@@ -33,6 +33,18 @@
       "sound_enabled": {
         "label": "Sonar al entrar una comanda"
       },
+      "sound_volume": {
+        "label": "Volumen del sonido (0-100)",
+        "description": "Lo fuerte que suena el aviso. Por defecto suena como ha sonado siempre; una cocina con extractor suele necesitar más."
+      },
+      "sound_tone": {
+        "label": "Tono del sonido",
+        "description": "Qué sonido hace una comanda nueva: campanilla, timbre o zumbador. El zumbador es el que se oye con la campana a tope."
+      },
+      "auto_print_tickets": {
+        "label": "Imprimir el pase al marcar listo",
+        "description": "Cada vez que se marca lista una comanda, saca en la impresora de cada estación los platos que salen. No es la comanda del disparo, que ya la imprime el enrutado por estación."
+      },
       "default_order_type": {
         "label": "Tipo de comanda por defecto"
       }
@@ -156,6 +168,7 @@
     "tapMenuToBump": "Toca para marcar listos los platos de este menú",
     "comboAria": "Menú {name}, {n} platos",
     "comboCount": "{n} platos",
+    "passPrintFailed": "No se ha podido imprimir el pase. Revisa la impresora de la estación.",
     "comboFallbackName": "Menú"
   },
   "errors": {

@@ -1734,10 +1734,27 @@ __decorateClass3([
 define("ok-empty-state", OkEmptyState);
 
 // ui/lib/chime.ts
-var TONES = [880, 1320];
 var TONE_SECONDS = 0.12;
 var GAP_SECONDS = 0.03;
-var PEAK_GAIN = 0.35;
+var TONE_SPECS = {
+  /** The rising pair this module has always rung. Default: nobody's kitchen changes sound on an
+   *  update they did not ask for. */
+  chime: { wave: "sine", notes: [880, 1320] },
+  /** Brighter and higher, for a line where the chime blends into the room. */
+  bell: { wave: "triangle", notes: [1568, 2349] },
+  /** Low, harsh and repeated: the one that carries over a hood at full blast. */
+  buzzer: { wave: "square", notes: [330, 330] }
+};
+var CHIME_TONES = Object.keys(TONE_SPECS);
+var DEFAULT_TONE = "chime";
+var PEAK_GAIN_AT_MAX_VOLUME = 0.5;
+var DEFAULT_VOLUME = 70;
+function resolveRing(options) {
+  const spec = TONE_SPECS[options?.tone ?? DEFAULT_TONE] ?? TONE_SPECS[DEFAULT_TONE];
+  const asked = options?.volume;
+  const volume = typeof asked === "number" && Number.isFinite(asked) ? Math.min(100, Math.max(0, asked)) : DEFAULT_VOLUME;
+  return { peak: volume / 100 * PEAK_GAIN_AT_MAX_VOLUME, wave: spec.wave, notes: spec.notes };
+}
 function audioContextCtor() {
   const scope = globalThis;
   return scope.AudioContext ?? scope.webkitAudioContext;
@@ -1748,20 +1765,22 @@ var Chime = class {
     this.unlockArmed = false;
   }
   /**
-   * Rings the chime. Returns `false` when this browser exposes no Web Audio at all — the only
-   * case where no amount of retrying will ever produce a sound.
+   * Rings the chime, as loud and with the notes the hub asked for (kitchen#72). Returns `false`
+   * when this browser exposes no Web Audio at all — the only case where no amount of retrying will
+   * ever produce a sound. A volume of zero still returns `true`: silence chosen is not a failure.
    */
-  play() {
+  play(options) {
     const ctx = this.context();
     if (!ctx) return false;
+    const ring = resolveRing(options);
     if (ctx.state === "suspended") {
       ctx.resume().then(() => {
         if (ctx.state === "suspended") this.armUnlock(ctx);
-        else this.ring(ctx);
+        else this.ring(ctx, ring);
       }).catch(() => this.armUnlock(ctx));
       return true;
     }
-    this.ring(ctx);
+    this.ring(ctx, ring);
     return true;
   }
   context() {
@@ -1799,19 +1818,20 @@ var Chime = class {
     document.addEventListener("pointerdown", unlock, { once: true });
     document.addEventListener("keydown", unlock, { once: true });
   }
-  ring(ctx) {
+  ring(ctx, { peak, wave, notes }) {
+    if (peak <= 0) return;
     try {
       const start = ctx.currentTime;
-      TONES.forEach((hz, index) => {
+      notes.forEach((hz, index) => {
         const at = start + index * (TONE_SECONDS + GAP_SECONDS);
         const end = at + TONE_SECONDS;
         const gain = ctx.createGain();
         gain.gain.setValueAtTime(1e-4, at);
-        gain.gain.linearRampToValueAtTime(PEAK_GAIN, at + 0.01);
+        gain.gain.linearRampToValueAtTime(peak, at + 0.01);
         gain.gain.linearRampToValueAtTime(1e-4, end);
         gain.connect(ctx.destination);
         const tone = ctx.createOscillator();
-        tone.type = "sine";
+        tone.type = wave;
         tone.frequency.setValueAtTime(hz, at);
         tone.connect(gain);
         tone.start(at);
@@ -1821,6 +1841,95 @@ var Chime = class {
     }
   }
 };
+
+// ui/lib/pass-print.ts
+var QUANTITY_SCALE = 1e6;
+var DEFAULT_ROLE = "kitchen";
+function buildPassGroups(items) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const item of items ?? []) {
+    if ((item?.destination ?? "both") === "display") continue;
+    const role = str(item.printer_role) || DEFAULT_ROLE;
+    const comboRef = str(item.combo_ref);
+    const line = {
+      name: str(item.product_name),
+      quantity: num(item.quantity ?? QUANTITY_SCALE) / QUANTITY_SCALE,
+      ...item.notes ? { notes: str(item.notes) } : {},
+      ...item.modifiers ? { modifiers: str(item.modifiers) } : {},
+      ...comboRef ? { combo_ref: comboRef, combo_name: str(item.combo_name) } : {}
+    };
+    const group = groups.get(role);
+    if (group) group.push(line);
+    else groups.set(role, [line]);
+  }
+  return [...groups].map(([role, lines]) => ({ role, items: lines }));
+}
+async function printPass(orderId, deps, options = {}) {
+  const print = deps.print;
+  if (typeof print !== "function") return { ok: false, sheets: 0, reason: "no_gate" };
+  let groups;
+  let header;
+  try {
+    const [items, headers] = await Promise.all([
+      deps.query("kitchen.orders.items", { order_id: orderId }),
+      deps.query("kitchen.orders.get", { order_id: orderId })
+    ]);
+    groups = buildPassGroups(Array.isArray(items) ? items : []);
+    header = first(headers) ?? {};
+  } catch (e5) {
+    console.warn("[kitchen] the pass could not be read, so nothing was printed", e5);
+    return { ok: false, sheets: 0, reason: "threw", detail: message(e5) };
+  }
+  if (!groups.length) return { ok: true, sheets: 0, reason: "nothing_to_print" };
+  const waiter = options.resolveWaiter ? options.resolveWaiter(str(header.waiter_id)).trim() : "";
+  const data = {
+    receipt_id: str(header.order_number),
+    label: str(header.label),
+    round_number: num(header.round_number ?? 1),
+    ...waiter ? { waiter } : {}
+  };
+  let sheets = 0;
+  let reason;
+  let detail;
+  for (const group of groups) {
+    try {
+      const result = await print({
+        role: group.role,
+        documentType: "kitchen_order",
+        // Unattended: nobody is standing in front of the pass to accept a browser dialog, and that
+        // dialog would freeze the KDS of a busy service.
+        fallbackToBrowser: false,
+        jobId: `kitchen-pass-${orderId}-${group.role}`,
+        data: { ...data, items: group.items }
+      });
+      const via = result?.via ?? "none";
+      if (via === "bridge" || via === "queue" || via === "browser") {
+        sheets += 1;
+        continue;
+      }
+      reason = "no_printer";
+      detail = result?.error ?? detail;
+      console.warn(`[kitchen] no printer with role ${group.role}: the pass did not come out`, result?.error ?? "");
+    } catch (e5) {
+      reason = "threw";
+      detail = message(e5);
+      console.warn(`[kitchen] the ${group.role} printer refused the pass`, e5);
+    }
+  }
+  return sheets === groups.length ? { ok: true, sheets } : { ok: false, sheets, reason: reason ?? "gate_error", detail };
+}
+function first(v3) {
+  return Array.isArray(v3) ? v3[0] : v3;
+}
+function num(v3) {
+  return typeof v3 === "number" ? v3 : Number(v3 ?? 0) || 0;
+}
+function str(v3) {
+  return v3 == null ? "" : String(v3);
+}
+function message(e5) {
+  return e5 instanceof Error ? e5.message : String(e5);
+}
 
 // locales/es.json
 var es_default = {
@@ -1857,6 +1966,18 @@ var es_default = {
       },
       sound_enabled: {
         label: "Sonar al entrar una comanda"
+      },
+      sound_volume: {
+        label: "Volumen del sonido (0-100)",
+        description: "Lo fuerte que suena el aviso. Por defecto suena como ha sonado siempre; una cocina con extractor suele necesitar m\xE1s."
+      },
+      sound_tone: {
+        label: "Tono del sonido",
+        description: "Qu\xE9 sonido hace una comanda nueva: campanilla, timbre o zumbador. El zumbador es el que se oye con la campana a tope."
+      },
+      auto_print_tickets: {
+        label: "Imprimir el pase al marcar listo",
+        description: "Cada vez que se marca lista una comanda, saca en la impresora de cada estaci\xF3n los platos que salen. No es la comanda del disparo, que ya la imprime el enrutado por estaci\xF3n."
       },
       default_order_type: {
         label: "Tipo de comanda por defecto"
@@ -1981,6 +2102,7 @@ var es_default = {
     tapMenuToBump: "Toca para marcar listos los platos de este men\xFA",
     comboAria: "Men\xFA {name}, {n} platos",
     comboCount: "{n} platos",
+    passPrintFailed: "No se ha podido imprimir el pase. Revisa la impresora de la estaci\xF3n.",
     comboFallbackName: "Men\xFA"
   },
   errors: {
@@ -2023,6 +2145,18 @@ var en_default = {
       },
       sound_enabled: {
         label: "Sound on a new ticket"
+      },
+      sound_volume: {
+        label: "Sound volume (0-100)",
+        description: "How loud the chime rings. The default is the volume this module has always rung at; a kitchen with an extractor fan usually needs more."
+      },
+      sound_tone: {
+        label: "Sound tone",
+        description: "Which sound a new ticket makes: chime, bell or buzzer. The buzzer is the one that carries over a hood at full blast."
+      },
+      auto_print_tickets: {
+        label: "Print the pass when marked ready",
+        description: "Every time a ticket is bumped, prints the plates going out on the printer of their station. It is not the kitchen order at fire time, which station routing already prints."
       },
       default_order_type: {
         label: "Default order type"
@@ -2147,6 +2281,7 @@ var en_default = {
     tapMenuToBump: "Tap to mark this menu's dishes ready",
     comboAria: "Menu {name}, {n} dishes",
     comboCount: "{n} dishes",
+    passPrintFailed: "The pass could not be printed. Check the printer of the station.",
     comboFallbackName: "Menu"
   },
   errors: {
@@ -2162,9 +2297,13 @@ var DEFAULT_SETTINGS = {
   color_coding_enabled: true,
   warning_time_minutes: 15,
   critical_time_minutes: 30,
-  sound_enabled: true
+  sound_enabled: true,
+  sound_volume: DEFAULT_VOLUME,
+  sound_tone: DEFAULT_TONE,
+  // Off, like Toast, Fresh KDS and MobiPOS ship it: paper nobody asked for is a regression.
+  auto_print_tickets: false
 };
-var QUANTITY_SCALE = 1e6;
+var QUANTITY_SCALE2 = 1e6;
 var COOKING = ["pending", "preparing"];
 var NO_STATION = "__none";
 function erplora() {
@@ -2178,6 +2317,22 @@ function can(permission) {
 }
 function truthy(v3) {
   return v3 === true || v3 === 1 || v3 === "1" || v3 === "true";
+}
+function volumeOf(v3) {
+  const n6 = Number(v3);
+  return Number.isFinite(n6) ? Math.min(100, Math.max(0, n6)) : DEFAULT_VOLUME;
+}
+function toneOf(v3) {
+  const name = String(v3 ?? "");
+  return CHIME_TONES.includes(name) ? name : DEFAULT_TONE;
+}
+function orderIdOf(payload) {
+  if (payload && typeof payload === "object") {
+    const p4 = payload;
+    const id = p4.order_id ?? p4.id;
+    return id == null ? "" : String(id);
+  }
+  return "";
 }
 function errorText(e5, fallbackKey) {
   const code = e5?.code;
@@ -2215,7 +2370,7 @@ function groupTickets(rows2) {
         station: String(r6.station_name ?? ""),
         destination: String(r6.destination ?? "both"),
         product_name: String(r6.product_name ?? ""),
-        quantity: Number(r6.quantity ?? QUANTITY_SCALE) || 0,
+        quantity: Number(r6.quantity ?? QUANTITY_SCALE2) || 0,
         modifiers: String(r6.modifiers ?? ""),
         notes: String(r6.item_notes ?? ""),
         status: String(r6.item_status ?? "pending"),
@@ -2240,7 +2395,7 @@ function groupCombos(lines) {
   return out;
 }
 function formatQty(micro, locale) {
-  const units = micro / QUANTITY_SCALE;
+  const units = micro / QUANTITY_SCALE2;
   return new Intl.NumberFormat(locale || "en", { maximumFractionDigits: 3 }).format(units);
 }
 function formatElapsed(ms) {
@@ -2271,6 +2426,7 @@ var ErpKitchenDisplay = class extends i3 {
     this.stationsById = /* @__PURE__ */ new Map();
     this.waitersById = /* @__PURE__ */ new Map();
     this.error = "";
+    this.passWarning = "";
     this.loading = false;
     this.now = Date.now();
     /** kitchen#48 · the chime, one audio context for the whole shift. */
@@ -2408,7 +2564,13 @@ var ErpKitchenDisplay = class extends i3 {
         erplora().on("kitchen.order.created", reload),
         erplora().on("kitchen.order.updated", reload),
         erplora().on("kitchen.order.fired", reload),
-        erplora().on("kitchen.order.ready", reload),
+        // kitchen#70 · the bump is where the pass goes to paper (Toast, Fresh KDS, Lightspeed K,
+        // MobiPOS and Square all print here). The board reloads either way: a printer out of paper
+        // must never keep the screen from updating.
+        erplora().on("kitchen.order.ready", (payload) => {
+          void this.printPassFor(payload);
+          reload();
+        }),
         erplora().on("kitchen.order.served", reload),
         erplora().on("kitchen.order.recalled", reload),
         erplora().on("kitchen.order.cancelled", reload),
@@ -2437,8 +2599,15 @@ var ErpKitchenDisplay = class extends i3 {
         show_timer: row.show_timer === void 0 || row.show_timer === null ? DEFAULT_SETTINGS.show_timer : truthy(row.show_timer),
         color_coding_enabled: row.color_coding_enabled === void 0 || row.color_coding_enabled === null ? DEFAULT_SETTINGS.color_coding_enabled : truthy(row.color_coding_enabled),
         sound_enabled: row.sound_enabled === void 0 || row.sound_enabled === null ? DEFAULT_SETTINGS.sound_enabled : truthy(row.sound_enabled),
+        // kitchen#70 · the pass on paper. A hub on an older row (the column existed long before it
+        // was read) falls back to OFF, never to «print», so an upgrade never starts spitting paper.
+        auto_print_tickets: row.auto_print_tickets === void 0 || row.auto_print_tickets === null ? DEFAULT_SETTINGS.auto_print_tickets : truthy(row.auto_print_tickets),
         warning_time_minutes: Number(row.warning_time_minutes ?? DEFAULT_SETTINGS.warning_time_minutes) || DEFAULT_SETTINGS.warning_time_minutes,
-        critical_time_minutes: Number(row.critical_time_minutes ?? DEFAULT_SETTINGS.critical_time_minutes) || DEFAULT_SETTINGS.critical_time_minutes
+        critical_time_minutes: Number(row.critical_time_minutes ?? DEFAULT_SETTINGS.critical_time_minutes) || DEFAULT_SETTINGS.critical_time_minutes,
+        // kitchen#72 · zero is a legitimate volume, so `|| default` would silently un-mute a
+        // kitchen that chose silence: only a value that is not a number falls back.
+        sound_volume: volumeOf(row.sound_volume),
+        sound_tone: toneOf(row.sound_tone)
       };
     } catch {
     }
@@ -2489,10 +2658,39 @@ var ErpKitchenDisplay = class extends i3 {
     if (!this.settings.sound_enabled) return;
     for (const id of onScreen) {
       if (!known.has(id)) {
-        this.chime.play();
+        this.chime.play({ volume: this.settings.sound_volume, tone: this.settings.sound_tone });
         return;
       }
     }
+  }
+  /**
+   * Puts the PASS of a bumped ticket on paper (kitchen#70) — the sheet that leaves with the food.
+   *
+   * Driven by `kitchen.order.ready`, not by the tap: a ticket goes ready when the LAST line still
+   * cooking is bumped, and that bump may happen on another station's screen, or from the ERP list.
+   * The `jobId` carries the (order, role) pair, so every mounted board asking for the same pass is
+   * one sheet in the queue, not one per screen.
+   *
+   * Never awaited by the event handler and never able to throw: the board reloads regardless.
+   */
+  async printPassFor(payload) {
+    if (!this.settings.auto_print_tickets) return;
+    const orderId = orderIdOf(payload);
+    if (!orderId) return;
+    const outcome = await printPass(orderId, erplora(), {
+      // The board already resolved the hub's people for the card (kitchen#63) — asking again for
+      // every pass would be a query per bump for a name we are holding.
+      resolveWaiter: (id) => this.waitersById.get(id) ?? ""
+    });
+    if (outcome.ok) {
+      this.passWarning = "";
+      return;
+    }
+    if (outcome.reason === "no_gate") {
+      console.warn("[kitchen] this shell exposes no print door: the pass cannot be printed");
+      return;
+    }
+    this.passWarning = erplora().t(CATALOG, "ui.passPrintFailed");
   }
   // ── derived ────────────────────────────────────────────────────────────────
   get tickets() {
@@ -2785,6 +2983,7 @@ var ErpKitchenDisplay = class extends i3 {
             </ion-segment>` : A}
       </div>
       ${this.error ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.error}</ok-inline-feedback>` : A}
+      ${this.passWarning ? b2`<ok-inline-feedback data-pass-warning tone="warning" icon="print-outline">${this.passWarning}</ok-inline-feedback>` : A}
       ${this.mode === "allday" ? this.renderAllDay() : this.mode === "ready" ? this.renderBoard(ready, "ui.emptyReady") : this.renderBoard(cooking, "ui.emptyDisplay")}
     </div>`;
   }
@@ -2819,6 +3018,9 @@ __decorateClass([
 __decorateClass([
   r5()
 ], ErpKitchenDisplay.prototype, "error", 2);
+__decorateClass([
+  r5()
+], ErpKitchenDisplay.prototype, "passWarning", 2);
 __decorateClass([
   r5()
 ], ErpKitchenDisplay.prototype, "loading", 2);
