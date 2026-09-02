@@ -3,6 +3,8 @@ import { property, state } from 'lit/decorators.js';
 import { define } from '@erplora/outfitkit/define';
 import '@erplora/outfitkit/ok-inline-feedback';
 import '@erplora/outfitkit/ok-empty-state';
+// kitchen#48 · «Sonido» is a switch that MOVES something: the pass hears the ticket land.
+import { Chime } from '../../lib/chime';
 // Module i18n catalog (ADR-0055): esbuild inlines these JSON into the WC `dist`.
 import esLocale from '../../../locales/es.json';
 import enLocale from '../../../locales/en.json';
@@ -145,6 +147,8 @@ interface DisplaySettings {
   color_coding_enabled: boolean;
   warning_time_minutes: number;
   critical_time_minutes: number;
+  /** kitchen#48 — ring when a ticket lands. ONE switch, the way all seven KDS that ring do it. */
+  sound_enabled: boolean;
 }
 
 const DEFAULT_SETTINGS: DisplaySettings = {
@@ -152,6 +156,7 @@ const DEFAULT_SETTINGS: DisplaySettings = {
   color_coding_enabled: true,
   warning_time_minutes: 15,
   critical_time_minutes: 30,
+  sound_enabled: true,
 };
 
 /** Fixed-point 10⁶ (ADR-0147). */
@@ -469,6 +474,13 @@ export class ErpKitchenDisplay extends LitElement {
 
   private clock?: ReturnType<typeof setInterval>;
 
+  /** kitchen#48 · the chime, one audio context for the whole shift. */
+  private readonly chime = new Chime();
+
+  /** The tickets the board was showing on the previous feed. `undefined` until the FIRST feed
+   *  lands: that one teaches the board what is already on the line and never rings. */
+  private knownTickets?: Set<string>;
+
   private readonly onLocaleChange = (): void => this.requestUpdate();
 
   async connectedCallback() {
@@ -515,6 +527,7 @@ export class ErpKitchenDisplay extends LitElement {
       this.settings = {
         show_timer: row.show_timer === undefined || row.show_timer === null ? DEFAULT_SETTINGS.show_timer : truthy(row.show_timer),
         color_coding_enabled: row.color_coding_enabled === undefined || row.color_coding_enabled === null ? DEFAULT_SETTINGS.color_coding_enabled : truthy(row.color_coding_enabled),
+        sound_enabled: row.sound_enabled === undefined || row.sound_enabled === null ? DEFAULT_SETTINGS.sound_enabled : truthy(row.sound_enabled),
         warning_time_minutes: Number(row.warning_time_minutes ?? DEFAULT_SETTINGS.warning_time_minutes) || DEFAULT_SETTINGS.warning_time_minutes,
         critical_time_minutes: Number(row.critical_time_minutes ?? DEFAULT_SETTINGS.critical_time_minutes) || DEFAULT_SETTINGS.critical_time_minutes,
       };
@@ -538,6 +551,7 @@ export class ErpKitchenDisplay extends LitElement {
         erplora().query<HubUser[]>('hub.users.list').catch(() => [] as HubUser[]),
       ]);
       this.rows = Array.isArray(rows) ? rows : [];
+      this.ringForArrivals();
       this.allDay = Array.isArray(allDay) ? allDay : [];
       this.stationsById = new Map((Array.isArray(stations) ? stations : []).map((s) => [String(s.id), s]));
       this.waitersById = new Map(
@@ -549,6 +563,31 @@ export class ErpKitchenDisplay extends LitElement {
       this.error = errorText(e, 'ui.loadError');
     } finally {
       this.loading = false;
+    }
+  }
+
+  /**
+   * Rings once when the feed brings a ticket this board had not seen (kitchen#48).
+   *
+   * ARRIVAL, not presence: the board reloads on every bump, recall and status change, so «there
+   * are tickets» is not news — «there is a ticket that was not here a moment ago» is. And the
+   * FIRST feed never rings: a KDS opened halfway through a service would otherwise greet whoever
+   * turns it on with an alarm for orders already being cooked.
+   *
+   * One chime per reload, however many tickets landed together: a delivery burst that beeps six
+   * times is the noise the Square forum complains about, not an alert.
+   */
+  private ringForArrivals() {
+    const onScreen = new Set(this.rows.map((r) => String(r.order_id ?? '')));
+    const known = this.knownTickets;
+    this.knownTickets = onScreen;
+    if (!known) return; // first feed: the board is being learnt, nothing "arrived"
+    if (!this.settings.sound_enabled) return;
+    for (const id of onScreen) {
+      if (!known.has(id)) {
+        this.chime.play();
+        return;
+      }
     }
   }
 

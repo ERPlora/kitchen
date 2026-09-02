@@ -52,6 +52,23 @@ function can(permission: string): boolean {
   return typeof client.hasPermission === 'function' ? client.hasPermission(permission) : true;
 }
 
+/** The `DEFAULT` of `kitchen_settings.default_order_type`, and of `schemas/settings_update.json`. */
+const DEFAULT_ORDER_TYPE = 'dine_in';
+
+/**
+ * The configured default order type (kitchen#48) — the value the new-order picker opens on.
+ *
+ * Falls back to `dine_in` on every unhappy path (no singleton row, no `kitchen.view_settings`,
+ * a value this module's catalogue does not know): the picker feeds a `required` field of
+ * `kitchen.orders.create`, so leaving it blank or trusting an unknown value would turn a
+ * misconfiguration into an order nobody can send.
+ */
+export function resolveDefaultOrderType(row: unknown): string {
+  const value = (row as Record<string, unknown> | null | undefined)?.default_order_type;
+  const text = typeof value === 'string' ? value : '';
+  return text in ORDER_TYPE_KEY ? text : DEFAULT_ORDER_TYPE;
+}
+
 /** One permission per verb (kitchen#5); the command that owns each verb is called by literal below. */
 type Verb = 'fire' | 'mark_ready' | 'mark_served' | 'recall' | 'cancel';
 const VERB_PERMISSION: Record<Verb, string> = {
@@ -97,7 +114,10 @@ export class ErpKitchenOrdersActive extends LitElement {
 
   @state() formError = '';
 
-  @state() newType = 'dine_in';
+  /** Where a new ticket goes by default. `dine_in` until `kitchen.settings.get` says otherwise
+   *  (kitchen#48): it is the schema and column default, and the picker must never open blank —
+   *  `order_type` is `required` by `schemas/order_create.json`, so a blank one cannot be sent. */
+  @state() newType = DEFAULT_ORDER_TYPE;
 
   @state() newNotes = '';
 
@@ -189,6 +209,7 @@ export class ErpKitchenOrdersActive extends LitElement {
   async connectedCallback() {
     super.connectedCallback();
     window.addEventListener('erplora:locale-changed', this.onLocaleChange);
+    await this.loadDefaultOrderType();
     this.ctrl = createListController<Order>(erplora(), 'kitchen.orders.list', () => this.requestUpdate(), {
       pageSize: 50,
       sort: 'created_at',
@@ -216,6 +237,20 @@ export class ErpKitchenOrdersActive extends LitElement {
     window.removeEventListener('erplora:locale-changed', this.onLocaleChange);
     super.disconnectedCallback();
     this.unsub?.();
+  }
+
+  /** Reads the hub's default order type once, when the screen opens. Silent on failure on
+   *  purpose: this is the INITIAL value of a picker the user can change, so a hub without the
+   *  singleton row (or a role without `kitchen.view_settings`) gets `dine_in` and a working
+   *  form — never an error banner over a screen whose real job is the ticket list. */
+  private async loadDefaultOrderType() {
+    try {
+      const rows = await erplora().query<Array<Record<string, unknown>>>('kitchen.settings.get');
+      const row = Array.isArray(rows) ? rows[0] : (rows as unknown as Record<string, unknown>);
+      this.newType = resolveDefaultOrderType(row);
+    } catch {
+      this.newType = DEFAULT_ORDER_TYPE;
+    }
   }
 
   private async createOrder(ev: Event) {

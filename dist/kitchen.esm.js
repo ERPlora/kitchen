@@ -1733,6 +1733,95 @@ __decorateClass3([
 ], OkEmptyState.prototype, "message");
 define("ok-empty-state", OkEmptyState);
 
+// ui/lib/chime.ts
+var TONES = [880, 1320];
+var TONE_SECONDS = 0.12;
+var GAP_SECONDS = 0.03;
+var PEAK_GAIN = 0.35;
+function audioContextCtor() {
+  const scope = globalThis;
+  return scope.AudioContext ?? scope.webkitAudioContext;
+}
+var Chime = class {
+  constructor() {
+    this.unavailableReported = false;
+    this.unlockArmed = false;
+  }
+  /**
+   * Rings the chime. Returns `false` when this browser exposes no Web Audio at all — the only
+   * case where no amount of retrying will ever produce a sound.
+   */
+  play() {
+    const ctx = this.context();
+    if (!ctx) return false;
+    if (ctx.state === "suspended") {
+      ctx.resume().then(() => {
+        if (ctx.state === "suspended") this.armUnlock(ctx);
+        else this.ring(ctx);
+      }).catch(() => this.armUnlock(ctx));
+      return true;
+    }
+    this.ring(ctx);
+    return true;
+  }
+  context() {
+    if (this.ctx) return this.ctx;
+    const Ctor = audioContextCtor();
+    if (!Ctor) {
+      if (!this.unavailableReported) {
+        this.unavailableReported = true;
+        console.warn("[kitchen] this browser has no Web Audio: the KDS cannot ring on a new ticket");
+      }
+      return void 0;
+    }
+    try {
+      this.ctx = new Ctor();
+      return this.ctx;
+    } catch {
+      if (!this.unavailableReported) {
+        this.unavailableReported = true;
+        console.warn("[kitchen] the browser refused an AudioContext: the KDS will stay silent");
+      }
+      return void 0;
+    }
+  }
+  /**
+   * The browser refused to start audio without a gesture. Instead of leaving the screen mute for
+   * the whole shift, unlock it on the next touch or key — the ticket that is ringing now is lost,
+   * every one after it is not.
+   */
+  armUnlock(ctx) {
+    if (this.unlockArmed) return;
+    this.unlockArmed = true;
+    const unlock = () => {
+      ctx.resume().catch(() => void 0);
+    };
+    document.addEventListener("pointerdown", unlock, { once: true });
+    document.addEventListener("keydown", unlock, { once: true });
+  }
+  ring(ctx) {
+    try {
+      const start = ctx.currentTime;
+      TONES.forEach((hz, index) => {
+        const at = start + index * (TONE_SECONDS + GAP_SECONDS);
+        const end = at + TONE_SECONDS;
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(1e-4, at);
+        gain.gain.linearRampToValueAtTime(PEAK_GAIN, at + 0.01);
+        gain.gain.linearRampToValueAtTime(1e-4, end);
+        gain.connect(ctx.destination);
+        const tone = ctx.createOscillator();
+        tone.type = "sine";
+        tone.frequency.setValueAtTime(hz, at);
+        tone.connect(gain);
+        tone.start(at);
+        tone.stop(end);
+      });
+    } catch {
+    }
+  }
+};
+
 // locales/es.json
 var es_default = {
   name: "Cocina",
@@ -1754,9 +1843,6 @@ var es_default = {
   settings: {
     title: "Cocina",
     fields: {
-      auto_accept_orders: {
-        label: "Aceptar comandas autom\xE1ticamente"
-      },
       show_timer: {
         label: "Mostrar cron\xF3metro"
       },
@@ -1766,38 +1852,11 @@ var es_default = {
       critical_time_minutes: {
         label: "Aviso rojo (minutos)"
       },
-      items_per_page: {
-        label: "Comandas por p\xE1gina"
-      },
-      auto_refresh_seconds: {
-        label: "Refresco autom\xE1tico (segundos)"
-      },
-      sound_enabled: {
-        label: "Sonido"
-      },
-      sound_on_new_order: {
-        label: "Sonar al entrar una comanda"
-      },
-      sound_on_rush: {
-        label: "Sonar en comandas urgentes"
-      },
-      auto_bump_enabled: {
-        label: "Marcar listo autom\xE1ticamente"
-      },
-      auto_bump_delay_seconds: {
-        label: "Espera del marcado autom\xE1tico (segundos)"
-      },
       color_coding_enabled: {
         label: "Sem\xE1foro de color"
       },
-      auto_print_tickets: {
-        label: "Imprimir comandas autom\xE1ticamente"
-      },
-      use_rounds: {
-        label: "Usar rondas"
-      },
-      auto_fire_on_round: {
-        label: "Lanzar la ronda autom\xE1ticamente"
+      sound_enabled: {
+        label: "Sonar al entrar una comanda"
       },
       default_order_type: {
         label: "Tipo de comanda por defecto"
@@ -1950,9 +2009,6 @@ var en_default = {
   settings: {
     title: "Kitchen",
     fields: {
-      auto_accept_orders: {
-        label: "Accept orders automatically"
-      },
       show_timer: {
         label: "Show timer"
       },
@@ -1962,38 +2018,11 @@ var en_default = {
       critical_time_minutes: {
         label: "Red alert (minutes)"
       },
-      items_per_page: {
-        label: "Orders per page"
-      },
-      auto_refresh_seconds: {
-        label: "Auto refresh (seconds)"
-      },
-      sound_enabled: {
-        label: "Sound"
-      },
-      sound_on_new_order: {
-        label: "Sound on a new order"
-      },
-      sound_on_rush: {
-        label: "Sound on a rush order"
-      },
-      auto_bump_enabled: {
-        label: "Mark ready automatically"
-      },
-      auto_bump_delay_seconds: {
-        label: "Auto mark-ready delay (seconds)"
-      },
       color_coding_enabled: {
         label: "Colour semaphore"
       },
-      auto_print_tickets: {
-        label: "Print tickets automatically"
-      },
-      use_rounds: {
-        label: "Use rounds"
-      },
-      auto_fire_on_round: {
-        label: "Fire the round automatically"
+      sound_enabled: {
+        label: "Sound on a new ticket"
       },
       default_order_type: {
         label: "Default order type"
@@ -2132,7 +2161,8 @@ var DEFAULT_SETTINGS = {
   show_timer: true,
   color_coding_enabled: true,
   warning_time_minutes: 15,
-  critical_time_minutes: 30
+  critical_time_minutes: 30,
+  sound_enabled: true
 };
 var QUANTITY_SCALE = 1e6;
 var COOKING = ["pending", "preparing"];
@@ -2243,6 +2273,8 @@ var ErpKitchenDisplay = class extends i3 {
     this.error = "";
     this.loading = false;
     this.now = Date.now();
+    /** kitchen#48 · the chime, one audio context for the whole shift. */
+    this.chime = new Chime();
     this.onLocaleChange = () => this.requestUpdate();
   }
   static {
@@ -2404,6 +2436,7 @@ var ErpKitchenDisplay = class extends i3 {
       this.settings = {
         show_timer: row.show_timer === void 0 || row.show_timer === null ? DEFAULT_SETTINGS.show_timer : truthy(row.show_timer),
         color_coding_enabled: row.color_coding_enabled === void 0 || row.color_coding_enabled === null ? DEFAULT_SETTINGS.color_coding_enabled : truthy(row.color_coding_enabled),
+        sound_enabled: row.sound_enabled === void 0 || row.sound_enabled === null ? DEFAULT_SETTINGS.sound_enabled : truthy(row.sound_enabled),
         warning_time_minutes: Number(row.warning_time_minutes ?? DEFAULT_SETTINGS.warning_time_minutes) || DEFAULT_SETTINGS.warning_time_minutes,
         critical_time_minutes: Number(row.critical_time_minutes ?? DEFAULT_SETTINGS.critical_time_minutes) || DEFAULT_SETTINGS.critical_time_minutes
       };
@@ -2425,6 +2458,7 @@ var ErpKitchenDisplay = class extends i3 {
         erplora().query("hub.users.list").catch(() => [])
       ]);
       this.rows = Array.isArray(rows2) ? rows2 : [];
+      this.ringForArrivals();
       this.allDay = Array.isArray(allDay) ? allDay : [];
       this.stationsById = new Map((Array.isArray(stations) ? stations : []).map((s5) => [String(s5.id), s5]));
       this.waitersById = new Map(
@@ -2434,6 +2468,30 @@ var ErpKitchenDisplay = class extends i3 {
       this.error = errorText(e5, "ui.loadError");
     } finally {
       this.loading = false;
+    }
+  }
+  /**
+   * Rings once when the feed brings a ticket this board had not seen (kitchen#48).
+   *
+   * ARRIVAL, not presence: the board reloads on every bump, recall and status change, so «there
+   * are tickets» is not news — «there is a ticket that was not here a moment ago» is. And the
+   * FIRST feed never rings: a KDS opened halfway through a service would otherwise greet whoever
+   * turns it on with an alarm for orders already being cooked.
+   *
+   * One chime per reload, however many tickets landed together: a delivery burst that beeps six
+   * times is the noise the Square forum complains about, not an alert.
+   */
+  ringForArrivals() {
+    const onScreen = new Set(this.rows.map((r6) => String(r6.order_id ?? "")));
+    const known = this.knownTickets;
+    this.knownTickets = onScreen;
+    if (!known) return;
+    if (!this.settings.sound_enabled) return;
+    for (const id of onScreen) {
+      if (!known.has(id)) {
+        this.chime.play();
+        return;
+      }
     }
   }
   // ── derived ────────────────────────────────────────────────────────────────
@@ -4821,6 +4879,12 @@ function can2(permission) {
   const client = erplora4();
   return typeof client.hasPermission === "function" ? client.hasPermission(permission) : true;
 }
+var DEFAULT_ORDER_TYPE = "dine_in";
+function resolveDefaultOrderType(row) {
+  const value = row?.default_order_type;
+  const text = typeof value === "string" ? value : "";
+  return text in ORDER_TYPE_KEY ? text : DEFAULT_ORDER_TYPE;
+}
 var VERB_PERMISSION = {
   fire: "kitchen.change_order",
   mark_ready: "kitchen.change_order",
@@ -4848,7 +4912,7 @@ var ErpKitchenOrdersActive = class extends i3 {
   constructor() {
     super(...arguments);
     this.formError = "";
-    this.newType = "dine_in";
+    this.newType = DEFAULT_ORDER_TYPE;
     this.newNotes = "";
     this.saving = false;
     this.tick = 0;
@@ -4937,6 +5001,7 @@ var ErpKitchenOrdersActive = class extends i3 {
   async connectedCallback() {
     super.connectedCallback();
     window.addEventListener("erplora:locale-changed", this.onLocaleChange);
+    await this.loadDefaultOrderType();
     this.ctrl = createListController(erplora4(), "kitchen.orders.list", () => this.requestUpdate(), {
       pageSize: 50,
       sort: "created_at",
@@ -4962,6 +5027,19 @@ var ErpKitchenOrdersActive = class extends i3 {
     window.removeEventListener("erplora:locale-changed", this.onLocaleChange);
     super.disconnectedCallback();
     this.unsub?.();
+  }
+  /** Reads the hub's default order type once, when the screen opens. Silent on failure on
+   *  purpose: this is the INITIAL value of a picker the user can change, so a hub without the
+   *  singleton row (or a role without `kitchen.view_settings`) gets `dine_in` and a working
+   *  form — never an error banner over a screen whose real job is the ticket list. */
+  async loadDefaultOrderType() {
+    try {
+      const rows2 = await erplora4().query("kitchen.settings.get");
+      const row = Array.isArray(rows2) ? rows2[0] : rows2;
+      this.newType = resolveDefaultOrderType(row);
+    } catch {
+      this.newType = DEFAULT_ORDER_TYPE;
+    }
   }
   async createOrder(ev) {
     ev.preventDefault();
