@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "kitchen.settings.update",
-  "description": "Kitchen configuration (one singleton row per hub): KDS display + order behaviour (merge of ADR-0014). The generic settings form of the shell sends the WHOLE snapshot (upsert), so every property is `required` — and therefore every property MUST carry a `default` equal to its column DEFAULT in `migrations/postgres/001_init.sql`. Without it, a hub whose singleton row does not exist yet (every new hub, since the row is born from this form) starts the form empty and its first save is a 422 nobody can get past (kitchen#41). Pinned by `tests/settings_defaults_match_the_column.contract.test.py`. Every property here is READ by code that runs, pinned by `tests/every_setting_moves_something.contract.test.py`: ten controls that reached nothing were retired in kitchen#48 (`auto_accept_orders`, `items_per_page`, `auto_refresh_seconds`, `sound_on_new_order`, `sound_on_rush`, `auto_bump_enabled`, `auto_bump_delay_seconds`, `auto_print_tickets`, `use_rounds`, `auto_fire_on_round`). Their COLUMNS survive with their DEFAULT — dropping one needs a `kind: contract` migration no module can publish — so a hub that had saved values keeps them; the form simply stops offering a switch that moved nothing.",
+  "description": "Kitchen configuration (one singleton row per hub): KDS display + order behaviour (merge of ADR-0014). The generic settings form of the shell sends the WHOLE snapshot (upsert), so every property is `required` — and therefore every property MUST carry a `default` equal to its column DEFAULT in `migrations/postgres/001_init.sql`. Without it, a hub whose singleton row does not exist yet (every new hub, since the row is born from this form) starts the form empty and its first save is a 422 nobody can get past (kitchen#41). Pinned by `tests/settings_defaults_match_the_column.contract.test.py`. Every property here is READ by code that runs, pinned by `tests/every_setting_moves_something.contract.test.py`: ten controls that reached nothing were retired in kitchen#48 and NINE are still retired (`auto_accept_orders`, `items_per_page`, `auto_refresh_seconds`, `sound_on_new_order`, `sound_on_rush`, `auto_bump_enabled`, `auto_bump_delay_seconds`, `use_rounds`, `auto_fire_on_round`). Their COLUMNS survive with their DEFAULT — dropping one needs a `kind: contract` migration no module can publish — so a hub that had saved values keeps them; the form simply stops offering a switch that moved nothing. The tenth, `auto_print_tickets`, is back in kitchen#70 with a reader and a DIFFERENT meaning — it prints the PASS at the bump, where five of the ten KDS on the market print, not paper at arrival, which station routing already does — and therefore with `default: false` and a column DEFAULT lowered to 0 (migration 009/010): a switch that starts printing paper nobody asked for is a regression, and the market ships this one off.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -34,6 +34,31 @@
       "type": "boolean",
       "default": true
     },
+    "sound_volume": {
+      "title": "Sound volume (0-100)",
+      "description": "How loud the chime rings. The default is the volume this module has always rung at; a kitchen with an extractor fan usually needs more.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 70
+    },
+    "sound_tone": {
+      "title": "Sound tone",
+      "description": "Which sound the new ticket makes. The buzzer is the one that carries over a hood at full blast.",
+      "type": "string",
+      "enum": [
+        "chime",
+        "bell",
+        "buzzer"
+      ],
+      "default": "chime"
+    },
+    "auto_print_tickets": {
+      "title": "Print the pass when marked ready",
+      "description": "Prints the plates that are going out on the printer of their station, every time a ticket is bumped. It is not the kitchen order at fire time, which the station routing already prints.",
+      "type": "boolean",
+      "default": false
+    },
     "default_order_type": {
       "title": "Default order type",
       "type": "string",
@@ -51,6 +76,9 @@
     "critical_time_minutes",
     "color_coding_enabled",
     "sound_enabled",
+    "sound_volume",
+    "sound_tone",
+    "auto_print_tickets",
     "default_order_type"
   ]
 }

@@ -1,0 +1,211 @@
+// The PASS on paper — the sheet that leaves with the food when the ticket is bumped (kitchen#70).
+//
+// Two prints, two moments, and they are NOT the same paper:
+//
+//   · **the comanda**, at FIRE. Already shipped: `print-comanda.ts` in the shell listens on
+//     `kitchen.order.created` and sends each station what it has to cook (ADR-0144/0145). It lives
+//     in the shell because a kitchen with no screen at all still has to receive it.
+//   · **the pass**, at BUMP — this file. Five of the ten KDS reviewed on 2026-09-02 print here
+//     (Toast «Auto-print Fulfilled Tickets», Fresh KDS, Lightspeed K, MobiPOS «Print order list
+//     when bump», Square) and none of them prints it from a background service: it is the KDS
+//     device that prints, at the station whose screen was bumped. A bump cannot happen without a
+//     screen, so the «must listen even with no screen» reason that put the comanda in the shell
+//     does not carry over — and the switch that governs it is a `kitchen` setting, read by
+//     `kitchen` code, which is the only shape `tests/every_setting_moves_something` accepts.
+//
+// `erplora.print(req)` is the published door every module uses to queue a document (`sales`,
+// `invoice`, `inventory` all call it); the shell bolts it onto the client in `apps/web/src/main.ts`
+// and decides the route — device, hub queue, or nothing.
+//
+// 🔴 `documentType` is a CLOSED vocabulary, checked twice: `print_queue::DOCUMENT_TYPES` in the
+// runtime and `DocumentType::parse` in the device's ESC/POS renderer, which answers `None` for
+// anything it does not know. A nicer-sounding `kitchen_pass` would be accepted by this code, cross
+// the gate and print NOTHING — the exact failure inventory#44 paid for with a button that looked
+// like it worked. The pass is a `kitchen_order`, which every deployed device already renders.
+
+/** A line of the ticket, as `kitchen.orders.items` projects it (with its station snapshot). */
+export interface PassItem {
+  product_name?: string | null;
+  /** Fixed-point 10⁶ (ADR-0147): the row and the event speak µ, the paper speaks logical units. */
+  quantity?: number | string | null;
+  notes?: string | null;
+  /** Frozen supplements of the line (`Sin cebolla`), already composed by the module. */
+  modifiers?: string | null;
+  /** The MENU this line is a component of (ADR-0381), or null when it is à la carte. */
+  combo_ref?: string | null;
+  combo_name?: string | null;
+  /** `display` | `printer` | `both` — of the STATION the line went to, frozen at send time. */
+  destination?: string | null;
+  /** Printer ROLE (`kitchen`, `bar`, …), never a device. */
+  printer_role?: string | null;
+}
+
+/** One line as it goes to paper. Keys that carry nothing are OMITTED, never sent empty: a device
+ *  already in a shop ignores what it does not know, and `modifiers: ''` on every line would change
+ *  the shape of the sheet for everybody in exchange for nothing. */
+export interface PassLine {
+  name: string;
+  quantity: number;
+  notes?: string;
+  modifiers?: string;
+  combo_ref?: string;
+  combo_name?: string;
+}
+
+/** One sheet of paper: the lines that share a printer role. */
+export interface PassGroup {
+  role: string;
+  items: PassLine[];
+}
+
+/** The bits of the SDK this file needs; injected in tests, taken from the shell in production. */
+export interface PassPrintDeps {
+  query<T = unknown>(name: string, params?: Record<string, unknown>): Promise<T>;
+  /** Absent on a shell that bolted no print door on (module preview): nothing prints, nothing breaks. */
+  print?(req: Record<string, unknown>): Promise<{ via?: string; error?: string } | undefined | void>;
+}
+
+export interface PassPrintOptions {
+  /** Turns the ticket's opaque `waiter_id` into the name the pass calls out (ADR-0192). The KDS
+   *  already holds that map (`hub.users.list`), so resolving it here would be a query for nothing. */
+  resolveWaiter?: (waiterId: string) => string;
+}
+
+export interface PassPrintOutcome {
+  /** `false` = at least one sheet did not come out and somebody has to be told. */
+  ok: boolean;
+  /** Sheets the print door accepted (queued or printed). */
+  sheets: number;
+  /** Machine-readable cause; the caller maps it to a translated message (ADR-0055). */
+  reason?: 'nothing_to_print' | 'no_printer' | 'gate_error' | 'threw' | 'no_gate';
+  /** Technical detail from the gate, for the tail of that message. */
+  detail?: string;
+}
+
+const QUANTITY_SCALE = 1_000_000;
+
+/** The role a line with no routing falls back to — the same one `_insert_item.sql` freezes. */
+const DEFAULT_ROLE = 'kitchen';
+
+/**
+ * Groups the lines into sheets, by printer ROLE and never by station: two stations that share the
+ * bar printer are ONE sheet. Screen-only lines are left out — that station has no printer and the
+ * KDS is already showing them — and a line nobody routed IS printed: dropping it would leave a
+ * plate off the pass without anyone noticing.
+ */
+export function buildPassGroups(items: PassItem[]): PassGroup[] {
+  const groups = new Map<string, PassLine[]>();
+  for (const item of items ?? []) {
+    if ((item?.destination ?? 'both') === 'display') continue;
+    const role = str(item.printer_role) || DEFAULT_ROLE;
+    const comboRef = str(item.combo_ref);
+    const line: PassLine = {
+      name: str(item.product_name),
+      quantity: num(item.quantity ?? QUANTITY_SCALE) / QUANTITY_SCALE,
+      ...(item.notes ? { notes: str(item.notes) } : {}),
+      ...(item.modifiers ? { modifiers: str(item.modifiers) } : {}),
+      ...(comboRef ? { combo_ref: comboRef, combo_name: str(item.combo_name) } : {}),
+    };
+    const group = groups.get(role);
+    if (group) group.push(line);
+    else groups.set(role, [line]);
+  }
+  return [...groups].map(([role, lines]) => ({ role, items: lines }));
+}
+
+/**
+ * Queues the pass of one ticket, one job per printer role.
+ *
+ * The `jobId` is stable for the (order, role) pair on purpose: the pass reaches every mounted KDS
+ * at once and the queue deduplicates, so three screens are one sheet, not three. It is also
+ * distinct from the fire comanda's (`kitchen-<order>-<role>`) — sharing it would make the queue
+ * throw the pass away as a repeat of the comanda.
+ *
+ * Nothing here throws and nothing here blocks: the ticket is already `ready` in the database and
+ * the KDS is the source of truth. Paper is the copy.
+ */
+export async function printPass(
+  orderId: string,
+  deps: PassPrintDeps,
+  options: PassPrintOptions = {},
+): Promise<PassPrintOutcome> {
+  const print = deps.print;
+  if (typeof print !== 'function') return { ok: false, sheets: 0, reason: 'no_gate' };
+
+  let groups: PassGroup[];
+  let header: Record<string, unknown>;
+  try {
+    const [items, headers] = await Promise.all([
+      deps.query<PassItem[]>('kitchen.orders.items', { order_id: orderId }),
+      deps.query<Record<string, unknown>[]>('kitchen.orders.get', { order_id: orderId }),
+    ]);
+    groups = buildPassGroups(Array.isArray(items) ? items : []);
+    header = first(headers) ?? {};
+  } catch (e) {
+    // Visible, not silent: a pass that never printed because the lines could not be read is a
+    // degradation the kitchen has to hear about (nothing else on this screen would say it).
+    console.warn('[kitchen] the pass could not be read, so nothing was printed', e);
+    return { ok: false, sheets: 0, reason: 'threw', detail: message(e) };
+  }
+
+  if (!groups.length) return { ok: true, sheets: 0, reason: 'nothing_to_print' };
+
+  const waiter = options.resolveWaiter ? options.resolveWaiter(str(header.waiter_id)).trim() : '';
+  const data = {
+    receipt_id: str(header.order_number),
+    label: str(header.label),
+    round_number: num(header.round_number ?? 1),
+    ...(waiter ? { waiter } : {}),
+  };
+
+  let sheets = 0;
+  let reason: PassPrintOutcome['reason'];
+  let detail: string | undefined;
+  // In sequence, each with its own guard: a printer out of paper must not keep the other station
+  // from getting its half of the pass.
+  for (const group of groups) {
+    try {
+      const result = await print({
+        role: group.role,
+        documentType: 'kitchen_order',
+        // Unattended: nobody is standing in front of the pass to accept a browser dialog, and that
+        // dialog would freeze the KDS of a busy service.
+        fallbackToBrowser: false,
+        jobId: `kitchen-pass-${orderId}-${group.role}`,
+        data: { ...data, items: group.items },
+      });
+      const via = result?.via ?? 'none';
+      if (via === 'bridge' || via === 'queue' || via === 'browser') {
+        sheets += 1;
+        continue;
+      }
+      // `none` = no printer holds that role. It is NOT rerouted: the pass of the grill coming out
+      // of the till printer leaves the runner with paper and the pass with nothing.
+      reason = 'no_printer';
+      detail = result?.error ?? detail;
+      console.warn(`[kitchen] no printer with role ${group.role}: the pass did not come out`, result?.error ?? '');
+    } catch (e) {
+      reason = 'threw';
+      detail = message(e);
+      console.warn(`[kitchen] the ${group.role} printer refused the pass`, e);
+    }
+  }
+
+  return sheets === groups.length ? { ok: true, sheets } : { ok: false, sheets, reason: reason ?? 'gate_error', detail };
+}
+
+function first<T>(v: T[] | T | undefined): T | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+function num(v: unknown): number {
+  return typeof v === 'number' ? v : Number(v ?? 0) || 0;
+}
+
+function str(v: unknown): string {
+  return v == null ? '' : String(v);
+}
+
+function message(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}

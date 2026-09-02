@@ -15,18 +15,27 @@
 //     for the rest of the shift — instead of a screen that stays mute forever;
 //   · an environment with no Web Audio at all says so (`false`) and never throws: a kitchen screen
 //     must not go down because the browser has no speakers.
+//
+// kitchen#72 adds the two things the forums actually ask for — «all I got is a small ding that is
+// really hard to hear in the kitchen» (Square Community) — and that Square, Fresh KDS, Loyverse,
+// Eats365 and Simphony all ship: a VOLUME and a closed list of TONES. Both synthesised, because
+// nobody in the market lets you upload a file either and a module bundle runs under
+// `script-src 'self'`.
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import { Chime } from './chime';
+import { Chime, PEAK_GAIN_AT_MAX_VOLUME, DEFAULT_VOLUME, type ChimeTone } from './chime';
 
 interface StartedTone {
   frequency: number;
   startedAt: number;
   stoppedAt: number;
   connected: boolean;
+  wave: string;
 }
 
 let tones: StartedTone[] = [];
 let contexts: FakeContext[] = [];
+/** Every peak the gain was ramped up to, in the order it was scheduled. */
+let peaks: number[] = [];
 
 class FakeContext {
   state: 'running' | 'suspended' = 'running';
@@ -52,16 +61,28 @@ class FakeContext {
 
   createGain() {
     const gain = {
-      gain: { value: 0, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() },
+      gain: {
+        value: 0,
+        setValueAtTime: vi.fn(),
+        // The ramp UP is the volume: the ramp back down always targets the same silence floor.
+        linearRampToValueAtTime: (v: number) => {
+          if (v > 0.001) peaks.push(v);
+        },
+      },
       connect: vi.fn(),
     };
     return gain;
   }
 
   createOscillator() {
-    const tone: StartedTone = { frequency: 0, startedAt: -1, stoppedAt: -1, connected: false };
+    const tone: StartedTone = { frequency: 0, startedAt: -1, stoppedAt: -1, connected: false, wave: '' };
     return {
-      type: 'sine',
+      set type(wave: string) {
+        tone.wave = wave;
+      },
+      get type() {
+        return tone.wave;
+      },
       frequency: {
         get value() {
           return tone.frequency;
@@ -90,6 +111,7 @@ class FakeContext {
 beforeEach(() => {
   tones = [];
   contexts = [];
+  peaks = [];
   (globalThis as Record<string, unknown>).AudioContext = FakeContext;
 });
 
@@ -153,5 +175,73 @@ describe('the KDS chime', () => {
   it('says false — and does not throw — where there is no Web Audio at all', () => {
     delete (globalThis as Record<string, unknown>).AudioContext;
     expect(new Chime().play()).toBe(false);
+  });
+});
+
+describe('how LOUD it rings (kitchen#72)', () => {
+  it('rings exactly as it did before this setting existed, at the default volume', async () => {
+    new Chime().play();
+    await Promise.resolve();
+    // 0.35 was the fixed `PEAK_GAIN` of kitchen#48. A hub that never touches the new control has
+    // to hear the same chime it heard yesterday — the whole point of shipping a default.
+    expect(peaks).toEqual([0.35, 0.35]);
+    expect((DEFAULT_VOLUME / 100) * PEAK_GAIN_AT_MAX_VOLUME).toBeCloseTo(0.35, 6);
+  });
+
+  it('two volumes give two DIFFERENT gains, and louder is louder', async () => {
+    new Chime().play({ volume: 100 });
+    const loud = [...peaks];
+    peaks = [];
+    new Chime().play({ volume: 30 });
+    await Promise.resolve();
+    expect(loud[0], 'the whole issue is that the ding does not carry over an extractor fan').toBeGreaterThan(peaks[0]);
+    expect(loud[0]).toBeCloseTo(PEAK_GAIN_AT_MAX_VOLUME, 6);
+  });
+
+  it('is silent at zero, and says it rang nothing', async () => {
+    const played = new Chime().play({ volume: 0 });
+    await Promise.resolve();
+    expect(played, 'zero is a choice, not a broken speaker').toBe(true);
+    expect(tones, 'scheduling inaudible tones is work nobody hears').toHaveLength(0);
+  });
+
+  it('clamps what is out of range and ignores what is not a number', async () => {
+    new Chime().play({ volume: 999 });
+    expect(peaks[0]).toBeCloseTo(PEAK_GAIN_AT_MAX_VOLUME, 6);
+    peaks = [];
+    new Chime().play({ volume: Number.NaN });
+    expect(peaks[0], 'a broken value must fall back to the default, never to silence').toBeCloseTo(0.35, 6);
+    peaks = [];
+    tones = [];
+    new Chime().play({ volume: -40 });
+    expect(tones, 'below zero is zero, not the default').toHaveLength(0);
+  });
+});
+
+describe('WHICH sound it rings (kitchen#72)', () => {
+  it('keeps the two rising notes of before as the default tone', async () => {
+    new Chime().play();
+    await Promise.resolve();
+    expect(tones.map((t) => t.frequency)).toEqual([880, 1320]);
+    expect(tones.every((t) => t.wave === 'sine')).toBe(true);
+  });
+
+  it('rings other frequencies — and another waveform — for another tone', async () => {
+    new Chime().play({ tone: 'buzzer' });
+    await Promise.resolve();
+    const buzzer = tones.map((t) => t.frequency);
+    expect(buzzer, 'the tone control that changes nothing is the switch kitchen#48 retired').not.toEqual([880, 1320]);
+    expect(tones.every((t) => t.wave === 'sine'), 'a buzzer that is a sine is a chime').toBe(false);
+
+    tones = [];
+    new Chime().play({ tone: 'bell' });
+    await Promise.resolve();
+    expect(tones.map((t) => t.frequency)).not.toEqual(buzzer);
+  });
+
+  it('falls back to the default tone when the hub holds a name this build does not know', async () => {
+    new Chime().play({ tone: 'foghorn' as ChimeTone });
+    await Promise.resolve();
+    expect(tones.map((t) => t.frequency), 'an unknown tone must not leave the pass mute').toEqual([880, 1320]);
   });
 });

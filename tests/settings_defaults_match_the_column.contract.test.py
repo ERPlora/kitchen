@@ -30,9 +30,18 @@ uses for `settings.title` and `navigation.<id>.label`. Whether the shell PREFERS
 the schema is the shell's half (ERPlora/hub) — but if the module does not carry the strings, no
 shell fix can ever make that screen Spanish, so they are pinned here.
 
+🔴 THE COLUMN'S DEFAULT IS NOT ONLY 001's. It used to be read from the init migration alone, and
+that was a trap with a fuse: a setting added later — or an old one whose `DEFAULT` a migration
+changes — was invisible to this check, so the FIRST module that grew a setting after its init would
+either be told the column does not exist (kitchen#72's `sound_volume`) or be compared against a
+default the database stopped using two migrations ago (kitchen#70 lowers `auto_print_tickets` to 0
+so the pass does not start printing paper nobody asked for). The scan now replays every DECLARED
+postgres migration in order — `CREATE TABLE`, then each `ADD COLUMN … DEFAULT` and
+`ALTER COLUMN … SET DEFAULT` — and compares against what the column's default IS today.
+
 What this pins:
   · every `required` property of the settings schema carries a `default`;
-  · that `default` EQUALS the `DEFAULT` of the column of the same name in the init migration
+  · that `default` EQUALS the `DEFAULT` the column has after ALL declared migrations have run
     (0/1 → false/true for booleans, so the two are compared after normalising);
   · every property carries an English `title` (never left to `humanize()`) and a label in EVERY
     `locales/<lang>.json` the module ships;
@@ -62,12 +71,72 @@ COLUMN_RE = re.compile(
     re.MULTILINE,
 )
 
+#: `ALTER TABLE <table> ADD COLUMN [IF NOT EXISTS] name TYPE … DEFAULT <value>` — a setting born
+#: after the init migration (kitchen#72's `sound_volume` / `sound_tone`).
+ADD_COLUMN_RE = re.compile(
+    rf"ALTER\s+TABLE\s+{TABLE}\s+ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?"
+    r"(?P<name>[a-z_][a-z0-9_]*)\s+(?P<type>[a-zA-Z]+)\b[^;]*?\bDEFAULT\s+(?P<default>'[^']*'|[-\w.]+)",
+    re.IGNORECASE,
+)
+
+#: `ALTER TABLE <table> ALTER [COLUMN] name SET DEFAULT <value>` — the default of an EXISTING column
+#: changing (kitchen#70 lowers `auto_print_tickets` to 0).
+SET_DEFAULT_RE = re.compile(
+    rf"ALTER\s+TABLE\s+{TABLE}\s+ALTER\s+(?:COLUMN\s+)?"
+    r"(?P<name>[a-z_][a-z0-9_]*)\s+SET\s+DEFAULT\s+(?P<default>'[^']*'|[-\w.]+)",
+    re.IGNORECASE,
+)
+
+#: The probe that proves the two ALTER scanners still read SQL — see `main`. A scanner that matched
+#: nothing would clear every setting added after 001 for the worst possible reason.
+PROBE_ALTER = (
+    f"ALTER TABLE {TABLE} ADD COLUMN IF NOT EXISTS probe_col INTEGER NOT NULL DEFAULT 7;\n"
+    f"ALTER TABLE {TABLE} ALTER COLUMN probe_col SET DEFAULT 9;\n"
+)
+
 failures: list[str] = []
 
 
+def strip_sql_comments(sql: str) -> str:
+    """`--` comments out. These migrations EXPLAIN what they change, at length and in prose that
+    names columns and defaults; without this the header of 009 would be read as the DDL it
+    describes."""
+    return re.sub(r"--[^\n]*", "", sql)
+
+
+def declared_migrations() -> list[pathlib.Path]:
+    """The postgres migrations the manifest declares, IN ORDER. The manifest is the authority, not
+    the directory listing: a `.sql` sitting in the folder undeclared never runs in any hub."""
+    entries = (MANIFEST.get("migrations") or {}).get("postgres") or []
+    paths: list[pathlib.Path] = []
+    for entry in entries:
+        rel = entry if isinstance(entry, str) else (entry or {}).get("file")
+        if rel:
+            paths.append(MODULE_DIR / rel)
+    return paths
+
+
+def coerce(raw: str, kind: str | None) -> object:
+    """The SQL literal as the value it is: `'dine_in'` → str, `0` → int."""
+    if raw.startswith("'"):
+        return raw[1:-1]
+    if (kind or "").upper() == "INTEGER" or re.fullmatch(r"-?\d+", raw):
+        return int(raw)
+    return raw
+
+
+def apply_alters(sql: str, out: dict[str, object]) -> None:
+    """Replays one migration's `ADD COLUMN`/`SET DEFAULT` onto the defaults built so far."""
+    for m in ADD_COLUMN_RE.finditer(sql):
+        out[m.group("name")] = coerce(m.group("default"), m.group("type"))
+    for m in SET_DEFAULT_RE.finditer(sql):
+        out[m.group("name")] = coerce(m.group("default"), None)
+
+
 def column_defaults() -> dict[str, object]:
-    """`{column: default}` of the settings table, read from the init migration."""
-    sql = INIT_SQL.read_text(encoding="utf-8")
+    """`{column: default}` of the settings table AS IT IS TODAY: the init migration's CREATE TABLE
+    with every later declared migration replayed on top, in order."""
+    sql = strip_sql_comments(INIT_SQL.read_text(encoding="utf-8"))
     start = sql.find(f"CREATE TABLE IF NOT EXISTS {TABLE}")
     if start < 0:
         start = sql.find(f"CREATE TABLE {TABLE}")
@@ -82,6 +151,11 @@ def column_defaults() -> dict[str, object]:
             out[m.group("name")] = raw[1:-1]
         elif kind == "INTEGER":
             out[m.group("name")] = int(raw)
+
+    for path in declared_migrations():
+        if path == INIT_SQL or not path.exists():
+            continue
+        apply_alters(strip_sql_comments(path.read_text(encoding="utf-8")), out)
     return out
 
 
@@ -94,7 +168,9 @@ def normalise(value: object) -> object:
 
 def main() -> int:
     if not SETTINGS.get("schema"):
-        print("kitchen declares no `settings` block — delete this test or fix the manifest")
+        print(
+            "kitchen declares no `settings` block — delete this test or fix the manifest"
+        )
         return 1
 
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
@@ -106,6 +182,50 @@ def main() -> int:
         failures.append(
             f"no column DEFAULT found for `{TABLE}` in {INIT_SQL.name} — the check would pass "
             "comparing nothing; fix the regex or the table name"
+        )
+
+    # ── the ALTER scanners have to WORK before their silence means anything ────────────────────
+    # A regex that matched nothing would report every setting added after 001 as «no column of that
+    # name» — or, worse, silently compare against a default the database stopped using. Probed
+    # against SQL that IS both shapes, so the check cannot pass by finding nothing.
+    # Each scanner is probed ALONE: replaying both at once hides a broken `ADD COLUMN`, because the
+    # `SET DEFAULT` that follows writes the same key and the result looks right. Found exactly that
+    # way while checking this probe could still fail — it could not.
+    added = {
+        m.group("name"): coerce(m.group("default"), m.group("type"))
+        for m in ADD_COLUMN_RE.finditer(PROBE_ALTER)
+    }
+    if added.get("probe_col") != 7:
+        failures.append(
+            "the `ADD COLUMN … DEFAULT` scanner cannot read the statement it is handed on purpose: "
+            "every setting born after the init migration would be reported as a column that does "
+            "not exist. Fix the scanner before trusting a single line below"
+        )
+    reset = {
+        m.group("name"): coerce(m.group("default"), None)
+        for m in SET_DEFAULT_RE.finditer(PROBE_ALTER)
+    }
+    if reset.get("probe_col") != 9:
+        failures.append(
+            "the `ALTER COLUMN … SET DEFAULT` scanner cannot read the statement it is handed on "
+            "purpose: a column whose default a migration changed would still be compared against "
+            "the one the database stopped using"
+        )
+    commented: dict[str, object] = {}
+    apply_alters(
+        strip_sql_comments(
+            "".join(f"-- {line}\n" for line in PROBE_ALTER.splitlines())
+        ),
+        commented,
+    )
+    if commented:
+        failures.append(
+            "`strip_sql_comments` leaves prose in: a migration that DESCRIBES a default in its "
+            "header would be read as the DDL that sets it"
+        )
+    if not declared_migrations():
+        failures.append(
+            "the manifest declares no postgres migrations — nothing to replay"
         )
 
     for key in required:
@@ -120,7 +240,9 @@ def main() -> int:
             )
             continue
         if key not in columns:
-            failures.append(f"`{key}` has a schema default but no column of that name in {TABLE}")
+            failures.append(
+                f"`{key}` has a schema default but no column of that name in {TABLE}"
+            )
             continue
         want, got = normalise(columns[key]), normalise(prop["default"])
         if want != got:
@@ -132,7 +254,9 @@ def main() -> int:
     # ── the language half ─────────────────────────────────────────────────────────────────────
     locales = sorted((MODULE_DIR / "locales").glob("*.json"))
     if not locales:
-        failures.append("the module ships no `locales/` — the settings screen can only be English")
+        failures.append(
+            "the module ships no `locales/` — the settings screen can only be English"
+        )
 
     for key in properties:
         if not (properties[key].get("title") or "").strip():
@@ -142,7 +266,9 @@ def main() -> int:
             )
 
     for path in locales:
-        fields = ((json.loads(path.read_text(encoding="utf-8")).get("settings") or {}).get("fields") or {})
+        fields = (
+            json.loads(path.read_text(encoding="utf-8")).get("settings") or {}
+        ).get("fields") or {}
         for key in properties:
             if not ((fields.get(key) or {}).get("label") or "").strip():
                 failures.append(

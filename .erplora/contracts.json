@@ -9,6 +9,7 @@
       "kitchen.logs.list",
       "kitchen.orders.all_day",
       "kitchen.orders.display",
+      "kitchen.orders.get",
       "kitchen.orders.items",
       "kitchen.orders.list",
       "kitchen.settings.get",
