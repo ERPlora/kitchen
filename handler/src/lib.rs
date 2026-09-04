@@ -1328,6 +1328,26 @@ pub fn create_order_from_order_pure(input: Value) -> Result<Output, String> {
     };
     let label = str_or(&payload, "label", "");
 
+    // hub#1411 — **the round says whether it is urgent, and it can only say it HERE.** The paper
+    // renderer prints `!! URGENTE !!` for `HIGH` and the shell maps `rush` -> `HIGH` (hub#1509),
+    // but the comanda is printed exactly ONCE, on `kitchen.order.created`: marking the round
+    // afterwards re-prints nothing, so the only moment urgency can be born is the fire itself.
+    // The word travels OPAQUE from `sales` (like `label` and `waiter_id`); the vocabulary is
+    // kitchen's and is applied right here.
+    //
+    // Same ladder as `order_type` above, and for the same reason (kitchen#54): kitchen cannot
+    // depend on every emitter of `order.fired` — an old till, a flow, a third-party integration —
+    // knowing `PRIORITIES`. A word it does not own must not reach the row (the KDS filters and
+    // sorts by this column), but refusing the round would leave the food uncooked over a label.
+    let priority = {
+        let asked = str_or(&payload, "priority", "normal");
+        if PRIORITIES.contains(&asked.as_str()) {
+            asked
+        } else {
+            "normal".to_string()
+        }
+    };
+
     // kitchen#63 — **the ticket says who fired it.** `kitchen_order.waiter_id` has existed since
     // migration 001 and the manifest already sorts and filters by it, but this path — the one that
     // actually creates the rounds — built its header from scratch and never filled it: at the pass
@@ -1351,7 +1371,7 @@ pub fn create_order_from_order_pure(input: Value) -> Result<Output, String> {
 
     let header = json!({
         "order_type": order_type,
-        "priority": "normal",
+        "priority": priority,
         "notes": "",
         "round_number": 0, // 0 = "numérala tú" (subconsulta en _insert_order)
         "waiter_id": waiter_id, // '' → NULL in `build_order_ops` (opt_str)
@@ -1532,6 +1552,83 @@ mod tests {
             .find(|o| o.command == "kitchen._insert_order")
             .expect("cabecera de comanda");
         assert_eq!(header.params["waiter_id"], Value::Null);
+    }
+
+    #[test]
+    fn a_round_fired_as_rush_keeps_its_priority() {
+        // hub#1411 — **the pass could never be told a round was urgent.** The paper renderer has
+        // always printed the `!! URGENTE !!` warning for `HIGH` (`escpos.rs`) and the shell has
+        // mapped `rush` -> `HIGH` since hub#1509, but this path — the ONLY one that real flows
+        // use to create a round — built its header with `"priority": "normal"` hard-coded, so no
+        // check could ever come out urgent no matter what the till sent.
+        //
+        // The value is OPAQUE to `sales`, exactly like `label` and `waiter_id`: whoever fires
+        // says it, kitchen owns the vocabulary and writes it on its own ticket.
+        let mut inp = fired(
+            "Mesa 4",
+            "dine_in",
+            json!([{ "product_name": "Croquetas", "quantity": 2_000_000, "unit_price": 350 }]),
+        );
+        inp["payload"]["priority"] = json!("rush");
+        let out = create_order_from_order_pure(inp).expect("crear la comanda");
+
+        let header = out
+            .operations
+            .iter()
+            .find(|o| o.command == "kitchen._insert_order")
+            .expect("cabecera de comanda");
+        assert_eq!(
+            header.params["priority"],
+            json!("rush"),
+            "the round was fired urgent: the ticket has to say so: {:?}",
+            header.params
+        );
+    }
+
+    #[test]
+    fn a_fire_with_no_priority_is_still_a_normal_round() {
+        // The default does not move: every fire that came before this field existed — an old
+        // till, a flow, a third-party integration — keeps writing a normal round.
+        let out = create_order_from_order_pure(fired(
+            "Mesa 4",
+            "dine_in",
+            json!([{ "product_name": "Croquetas", "quantity": 2_000_000, "unit_price": 350 }]),
+        ))
+        .expect("crear la comanda");
+
+        let header = out
+            .operations
+            .iter()
+            .find(|o| o.command == "kitchen._insert_order")
+            .expect("cabecera de comanda");
+        assert_eq!(header.params["priority"], json!("normal"));
+    }
+
+    #[test]
+    fn a_priority_kitchen_does_not_know_degrades_to_normal_instead_of_losing_the_round() {
+        // Same ladder as `order_type` right above: kitchen cannot depend on EVERY emitter of
+        // `order.fired` knowing its vocabulary (kitchen#54). A word it does not own must not
+        // reach the row — `PRIORITIES` is what the KDS filters and sorts by — but refusing the
+        // whole round would leave the food uncooked over a label. Unknown -> `normal`.
+        let mut inp = fired(
+            "Mesa 4",
+            "dine_in",
+            json!([{ "product_name": "Croquetas", "quantity": 2_000_000, "unit_price": 350 }]),
+        );
+        inp["payload"]["priority"] = json!("URGENT!!");
+        let out = create_order_from_order_pure(inp).expect("crear la comanda");
+
+        let header = out
+            .operations
+            .iter()
+            .find(|o| o.command == "kitchen._insert_order")
+            .expect("cabecera de comanda");
+        assert_eq!(
+            header.params["priority"],
+            json!("normal"),
+            "an unknown word is not written to the row: {:?}",
+            header.params
+        );
     }
 
     #[test]

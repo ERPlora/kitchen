@@ -86,3 +86,108 @@ describe('badge de pendientes en el botón', () => {
     expect(el.shadowRoot!.querySelector('.badge'), 'a cero no hay badge (ni botón activo)').toBeFalsy();
   });
 });
+
+// URGENTE (hub#1411) — el gesto para mandar una ronda con prioridad.
+//
+// Decisión de mercado (8 referencias, tabla en la PR): hay dos campos. Toast, Fresh KDS
+// (Lightspeed/Square/Clover) y Clover marcan el «rush» EN LA PANTALLA de cocina, sobre un ticket
+// que ya está ahí; Odoo lo pone en el TPV, antes de pulsar «Enviar». Con papel el primer campo es
+// imposible —la comanda se imprime UNA vez, al disparar (`kitchen.order.created`), y marcarla
+// después no reimprime nada—, así que gana el de Odoo: se arma antes de enviar.
+//
+// Y se arma para UNA ronda, no como un modo: si el interruptor se quedara puesto, todas las
+// rondas siguientes saldrían urgentes sin que el camarero lo viera (el papel está en cocina, no
+// en su mano) — y una cocina donde todo es urgente no tiene nada urgente. Por eso se desarma al
+// enviar y al cambiar de pedido.
+describe('marcar la ronda como URGENTE (hub#1411)', () => {
+  const urgente = (el: Element) => el.shadowRoot!.querySelector('ion-button.urgent') as HTMLElement;
+  const enviar = (el: Element) => el.shadowRoot!.querySelector('ion-button.fire') as HTMLElement;
+  const listo = (el: Element) => (el as unknown as { updateComplete: Promise<unknown> }).updateComplete;
+
+  async function conCarrito(orderId = 'o1') {
+    const el = await montar();
+    el.dispatchEvent(new CustomEvent('erp:pos-state', {
+      detail: { order_id: orderId, items_count: 2, pending_count: 2 }, bubbles: false,
+    }));
+    await listo(el);
+    return el;
+  }
+
+  it('nace apagado y es un control con estado accesible', async () => {
+    const el = await conCarrito();
+    expect(urgente(el), 'el filler pinta su interruptor de urgencia').toBeTruthy();
+    expect(urgente(el).getAttribute('aria-pressed'), 'una ronda normal por defecto').toBe('false');
+    expect(urgente(el).getAttribute('aria-label')).toBe('ui.markUrgent');
+  });
+
+  it('sin armar, el disparo viaja SIN prioridad (contrato de siempre)', async () => {
+    const el = await conCarrito();
+    let detalle: unknown;
+    document.body.addEventListener('erp:order-fire', (e) => { detalle = (e as CustomEvent).detail; }, { once: true });
+    enviar(el).click();
+    expect(detalle, 'el 99 % de las comandas sigue sin la clave').toEqual({});
+  });
+
+  it('armado, el botón de enviar DICE que va urgente', async () => {
+    const el = await conCarrito();
+    urgente(el).click();
+    await listo(el);
+    expect(urgente(el).getAttribute('aria-pressed')).toBe('true');
+    expect(enviar(el).textContent?.trim(), 'nadie manda una urgente sin verlo').toContain('ui.fireUrgent');
+    expect(enviar(el).getAttribute('aria-label')).toBe('ui.fireUrgent');
+  });
+
+  it('armado, el disparo lleva priority: rush', async () => {
+    const el = await conCarrito();
+    urgente(el).click();
+    await listo(el);
+    let detalle: unknown;
+    document.body.addEventListener('erp:order-fire', (e) => { detalle = (e as CustomEvent).detail; }, { once: true });
+    enviar(el).click();
+    expect(detalle, 'el vocabulario es el de kitchen: `rush`, en minúsculas').toEqual({ priority: 'rush' });
+  });
+
+  it('se desarma DESPUÉS de enviar: urgente es una ronda, no un modo', async () => {
+    const el = await conCarrito();
+    urgente(el).click();
+    await listo(el);
+    enviar(el).click();
+    await listo(el);
+    expect(urgente(el).getAttribute('aria-pressed'), 'la siguiente ronda vuelve a ser normal').toBe('false');
+    expect(enviar(el).textContent?.trim()).toContain('ui.fireToKitchen');
+  });
+
+  it('se desarma al cambiar de pedido: la urgencia no se hereda de otra mesa', async () => {
+    const el = await conCarrito('o1');
+    urgente(el).click();
+    await listo(el);
+    el.dispatchEvent(new CustomEvent('erp:pos-state', {
+      detail: { order_id: 'o2', items_count: 1, pending_count: 1 }, bubbles: false,
+    }));
+    await listo(el);
+    expect(urgente(el).getAttribute('aria-pressed'), 'otra mesa, otra decisión').toBe('false');
+  });
+
+  it('añadir una línea a la MISMA cuenta NO desarma: el desarme se ata al pedido, no al evento', async () => {
+    // El host reemite `erp:pos-state` en CADA cambio del carrito, no solo al cambiar de cuenta.
+    // Si el filler desarmara con la LLEGADA del evento en vez de con el cambio de `order_id`,
+    // añadir una bebida después de pulsar la llama apagaría la urgencia sin decir nada: el
+    // camarero ve el botón encendido, envía, y el papel sale normal — y ya está en cocina.
+    // Sin este test el guardia no está fijado: quitar la comparación de `order_id` deja los
+    // otros seis en verde (medido en la revisión de la PR).
+    const el = await conCarrito('o1');
+    urgente(el).click();
+    await listo(el);
+
+    el.dispatchEvent(new CustomEvent('erp:pos-state', {
+      detail: { order_id: 'o1', items_count: 3, pending_count: 3 }, bubbles: false,
+    }));
+    await listo(el);
+    expect(urgente(el).getAttribute('aria-pressed'), 'la misma cuenta: la decisión sigue en pie').toBe('true');
+
+    let detalle: unknown;
+    document.body.addEventListener('erp:order-fire', (e) => { detalle = (e as CustomEvent).detail; }, { once: true });
+    enviar(el).click();
+    expect(detalle, 'y el disparo se va urgente de verdad').toEqual({ priority: 'rush' });
+  });
+});

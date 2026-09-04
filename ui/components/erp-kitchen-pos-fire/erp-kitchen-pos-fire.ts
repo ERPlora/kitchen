@@ -6,9 +6,16 @@
 // Reparto de papeles (ADR-0043: host↔filler por CustomEvents, sin imports cruzados):
 //   host → filler  `erp:pos-state {order_id?, items_count, label, channel}` (sobre el elemento,
 //                  bubbles:false) — al montar y en cada cambio de carrito/mesa.
-//   filler → host  `erp:order-fire {}` (bubbles+composed) — el HOST ejecuta su
+//   filler → host  `erp:order-fire {priority?}` (bubbles+composed) — el HOST ejecuta su
 //                  `sales.order.fire`: el estado del carrito vive en él, aquí no viaja
 //                  ninguna línea. kitchen jamás llama comandos de sales.
+//
+// URGENTE (hub#1411): el interruptor de urgencia vive AQUÍ porque la urgencia es de cocina —
+// `sales` reenvía la palabra sin interpretarla, igual que `label` o `waiter_id`. Y vive en el
+// momento de ENVIAR porque la comanda se imprime UNA sola vez, al disparar: marcarla después no
+// reimprime el papel que ya salió. Se arma para UNA ronda y se desarma sola (al enviar y al
+// cambiar de pedido): un interruptor pegado convierte todas las rondas siguientes en urgentes sin
+// que el camarero lo vea, y una cocina donde todo es urgente no tiene nada urgente.
 import { LitElement, css, html, nothing } from 'lit';
 import { state } from 'lit/decorators.js';
 import { define } from '@erplora/outfitkit/define';
@@ -31,13 +38,19 @@ function t(key: string): string {
 
 export class ErpKitchenPosFire extends LitElement {
   static styles = css`
-    :host { display:block; flex:1; min-width:0; }
+    :host { display:flex; flex:1; min-width:0; gap:0.4rem; align-items:stretch; }
     /* Dentro de la vista temporal la acción ocupa todo el ancho: es la validación operativa de
        la comanda, no un icono secundario junto a Cobrar. El host decide dónde vive; kitchen sigue
        siendo dueño del control y de su disponibilidad (ADR-0043). */
     ion-button.fire { width:100%; min-height:3rem; margin:0; position:relative;
       font-weight:800; --border-radius:11px; }
     ion-button.fire ion-icon { font-size:1.15rem; }
+    /* El interruptor de URGENTE va PEGADO a la acción que modifica, no perdido en otra barra: se
+       decide y se envía en el mismo gesto. Armado se pinta en rojo y relleno — el estado tiene que
+       leerse de lejos, con el local lleno y sin mirarlo fijo. */
+    ion-button.urgent { width:3.1rem; min-height:3rem; margin:0; flex:0 0 auto;
+      --border-radius:11px; --padding-start:0; --padding-end:0; }
+    ion-button.urgent ion-icon { font-size:1.3rem; }
     /* Badge de PENDIENTES: cuánto queda sin marchar, de un vistazo. */
     .badge { position: absolute; top: -0.3rem; right: -0.3rem; z-index: 1; min-width: 1.1rem;
       height: 1.1rem; padding: 0 0.2rem; border-radius: var(--ok-radius-pill, 999px);
@@ -46,6 +59,8 @@ export class ErpKitchenPosFire extends LitElement {
   `;
 
   @state() private posState?: PosState;
+  /** Armado para la PRÓXIMA ronda (hub#1411). No es un modo: se apaga solo al enviar. */
+  @state() private urgent = false;
 
   connectedCallback() {
     super.connectedCallback();
@@ -58,18 +73,35 @@ export class ErpKitchenPosFire extends LitElement {
   }
 
   private readonly onPosState = (e: Event) => {
+    const previo = this.posState?.order_id;
     this.posState = (e as CustomEvent<PosState>).detail;
+    // Otra cuenta, otra decisión: la urgencia NO se hereda de la mesa anterior. Sin esto, armar y
+    // cambiar de mesa sin enviar mandaba urgente la ronda de otro.
+    if (this.posState?.order_id !== previo) this.urgent = false;
   };
 
   private fire() {
     if (!canFire(this.posState)) return;
-    this.dispatchEvent(new CustomEvent('erp:order-fire', { detail: {}, bubbles: true, composed: true }));
+    // `rush` es el vocabulario de kitchen (`PRIORITIES`, en minúsculas): el shell lo traduce a la
+    // forma `HIGH` que entiende el renderizador del papel. Sin armar, el detalle va VACÍO — el
+    // contrato de siempre, y el 99 % de las comandas.
+    const detail = this.urgent ? { priority: 'rush' } : {};
+    this.urgent = false;
+    this.dispatchEvent(new CustomEvent('erp:order-fire', { detail, bubbles: true, composed: true }));
   }
 
   render() {
-    const label = t('ui.fireToKitchen');
+    const label = this.urgent ? t('ui.fireUrgent') : t('ui.fireToKitchen');
+    const urgentLabel = t('ui.markUrgent');
     const pendientes = pendingCount(this.posState);
     return html`
+      <ion-button class="urgent" fill=${this.urgent ? 'solid' : 'outline'}
+                  color=${this.urgent ? 'danger' : 'medium'}
+                  aria-pressed=${this.urgent ? 'true' : 'false'}
+                  title=${urgentLabel} aria-label=${urgentLabel}
+                  @click=${() => { this.urgent = !this.urgent; }}>
+        <ion-icon slot="icon-only" name="flame-outline"></ion-icon>
+      </ion-button>
       <ion-button class="fire" fill="outline" ?disabled=${!canFire(this.posState)}
                   title=${label} aria-label=${label}
                   @click=${() => this.fire()}>
