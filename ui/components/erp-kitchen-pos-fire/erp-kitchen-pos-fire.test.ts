@@ -167,4 +167,27 @@ describe('marcar la ronda como URGENTE (hub#1411)', () => {
     await listo(el);
     expect(urgente(el).getAttribute('aria-pressed'), 'otra mesa, otra decisión').toBe('false');
   });
+
+  it('añadir una línea a la MISMA cuenta NO desarma: el desarme se ata al pedido, no al evento', async () => {
+    // El host reemite `erp:pos-state` en CADA cambio del carrito, no solo al cambiar de cuenta.
+    // Si el filler desarmara con la LLEGADA del evento en vez de con el cambio de `order_id`,
+    // añadir una bebida después de pulsar la llama apagaría la urgencia sin decir nada: el
+    // camarero ve el botón encendido, envía, y el papel sale normal — y ya está en cocina.
+    // Sin este test el guardia no está fijado: quitar la comparación de `order_id` deja los
+    // otros seis en verde (medido en la revisión de la PR).
+    const el = await conCarrito('o1');
+    urgente(el).click();
+    await listo(el);
+
+    el.dispatchEvent(new CustomEvent('erp:pos-state', {
+      detail: { order_id: 'o1', items_count: 3, pending_count: 3 }, bubbles: false,
+    }));
+    await listo(el);
+    expect(urgente(el).getAttribute('aria-pressed'), 'la misma cuenta: la decisión sigue en pie').toBe('true');
+
+    let detalle: unknown;
+    document.body.addEventListener('erp:order-fire', (e) => { detalle = (e as CustomEvent).detail; }, { once: true });
+    enviar(el).click();
+    expect(detalle, 'y el disparo se va urgente de verdad').toEqual({ priority: 'rush' });
+  });
 });

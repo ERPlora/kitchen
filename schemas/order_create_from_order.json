@@ -14,6 +14,11 @@
       "default": null,
       "description": "Quién mandó la ronda (kitchen#63 ← sales#179). Id OPACO, igual que `label`: cocina lo copia a la cabecera de la comanda sin interpretarlo, para que el pase sepa a quién llamar cuando el plato está listo y una anulación tenga a quién atribuirse. Lo resuelve el SERVIDOR en `sales` (el camarero de la mesa si el TPV lo manda, si no el usuario con sesión). Ausente o vacío no rompe la comanda: cocina cae al usuario del evento y, sin él, deja la columna a NULL."
     },
+    "priority": {
+      "type": "string",
+      "default": "normal",
+      "description": "Con cuánta prisa corre la ronda (hub#1411 ← sales#258). Vocabulario PROPIO de cocina y en MINÚSCULAS (`normal` | `rush` | `vip`, kitchen#39): `sales` reenvía la palabra OPACA, igual que `label` y `waiter_id`, y cocina la aplica en su propia comanda. Solo `rush` destaca el papel (`!! URGENTE !!`, por el mapeo `rush` → `HIGH` del shell); `vip` es prioridad de sala y el tique no la resalta. SIN `enum` A PROPÓSITO, y esta es la línea que hay que leer antes de \"armonizar\" este esquema con su hermano `order_create.json` (que sí está cerrado y sí enumera): son dos puertas distintas. `kitchen.orders.create` tiene un llamante conocido —nuestra propia UI— y puede permitirse rechazar una palabra mala. Esta la alimenta el EVENTO `order.fired`, cuyos emisores cocina no controla (un TPV viejo, un flujo, una integración de terceros). Poner un `enum` aquí no apretaría nada: el payload se valida ANTES del handler, así que una palabra desconocida tumbaría la entrega ENTERA (kitchen#29) y esa ronda no se cocinaría nunca — en vez de caer a `normal`, que es lo que hace hoy `create_order_from_order` y lo que fijan sus tests. Esos tests ejercitan la función pura y seguirían VERDES mientras la puerta se cierra por encima de ellos."
+    },
     "items": {
       "type": "array",
       "default": [],
