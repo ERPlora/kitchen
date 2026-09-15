@@ -51,6 +51,25 @@ def route(hub: Hub, station_id: str, product_id: str) -> None:
     )
 
 
+def line_named(items: list, name: str) -> dict:
+    """The ONE kitchen line whose product is `name`, failing LOUDLY when there is none.
+
+    A `next(..., {})` used to stand here, and it turned «no line is called that» into five separate
+    `expected [<station id>], got [None]` — an answer that reads like the ROUTING broke. That is
+    exactly how this battery reported sales#288: `sales` started freezing the line's name from the
+    trusted catalogue (the same rule the price has had since sales#68), so the row came back named
+    `Croquetas <tag>` — the catalogue's name — while this battery still looked for the text the
+    caller had proposed. The routing had never stopped working.
+    """
+    match = [i for i in items if i.get("product_name") == name]
+    if len(match) != 1:
+        raise AssertionError(
+            f"expected exactly one kitchen line named {name!r}, got {len(match)}: "
+            f"{[i.get('product_name') for i in items]}"
+        )
+    return match[0]
+
+
 def test_each_station_says_where_its_ticket_comes_out(hub: Hub) -> None:
     print("\n1 · routed products land on THEIR station's destination and printer role")
     tag = unique("routing")
@@ -92,14 +111,23 @@ def test_each_station_says_where_its_ticket_comes_out(hub: Hub) -> None:
     items = hub.query("kitchen.orders.items", {"order_id": ticket["id"]})
     hub.check("both lines reach the kitchen", len(items), 2)
 
-    croquetas = next((i for i in items if i.get("product_name") == "Croquetas"), {})
+    # The cook reads the name the CATALOGUE gave the article, not the one the caller proposed
+    # (sales#288): the till is not the authority on the name any more than it is on the price. The
+    # payload above says «Croquetas» on purpose — if it ever decided the name again, this fails.
+    hub.check_true(
+        "the line is named by the catalogue, not by whoever sent the order",
+        any(i.get("product_name") == f"Croquetas {tag}" for i in items),
+        str([i.get("product_name") for i in items]),
+    )
+
+    croquetas = line_named(items, f"Croquetas {tag}")
     hub.check("croquetas go to the grill", croquetas.get("station_id"), kitchen_station)
     hub.check("the hot station prints", croquetas.get("destination"), "printer")
     hub.check(
         "…through the `kitchen` printer role", croquetas.get("printer_role"), "kitchen"
     )
 
-    canas = next((i for i in items if i.get("product_name") == "Cañas"), {})
+    canas = line_named(items, f"Cañas {tag}")
     hub.check("cañas go to the bar", canas.get("station_id"), bar_station)
     hub.check(
         "the bar does NOT print: screen only", canas.get("destination"), "display"
