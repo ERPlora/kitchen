@@ -51,6 +51,23 @@ export class ErpKitchenPosFire extends LitElement {
     ion-button.urgent { width:3.1rem; min-height:3rem; margin:0; flex:0 0 auto;
       --border-radius:11px; --padding-start:0; --padding-end:0; }
     ion-button.urgent ion-icon { font-size:1.3rem; }
+    /* pm#392 — the toggle paints from HERE, never from \`color=\`: Ionic resolves it through a
+       GLOBAL \`.ion-color-*\` rule that does not reach inside this shadow root, so armed it came
+       out with no red fill and unarmed in the default blue. Custom properties do inherit through
+       the boundary, so the theme token still applies. Armed = solid (no \`fill\`), unarmed = outline. */
+    ion-button.tone-danger:not([fill]) {
+      --background: var(--ion-color-danger, #c5000f);
+      --background-activated: var(--ion-color-danger-shade, #ad000d);
+      --background-focused: var(--ion-color-danger-shade, #ad000d);
+      --background-hover: var(--ion-color-danger-tint, #cb1a27);
+      --color: var(--ion-color-danger-contrast, #fff);
+    }
+    ion-button.tone-medium[fill] {
+      --border-color: var(--ion-color-medium, #636469);
+      --color: var(--ion-color-medium, #636469);
+      --background-activated: var(--ion-color-medium, #636469);
+      --background-focused: var(--ion-color-medium, #636469);
+    }
     /* Badge de PENDIENTES: cuánto queda sin marchar, de un vistazo. */
     .badge { position: absolute; top: -0.3rem; right: -0.3rem; z-index: 1; min-width: 1.1rem;
       height: 1.1rem; padding: 0 0.2rem; border-radius: var(--ok-radius-pill, 999px);
@@ -95,8 +112,8 @@ export class ErpKitchenPosFire extends LitElement {
     const urgentLabel = t('ui.markUrgent');
     const pendientes = pendingCount(this.posState);
     return html`
-      <ion-button class="urgent" fill=${this.urgent ? 'solid' : 'outline'}
-                  color=${this.urgent ? 'danger' : 'medium'}
+      <ion-button class=${this.urgent ? 'urgent tone-danger' : 'urgent tone-medium'}
+                  fill=${this.urgent ? nothing : 'outline'}
                   aria-pressed=${this.urgent ? 'true' : 'false'}
                   title=${urgentLabel} aria-label=${urgentLabel}
                   @click=${() => { this.urgent = !this.urgent; }}>
