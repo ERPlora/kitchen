@@ -762,10 +762,9 @@ fn transition_pure(input: &Value, action: &str) -> Result<Output, String> {
 //                              event a clean no-op instead of a refusal that spins to dead-letter.
 
 /// The rounds of the order the runtime preloaded (`context.reads["kitchen.orders.list"]`, filtered
-/// by `f_source_order_id = payload.order_id` — a LIST query takes its filters as `f_<column>`,
-/// kitchen#79). `Err` = the runtime did not preload them, which is a manifest/runtime mismatch and
-/// never a business case: guessing here would report a delivery that changed nothing while the
-/// line keeps its zombies (ERPlora/appointments#100).
+/// by `source_order_id = payload.order_id`). `Err` = the runtime did not preload them, which is a
+/// manifest/runtime mismatch and never a business case: guessing here would report a delivery that
+/// changed nothing while the line keeps its zombies (ERPlora/appointments#100).
 fn preloaded_rounds(input: &Value) -> Result<Vec<Value>, String> {
     let rows = input
         .get("context")

@@ -64,20 +64,24 @@ def check_route() -> None:
         )
 
 
-ENGINE_BINDS = {"limit", "offset", "search", "sort", "dir", "hub_id"}
+ENGINE_BINDS = {"limit", "offset", "search", "sort", "dir"}
 
 
 def list_vocabulary(query_name: str) -> set[str]:
-    """What the runtime's list engine accepts for `query_name` (hub `RuntimeError::UnknownFilter`):
-    its own binds, `f_<col>` (plus `_from`/`_to` for ranges) per declared filter, and every bind the
-    base SQL references."""
+    """What the runtime's list engine accepts for `query_name` (hub `accepted_params`, the set
+    `RuntimeError::UnknownFilter` is judged against): its own binds, per declared filter `f_<col>`
+    for `eq`/`like` and ONLY `f_<col>_from`/`f_<col>_to` for `range` (a bare `f_<col>` on a range
+    is refused), and every bind the base SQL references outside comments and string literals."""
     query = (MANIFEST.get("queries") or {}).get(query_name) or {}
     accepted = set(ENGINE_BINDS)
     for col, spec in ((query.get("list") or {}).get("filters") or {}).items():
-        accepted.add(f"f_{col}")
         if spec.get("op") == "range":
             accepted.update({f"f_{col}_from", f"f_{col}_to"})
+        else:
+            accepted.add(f"f_{col}")
     sql = (MODULE_DIR / query["sql"]).read_text(encoding="utf-8") if query.get("sql") else ""
+    sql = re.sub(r"--[^\n]*", "", sql)
+    sql = re.sub(r"'(?:[^']|'')*'", "''", sql)
     accepted.update(re.findall(r"(?<!:):([a-zA-Z_][a-zA-Z0-9_]*)", sql))
     return accepted
 
