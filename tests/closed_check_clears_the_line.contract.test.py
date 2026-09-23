@@ -30,6 +30,7 @@ Usage: tests/closed_check_clears_the_line.contract.test.py   (exit 0 = green)
 
 import json
 import pathlib
+import re
 import sys
 
 MODULE_DIR = pathlib.Path(__file__).resolve().parent.parent
@@ -63,6 +64,28 @@ def check_route() -> None:
         )
 
 
+ENGINE_BINDS = {"limit", "offset", "search", "sort", "dir"}
+
+
+def list_vocabulary(query_name: str) -> set[str]:
+    """What the runtime's list engine accepts for `query_name` (hub `accepted_params`, the set
+    `RuntimeError::UnknownFilter` is judged against): its own binds, per declared filter `f_<col>`
+    for `eq`/`like` and ONLY `f_<col>_from`/`f_<col>_to` for `range` (a bare `f_<col>` on a range
+    is refused), and every bind the base SQL references outside comments and string literals."""
+    query = (MANIFEST.get("queries") or {}).get(query_name) or {}
+    accepted = set(ENGINE_BINDS)
+    for col, spec in ((query.get("list") or {}).get("filters") or {}).items():
+        if spec.get("op") == "range":
+            accepted.update({f"f_{col}_from", f"f_{col}_to"})
+        else:
+            accepted.add(f"f_{col}")
+    sql = (MODULE_DIR / query["sql"]).read_text(encoding="utf-8") if query.get("sql") else ""
+    sql = re.sub(r"--[^\n]*", "", sql)
+    sql = re.sub(r"'(?:[^']|'')*'", "''", sql)
+    accepted.update(re.findall(r"(?<!:):([a-zA-Z_][a-zA-Z0-9_]*)", sql))
+    return accepted
+
+
 def check_reads() -> None:
     cmd = (MANIFEST.get("commands") or {}).get(CLOSER)
     if not cmd:
@@ -76,12 +99,22 @@ def check_reads() -> None:
             "rounds and report a delivery that changed nothing (appointments#100)"
         )
         return
-    if rounds.get("params", {}).get("source_order_id") != "payload.order_id":
+    # A LIST query takes its filters as `f_<column>` (kitchen#79). A bare `source_order_id` is
+    # refused by the runtime (`UnknownFilter`), the required read aborts the command and every
+    # `order.completed` ends in the dead-letter with the rounds still on the KDS.
+    if rounds.get("params", {}).get("f_source_order_id") != "payload.order_id":
         fail(
-            f"the read of `{ROUNDS_QUERY}` must be filtered by `source_order_id = "
+            f"the read of `{ROUNDS_QUERY}` must be filtered by `f_source_order_id = "
             f"payload.order_id`; it declares {rounds.get('params')!r} — unfiltered it hands the "
-            "handler EVERY ticket of the hub"
+            "handler EVERY ticket of the hub, and an unprefixed name is refused by the list engine"
         )
+    accepted = list_vocabulary(ROUNDS_QUERY)
+    for param in rounds.get("params") or {}:
+        if param not in accepted:
+            fail(
+                f"the read of `{ROUNDS_QUERY}` passes `{param}`, which the list does not declare: "
+                "the runtime refuses it and the required read aborts every delivery (kitchen#79)"
+            )
     if not rounds.get("required"):
         fail(
             f"the read of `{ROUNDS_QUERY}` must be `required`: a graceful failure here is "

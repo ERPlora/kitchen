@@ -582,7 +582,7 @@
         {
           "query": "kitchen.orders.list",
           "params": {
-            "source_order_id": "payload.order_id"
+            "f_source_order_id": "payload.order_id"
           },
           "required": true
         }
