@@ -17,6 +17,8 @@ let allDayRows: Row[] = [];
 let settings: Row = {};
 let stationRows: Row[] = [];
 let hubUsers: Row[] | Error = [];
+// kitchen#82 — the business's TEAM (`staff.members.list`): `undefined` = the staff app is not installed.
+let teamMembers: Row[] | Error | undefined = [];
 let permissions: string[] = ['kitchen.view_order', 'kitchen.change_order', 'kitchen.complete_order'];
 let commands: Array<{ name: string; payload: Record<string, unknown> }> = [];
 let listeners: Record<string, Array<(p: unknown) => void>> = {};
@@ -52,6 +54,7 @@ function seed() {
   // kitchen#63 — the hub's people, the core's reserved namespace (ADR-0192). Personnel belongs to
   // the hub, not to a module, and `waiter_id` is an OPAQUE id: the NAME is resolved here.
   hubUsers = [{ id: 'u-ana', name: 'Ana', role: 'employee', is_active: true }];
+  teamMembers = [];
 }
 
 beforeEach(() => {
@@ -75,6 +78,13 @@ beforeEach(() => {
         return hubUsers;
       }
       return [];
+    },
+    queryAllOptional: async (name: string) => {
+      if (name === 'staff.members.list') {
+        if (teamMembers instanceof Error) throw teamMembers;
+        return teamMembers;
+      }
+      return undefined;
     },
     queryPage: async () => ({ rows: [], total: 0, limit: 50, offset: 0 }),
     command: async (name: string, payload: Record<string, unknown>) => {
@@ -243,6 +253,73 @@ describe('kitchen#63: the ticket header says which waiter fired it', () => {
     expect(cards(el).map((c) => c.dataset.order)).toEqual(['k1', 'k2']);
     expect(waiterOf(el, 'k1')).toBeUndefined();
     expect(el.shadowRoot.textContent).not.toContain('u-ana');
+  });
+});
+
+// kitchen#82 — **a team member who never signs in still has a name at the pass.** Since sales#318
+// the till's «who is serving» picker offers the staff app's TEAM records, and a record with no hub
+// user has no other id to send: `waiter_id` is then a `staff_member.id`, which `hub.users.list`
+// does not know, so the header went blank. The KDS now also reads the team — OPTIONALLY (ADR-0127):
+// without the staff app, or without permission to read it, the board is exactly what it was.
+describe('kitchen#82: a team member without a hub user is named in the header', () => {
+  const waiterOf = (el: Host, id: string) =>
+    card(el, id).querySelector<HTMLElement>('[data-waiter]')?.textContent?.trim();
+  const firedBy = (waiterId: string) => {
+    displayRows = displayRows.map((r) => (r.order_id === 'k1' ? { ...r, waiter_id: waiterId } : r));
+  };
+
+  it('paints the team record NAME when the round was fired for someone who does not sign in', async () => {
+    firedBy('sm-marta');
+    teamMembers = [{ id: 'sm-marta', full_name: 'Marta López', first_name: 'Marta', last_name: 'López', user_id: null, status: 'active' }];
+    const el = await mount();
+    expect(waiterOf(el, 'k1')).toBe('ui.firedBy:Marta López');
+    expect(card(el, 'k1').textContent, 'the opaque id never reaches the pass').not.toContain('sm-marta');
+  });
+
+  it('builds the name from first and last name when the row carries no full_name', async () => {
+    firedBy('sm-marta');
+    teamMembers = [{ id: 'sm-marta', first_name: 'Marta', last_name: 'López', user_id: null, status: 'active' }];
+    const el = await mount();
+    expect(waiterOf(el, 'k1')).toBe('ui.firedBy:Marta López');
+  });
+
+  it('a TERMINATED team member still reads: who fired a round is a historical fact', async () => {
+    firedBy('sm-marta');
+    teamMembers = [{ id: 'sm-marta', full_name: 'Marta López', user_id: null, status: 'terminated' }];
+    const el = await mount();
+    expect(waiterOf(el, 'k1')).toBe('ui.firedBy:Marta López');
+  });
+
+  it('people who sign in keep resolving alongside the team', async () => {
+    teamMembers = [{ id: 'sm-marta', full_name: 'Marta López', user_id: null, status: 'active' }];
+    const el = await mount();
+    expect(waiterOf(el, 'k1')).toBe('ui.firedBy:Ana');
+  });
+
+  it('without the staff app the header is what it was: blank for an unknown id, never a raw id', async () => {
+    firedBy('sm-marta');
+    teamMembers = undefined;
+    const el = await mount();
+    expect(cards(el).map((c) => c.dataset.order)).toEqual(['k1', 'k2']);
+    expect(waiterOf(el, 'k1')).toBeUndefined();
+    expect(el.shadowRoot.textContent).not.toContain('sm-marta');
+  });
+
+  it('a team read that fails (no permission) degrades the header, never the board', async () => {
+    teamMembers = new Error('forbidden');
+    const el = await mount();
+    expect(cards(el).map((c) => c.dataset.order)).toEqual(['k1', 'k2']);
+    expect(waiterOf(el, 'k1'), 'the hub users still resolve').toBe('ui.firedBy:Ana');
+  });
+
+  it('on a shell without queryAllOptional it asks through queryOptional', async () => {
+    firedBy('sm-marta');
+    const sdk = (globalThis as { erplora: Record<string, unknown> }).erplora;
+    delete sdk.queryAllOptional;
+    sdk.queryOptional = async (name: string) =>
+      name === 'staff.members.list' ? [{ id: 'sm-marta', full_name: 'Marta López', user_id: null }] : undefined;
+    const el = await mount();
+    expect(waiterOf(el, 'k1')).toBe('ui.firedBy:Marta López');
   });
 });
 

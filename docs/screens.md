@@ -11,6 +11,11 @@ A grid of tickets, one card per order (kitchen#4). Each card shows the label the
 quantity, modifiers, notes and seat. Requires `kitchen.view_order`; bumping needs
 `kitchen.change_order`, serving `kitchen.complete_order`.
 
+The header names the waiter who fired the round (kitchen#63): a person who signs in is resolved
+through `hub.users.list`, and a team member of the staff app who never signs in through
+`staff.members.list` (kitchen#82) — an OPTIONAL read: without the staff app, or without permission
+to read the team, that header stays blank, never a raw id. The pass on paper uses the same names.
+
 - **One command bar** (kitchen#60). A single row, ~50 px: the three views (**Tickets** ·
   **Ready** · **All-Day**, each with its live count), the full-screen button, and the station
   chips. It sticks to the top, so a busy board never scrolls the station filter out of reach.

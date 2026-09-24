@@ -213,6 +213,15 @@ describe('the pass goes to paper when the ticket is bumped (kitchen#70)', () => 
     expect((printed[0].data as Row).waiter, 'cooks call the waiter of the round, not a UUID').toBe('Ana');
   });
 
+  it('names a team member who never signs in (kitchen#82): the paper says what the screen says', async () => {
+    orderRows = [{ ...orderRows[0], waiter_id: 'sm-marta' }];
+    (globalThis as { erplora: Record<string, unknown> }).erplora.queryAllOptional = async (name: string) =>
+      name === 'staff.members.list' ? [{ id: 'sm-marta', full_name: 'Marta López', user_id: null }] : undefined;
+    const el = await mount();
+    await ticketGoesReady(el);
+    expect((printed[0].data as Row).waiter, 'the pass calls out the person, not a blank').toBe('Marta López');
+  });
+
   it('does not print when the bumped ticket carries no order id', async () => {
     const el = await mount();
     for (const cb of listeners['kitchen.order.ready'] ?? []) cb({});
