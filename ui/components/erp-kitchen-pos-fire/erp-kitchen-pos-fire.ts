@@ -18,6 +18,7 @@
 // que el camarero lo vea, y una cocina donde todo es urgente no tiene nada urgente.
 import { LitElement, css, html, nothing } from 'lit';
 import { state } from 'lit/decorators.js';
+import { classMap } from 'lit/directives/class-map.js';
 import { define } from '@erplora/outfitkit/define';
 // Catálogo i18n del módulo (ADR-0055): esbuild inlinea estos JSON en el dist del WC.
 import esLocale from '../../../locales/es.json';
@@ -111,8 +112,11 @@ export class ErpKitchenPosFire extends LitElement {
     const label = this.urgent ? t('ui.fireUrgent') : t('ui.fireToKitchen');
     const urgentLabel = t('ui.markUrgent');
     const pendientes = pendingCount(this.posState);
+    // The tone goes through classMap, never a whole `class=` binding: that rewrites the attribute and
+    // wipes the classes Ionic stamps on the host (ion-activatable, ion-focusable…), so the toggle
+    // stops answering taps after the first one (kitchen#88).
     return html`
-      <ion-button class=${this.urgent ? 'urgent tone-danger' : 'urgent tone-medium'}
+      <ion-button class="urgent ${classMap({ 'tone-danger': this.urgent, 'tone-medium': !this.urgent })}"
                   fill=${this.urgent ? nothing : 'outline'}
                   aria-pressed=${this.urgent ? 'true' : 'false'}
                   title=${urgentLabel} aria-label=${urgentLabel}
