@@ -189,21 +189,21 @@ export class ErpKitchenPosComandas extends LitElement {
   render() {
     if (!this.orderId || !this.comandas.length) return html``;
     return html`
-      <button class="chip" title=${t('ui.posComandasTitle')} aria-label=${t('ui.posComandasTitle')}
+      <button class="chip" data-testid="kitchen-comandas-open" title=${t('ui.posComandasTitle')} aria-label=${t('ui.posComandasTitle')}
               @click=${() => void this.openModal()}>
         <ion-icon name="receipt-outline"></ion-icon>
         ${t('ui.posComandas')} · ${this.comandas.length}
       </button>
       ${this.open ? html`
-        <dialog class="sheet" aria-label=${t('ui.posComandasTitle')}
+        <dialog class="sheet" data-testid="kitchen-comandas-sheet" aria-label=${t('ui.posComandasTitle')}
                 @click=${(e: Event) => { if (e.target === e.currentTarget) this.closeModal(); }}
                 @close=${() => { this.open = false; }}>
           <div class="sheet-h">
             <span class="t">${t('ui.posComandasTitle')}</span>
-            <button class="x" aria-label=${t('ui.close')} @click=${() => this.closeModal()}>✕</button>
+            <button class="x" data-testid="kitchen-comandas-close" aria-label=${t('ui.close')} @click=${() => this.closeModal()}>✕</button>
           </div>
           ${this.comandas.map((c) => html`
-            <div class="krow">
+            <div class="krow" data-testid=${`kitchen-comandas-row-${c.id}`}>
               <div class="krow-h">
                 <ion-icon name="flame" style="color: var(--ion-color-warning)"></ion-icon>
                 <span>${t('ui.comandaN', { n: String(c.round_number) })}</span>
