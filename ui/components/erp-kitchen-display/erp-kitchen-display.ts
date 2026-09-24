@@ -45,6 +45,10 @@ const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
 
 interface ErploraClientLike {
   query<T = unknown>(name: string, params?: Record<string, unknown>): Promise<T>;
+  /** Optional reads (ADR-0127): `undefined` when the owning app is not installed. Absent on old
+   *  shells — `queryAllOptional` is the whole set, `queryOptional` one capped page. */
+  queryAllOptional?<T = unknown>(name: string, params?: Record<string, unknown>): Promise<T | undefined>;
+  queryOptional?<T = unknown>(name: string, params?: Record<string, unknown>): Promise<T | undefined>;
   command<T = unknown>(name: string, payload?: Record<string, unknown>): Promise<T>;
   on(event: string, cb: (payload: unknown) => void): () => void;
   /** The hub's print door (kitchen#70), bolted on by the shell. Absent in the module preview and
@@ -136,6 +140,47 @@ interface HubUser {
   id: string;
   name: string;
   is_active?: boolean;
+}
+
+/** One row of `staff.members.list` — the business's TEAM (kitchen#82). Since sales#318 the till
+ *  can say a round is served by a team record that has no hub user, and then `waiter_id` is that
+ *  record's id: only the staff app can name it. */
+interface TeamMember {
+  id: string;
+  full_name?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+function teamMemberName(m: TeamMember): string {
+  return String(m.full_name || `${m.first_name ?? ''} ${m.last_name ?? ''}`).trim();
+}
+
+/** Page cap for the `queryOptional` fallback: `staff.members.list` has a `list` block, so that door
+ *  answers ONE page of the manifest's 50 rows unless told otherwise (sales#186). Same figure as the
+ *  till's picker (sales#318), so both surfaces name the same people. */
+const LEGACY_PAGE_LIMIT = 500;
+
+/** The team, OPTIONALLY (ADR-0127, no `depends_on`): `[]` without the staff app, without
+ *  permission to read it, or on a shell with no optional door — the header then says what it said
+ *  before kitchen#82. The query name stays literal in each call so the contract extractor sees it.
+ *  Terminated and inactive records are NOT filtered: who fired a round is a historical fact.
+ *  `queryAllOptional` answers the bare rows; `queryOptional` the page envelope `{rows,total,…}`
+ *  of a list query — both shapes are accepted, anything else is «nothing to name». */
+async function readTeam(c: ErploraClientLike): Promise<TeamMember[]> {
+  try {
+    const out =
+      typeof c.queryAllOptional === 'function'
+        ? await c.queryAllOptional<TeamMember[]>('staff.members.list')
+        : typeof c.queryOptional === 'function'
+          ? await c.queryOptional<TeamMember[] | { rows?: TeamMember[] }>('staff.members.list', { limit: LEGACY_PAGE_LIMIT })
+          : undefined;
+    if (Array.isArray(out)) return out;
+    const rows = (out as { rows?: unknown } | undefined)?.rows;
+    return Array.isArray(rows) ? rows : [];
+  } catch {
+    return [];
+  }
 }
 
 interface AllDayRow {
@@ -598,7 +643,7 @@ export class ErpKitchenDisplay extends LitElement {
   private async load() {
     this.loading = true;
     try {
-      const [rows, allDay, stations, waiters] = await Promise.all([
+      const [rows, allDay, stations, waiters, team] = await Promise.all([
         erplora().query<DisplayRow[]>('kitchen.orders.display'),
         erplora().query<AllDayRow[]>('kitchen.orders.all_day'),
         // kitchen#45: names in the hub's language. Optional: without it (no permission, no SDK)
@@ -608,16 +653,21 @@ export class ErpKitchenDisplay extends LitElement {
         // ADR-0192) and the same policy on failure: the pass keeps working and the header says
         // nothing, because a UUID on the card would be worse than a blank.
         erplora().query<HubUser[]>('hub.users.list').catch(() => [] as HubUser[]),
+        // kitchen#82: and the team records that never sign in — same policy, a blank on failure.
+        readTeam(erplora()),
       ]);
       this.rows = Array.isArray(rows) ? rows : [];
       this.ringForArrivals();
       this.allDay = Array.isArray(allDay) ? allDay : [];
       this.stationsById = new Map((Array.isArray(stations) ? stations : []).map((s) => [String(s.id), s]));
-      this.waitersById = new Map(
-        (Array.isArray(waiters) ? waiters : [])
+      this.waitersById = new Map([
+        ...team
+          .filter((m) => m && m.id && teamMemberName(m))
+          .map((m): [string, string] => [String(m.id), teamMemberName(m)]),
+        ...(Array.isArray(waiters) ? waiters : [])
           .filter((u) => u && u.id && String(u.name ?? '').trim())
-          .map((u) => [String(u.id), String(u.name).trim()]),
-      );
+          .map((u): [string, string] => [String(u.id), String(u.name).trim()]),
+      ]);
     } catch (e) {
       this.error = errorText(e, 'ui.loadError');
     } finally {

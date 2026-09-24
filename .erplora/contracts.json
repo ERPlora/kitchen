@@ -16,7 +16,9 @@
       "kitchen.stations.list",
       "kitchen.stations.pending_counts"
     ],
-    "optional_queries": [],
+    "optional_queries": [
+      "staff.members.list"
+    ],
     "commands": [
       "kitchen.items.bump",
       "kitchen.items.recall",
