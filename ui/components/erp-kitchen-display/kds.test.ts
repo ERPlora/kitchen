@@ -312,14 +312,24 @@ describe('kitchen#82: a team member without a hub user is named in the header', 
     expect(waiterOf(el, 'k1'), 'the hub users still resolve').toBe('ui.firedBy:Ana');
   });
 
-  it('on a shell without queryAllOptional it asks through queryOptional', async () => {
+  // `staff.members.list` has a `list` block, so `/api/query` — which is what `queryOptional` calls —
+  // answers the PAGE envelope `{rows,total,limit,offset}`, never a bare array (sales#186). The
+  // fallback has to unwrap it, and ask for more than the manifest's 50-row page: a team is small,
+  // but a chain's staff record is not, and a truncated page names nobody past row 50.
+  it('on a shell without queryAllOptional it asks through queryOptional and unwraps the page', async () => {
     firedBy('sm-marta');
     const sdk = (globalThis as { erplora: Record<string, unknown> }).erplora;
     delete sdk.queryAllOptional;
-    sdk.queryOptional = async (name: string) =>
-      name === 'staff.members.list' ? [{ id: 'sm-marta', full_name: 'Marta López', user_id: null }] : undefined;
+    const asked: Array<Record<string, unknown> | undefined> = [];
+    sdk.queryOptional = async (name: string, params?: Record<string, unknown>) => {
+      if (name !== 'staff.members.list') return undefined;
+      asked.push(params);
+      return { rows: [{ id: 'sm-marta', full_name: 'Marta López', user_id: null }], total: 1, limit: 50, offset: 0 };
+    };
     const el = await mount();
     expect(waiterOf(el, 'k1')).toBe('ui.firedBy:Marta López');
+    expect(asked, 'one read, with a page cap well above the manifest default').toHaveLength(1);
+    expect(Number(asked[0]?.limit)).toBeGreaterThanOrEqual(500);
   });
 });
 

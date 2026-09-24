@@ -2302,9 +2302,12 @@ var CATALOG = { es: es_default, en: en_default };
 function teamMemberName(m4) {
   return String(m4.full_name || `${m4.first_name ?? ""} ${m4.last_name ?? ""}`).trim();
 }
+var LEGACY_PAGE_LIMIT = 500;
 async function readTeam(c5) {
   try {
-    const rows2 = typeof c5.queryAllOptional === "function" ? await c5.queryAllOptional("staff.members.list") : typeof c5.queryOptional === "function" ? await c5.queryOptional("staff.members.list") : void 0;
+    const out = typeof c5.queryAllOptional === "function" ? await c5.queryAllOptional("staff.members.list") : typeof c5.queryOptional === "function" ? await c5.queryOptional("staff.members.list", { limit: LEGACY_PAGE_LIMIT }) : void 0;
+    if (Array.isArray(out)) return out;
+    const rows2 = out?.rows;
     return Array.isArray(rows2) ? rows2 : [];
   } catch {
     return [];

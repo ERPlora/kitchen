@@ -156,18 +156,27 @@ function teamMemberName(m: TeamMember): string {
   return String(m.full_name || `${m.first_name ?? ''} ${m.last_name ?? ''}`).trim();
 }
 
+/** Page cap for the `queryOptional` fallback: `staff.members.list` has a `list` block, so that door
+ *  answers ONE page of the manifest's 50 rows unless told otherwise (sales#186). Same figure as the
+ *  till's picker (sales#318), so both surfaces name the same people. */
+const LEGACY_PAGE_LIMIT = 500;
+
 /** The team, OPTIONALLY (ADR-0127, no `depends_on`): `[]` without the staff app, without
  *  permission to read it, or on a shell with no optional door — the header then says what it said
  *  before kitchen#82. The query name stays literal in each call so the contract extractor sees it.
- *  Terminated and inactive records are NOT filtered: who fired a round is a historical fact. */
+ *  Terminated and inactive records are NOT filtered: who fired a round is a historical fact.
+ *  `queryAllOptional` answers the bare rows; `queryOptional` the page envelope `{rows,total,…}`
+ *  of a list query — both shapes are accepted, anything else is «nothing to name». */
 async function readTeam(c: ErploraClientLike): Promise<TeamMember[]> {
   try {
-    const rows =
+    const out =
       typeof c.queryAllOptional === 'function'
         ? await c.queryAllOptional<TeamMember[]>('staff.members.list')
         : typeof c.queryOptional === 'function'
-          ? await c.queryOptional<TeamMember[]>('staff.members.list')
+          ? await c.queryOptional<TeamMember[] | { rows?: TeamMember[] }>('staff.members.list', { limit: LEGACY_PAGE_LIMIT })
           : undefined;
+    if (Array.isArray(out)) return out;
+    const rows = (out as { rows?: unknown } | undefined)?.rows;
     return Array.isArray(rows) ? rows : [];
   } catch {
     return [];
