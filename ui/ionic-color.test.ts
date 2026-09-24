@@ -137,4 +137,23 @@ describe('pm#392: the URGENT toggle paints without color=', () => {
     expect(css).toContain('--background: var(--ion-color-danger, #c5000f)');
     expect(css).toContain('--color: var(--ion-color-danger-contrast, #fff)');
   });
+
+  // kitchen#88: a `class=${…}` binding rewrites the WHOLE attribute on every toggle and wipes the
+  // classes Ionic stamps on the host. Stencil only re-adds the ones its own render changes, so
+  // `ion-activatable` (what tap-click looks for to paint the press) is gone for good after the first
+  // tap. jsdom runs no Ionic, so the test stamps those classes itself, as Ionic does on hydrate.
+  it('toggling keeps the classes Ionic stamped on the host (kitchen#88)', async () => {
+    const { el, toggle } = await mountToggle();
+    const ionic = ['ios', 'button', 'button-has-icon-only', 'ion-activatable', 'ion-focusable', 'hydrated'];
+    toggle().classList.add(...ionic);
+    for (const [armed, tone, other] of [[true, 'tone-danger', 'tone-medium'], [false, 'tone-medium', 'tone-danger']] as const) {
+      toggle().click();
+      await el.updateComplete;
+      expect(toggle().getAttribute('aria-pressed')).toBe(String(armed));
+      expect(toggle().classList.contains(tone)).toBe(true);
+      expect(toggle().classList.contains(other)).toBe(false);
+      expect(toggle().classList.contains('urgent')).toBe(true);
+      expect(ionic.filter((c) => !toggle().classList.contains(c)), 'Ionic classes lost').toEqual([]);
+    }
+  });
 });
