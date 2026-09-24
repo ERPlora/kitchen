@@ -2825,7 +2825,7 @@ var ErpKitchenDisplay = class extends i3 {
     const seat = l3.seat !== null ? b2`<span>${t_("ui.seat")} ${l3.seat}</span>` : A;
     const station = !this.station && l3.station_id ? b2`<span>${this.stationName(l3)}</span>` : A;
     const printer = l3.destination === "printer" ? b2`<ion-icon name="print-outline" aria-label=${t_("ui.printerOnly")}></ion-icon>` : A;
-    return b2`<li class="line" data-item=${l3.id} data-status=${l3.status} role="button" tabindex=${actionable ? 0 : -1}
+    return b2`<li class="line" data-testid=${`kds-line-${l3.id}`} data-item=${l3.id} data-status=${l3.status} role="button" tabindex=${actionable ? 0 : -1}
         aria-disabled=${actionable ? "false" : "true"}
         aria-label=${`${formatQty(l3.quantity, erplora().locale)} \xD7 ${l3.product_name} \u2014 ${l3.status === "ready" ? t_("ui.tapToRecall") : t_("ui.tapToBump")}`}
         @click=${() => this.tapLine(t7, l3)}
@@ -2867,7 +2867,7 @@ var ErpKitchenDisplay = class extends i3 {
     const done = g3.lines.every((l3) => l3.status === "ready");
     const actionable = can("kitchen.change_order") && cooking;
     return b2`<li class="combo" data-combo=${g3.ref} data-combo-done=${done ? "true" : "false"}>
-      <div class="combo-head" role=${actionable ? "button" : "presentation"} tabindex=${actionable ? 0 : -1}
+      <div class="combo-head" data-testid=${`kds-ticket-${t7.id}-combo-${g3.ref}`} role=${actionable ? "button" : "presentation"} tabindex=${actionable ? 0 : -1}
           aria-disabled=${actionable ? "false" : "true"}
           title=${actionable ? t_("ui.tapMenuToBump") : ""}
           aria-label=${t_("ui.comboAria", { name: g3.name, n: g3.lines.length })}
@@ -2896,8 +2896,8 @@ var ErpKitchenDisplay = class extends i3 {
     const sem = semaphore(elapsed, this.settings);
     const waiter = this.waiterName(t7);
     const short = t7.number.includes("-") ? t7.number.slice(t7.number.lastIndexOf("-") + 1) : t7.number;
-    return b2`<article class="card" data-order=${t7.id} data-status=${t7.status} data-sem=${sem} aria-label=${t_("ui.ticketAria", { n: short })}>
-      <header class="head" role="button" tabindex=${canChange && cooking ? 0 : -1} aria-disabled=${canChange && cooking ? "false" : "true"}
+    return b2`<article class="card" data-testid=${`kds-ticket-${t7.id}`} data-order=${t7.id} data-status=${t7.status} data-sem=${sem} aria-label=${t_("ui.ticketAria", { n: short })}>
+      <header class="head" data-testid=${`kds-ticket-${t7.id}-head`} role="button" tabindex=${canChange && cooking ? 0 : -1} aria-disabled=${canChange && cooking ? "false" : "true"}
           title=${canChange && cooking ? t_("ui.tapHeaderToBump") : ""}
           @click=${() => cooking ? this.bumpTicket(t7) : void 0}
           @keydown=${(e6) => {
@@ -2919,16 +2919,16 @@ var ErpKitchenDisplay = class extends i3 {
       <ul class="lines">${groupCombos(lines).map((g3) => this.renderGroup(t7, g3))}</ul>
       ${t7.notes ? b2`<div class="notes">${t7.notes}</div>` : A}
       ${canChange || canServe && t7.status === "ready" ? b2`<footer class="foot">
-            ${canChange && cooking ? b2`<ion-button data-action="bump" @click=${() => this.bumpTicket(t7)}>${t_("ui.bump")}</ion-button>` : A}
-            ${canChange && struck ? b2`<ion-button data-action="recall" fill="outline" @click=${() => this.recallTicket(t7)}>${t_("ui.recall")}</ion-button>` : A}
-            ${canServe && t7.status === "ready" ? b2`<ion-button data-action="served" fill="outline" @click=${() => this.serveTicket(t7)}>${t_("ui.rowMarkServed")}</ion-button>` : A}
+            ${canChange && cooking ? b2`<ion-button data-testid=${`kds-ticket-${t7.id}-bump`} data-action="bump" @click=${() => this.bumpTicket(t7)}>${t_("ui.bump")}</ion-button>` : A}
+            ${canChange && struck ? b2`<ion-button data-testid=${`kds-ticket-${t7.id}-recall`} data-action="recall" fill="outline" @click=${() => this.recallTicket(t7)}>${t_("ui.recall")}</ion-button>` : A}
+            ${canServe && t7.status === "ready" ? b2`<ion-button data-testid=${`kds-ticket-${t7.id}-served`} data-action="served" fill="outline" @click=${() => this.serveTicket(t7)}>${t_("ui.rowMarkServed")}</ion-button>` : A}
           </footer>` : A}
     </article>`;
   }
   /** ONE grid of equal columns, or the empty state. Never two grids stacked down the page. */
   renderBoard(tickets, emptyKey) {
     const t_ = (k2) => erplora().t(CATALOG, k2);
-    if (!tickets.length) return b2`<ok-empty-state icon="restaurant-outline" .title=${t_(emptyKey)}></ok-empty-state>`;
+    if (!tickets.length) return b2`<ok-empty-state data-testid="kds-empty" icon="restaurant-outline" .title=${t_(emptyKey)}></ok-empty-state>`;
     return b2`<div class="grid">${tickets.map((t7) => this.renderTicket(t7))}</div>`;
   }
   /** An All-Day row's station name, in the hub's language: rows group by the FROZEN name, so this
@@ -2950,8 +2950,8 @@ var ErpKitchenDisplay = class extends i3 {
       const names = selected ? /* @__PURE__ */ new Set([String(selected.name_es || ""), String(selected.name || "")]) : /* @__PURE__ */ new Set([""]);
       rows2 = this.allDay.filter((r6) => names.has(String(r6.station_name ?? "")));
     }
-    if (!rows2.length) return b2`<ok-empty-state icon="restaurant-outline" .title=${t_("ui.emptyAllDay")}></ok-empty-state>`;
-    return b2`<table class="allday">
+    if (!rows2.length) return b2`<ok-empty-state data-testid="kds-empty" icon="restaurant-outline" .title=${t_("ui.emptyAllDay")}></ok-empty-state>`;
+    return b2`<table class="allday" data-testid="kds-allday">
       <thead><tr><th>${t_("ui.colProduct")}</th><th></th><th></th></tr></thead>
       <tbody>${rows2.map(
       (r6) => b2`<tr data-allday=${r6.product_name}>
@@ -2983,7 +2983,7 @@ var ErpKitchenDisplay = class extends i3 {
     const t_ = (k2) => erplora().t(CATALOG, k2);
     if (!this.chromeControls.includes("fullscreen")) return A;
     const label = t_(this.fullscreen ? "ui.exitFullscreen" : "ui.fullscreen");
-    return b2`<button type="button" class="fs" data-action="fullscreen" title=${label} aria-label=${label}
+    return b2`<button type="button" class="fs" data-testid="kds-fullscreen" data-action="fullscreen" title=${label} aria-label=${label}
         @click=${() => this.requestChrome("fullscreen")}>
       <ion-icon name=${this.fullscreen ? "contract-outline" : "expand-outline"} aria-hidden="true"></ion-icon>
     </button>`;
@@ -2995,19 +2995,19 @@ var ErpKitchenDisplay = class extends i3 {
     const ready = this.readyTickets;
     return b2`<div>
       <div class="bar">
-        <ion-segment class="views" .value=${this.mode} @ionChange=${(e6) => this.mode = e6.detail.value || "tickets"}>
-          <ion-segment-button value="tickets"><ion-label>${t_("ui.modeTickets")}<span class="count" data-count="cooking">${cooking.length}</span></ion-label></ion-segment-button>
-          <ion-segment-button value="ready"><ion-label>${t_("ui.readyRail")}<span class="count" data-count="ready">${ready.length}</span></ion-label></ion-segment-button>
-          <ion-segment-button value="allday"><ion-label>${t_("ui.modeAllDay")}</ion-label></ion-segment-button>
+        <ion-segment class="views" data-testid="kds-views" .value=${this.mode} @ionChange=${(e6) => this.mode = e6.detail.value || "tickets"}>
+          <ion-segment-button value="tickets" data-testid="kds-view-tickets"><ion-label>${t_("ui.modeTickets")}<span class="count" data-testid="kds-count-cooking" data-count="cooking">${cooking.length}</span></ion-label></ion-segment-button>
+          <ion-segment-button value="ready" data-testid="kds-view-ready"><ion-label>${t_("ui.readyRail")}<span class="count" data-testid="kds-count-ready" data-count="ready">${ready.length}</span></ion-label></ion-segment-button>
+          <ion-segment-button value="allday" data-testid="kds-view-allday"><ion-label>${t_("ui.modeAllDay")}</ion-label></ion-segment-button>
         </ion-segment>
         ${this.renderFullscreen()}
-        ${stations.length > 1 || this.station ? b2`<ion-segment class="stations" scrollable .value=${this.station || "__all"} @ionChange=${(e6) => this.station = e6.detail.value === "__all" ? "" : String(e6.detail.value ?? "")}>
-              <ion-segment-button value="__all"><ion-label>${t_("ui.stationAll")}</ion-label></ion-segment-button>
-              ${stations.map((s5) => b2`<ion-segment-button value=${s5.id || NO_STATION}><ion-label>${s5.id ? s5.label : t_("ui.stationNone")}</ion-label></ion-segment-button>`)}
+        ${stations.length > 1 || this.station ? b2`<ion-segment class="stations" data-testid="kds-stations" scrollable .value=${this.station || "__all"} @ionChange=${(e6) => this.station = e6.detail.value === "__all" ? "" : String(e6.detail.value ?? "")}>
+              <ion-segment-button value="__all" data-testid="kds-station-all"><ion-label>${t_("ui.stationAll")}</ion-label></ion-segment-button>
+              ${stations.map((s5) => b2`<ion-segment-button value=${s5.id || NO_STATION} data-testid=${`kds-station-${s5.id || "none"}`}><ion-label>${s5.id ? s5.label : t_("ui.stationNone")}</ion-label></ion-segment-button>`)}
             </ion-segment>` : A}
       </div>
-      ${this.error ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.error}</ok-inline-feedback>` : A}
-      ${this.passWarning ? b2`<ok-inline-feedback data-pass-warning tone="warning" icon="print-outline">${this.passWarning}</ok-inline-feedback>` : A}
+      ${this.error ? b2`<ok-inline-feedback data-testid="kds-error" tone="danger" icon="alert-circle-outline">${this.error}</ok-inline-feedback>` : A}
+      ${this.passWarning ? b2`<ok-inline-feedback data-testid="kds-pass-warning" data-pass-warning tone="warning" icon="print-outline">${this.passWarning}</ok-inline-feedback>` : A}
       ${this.mode === "allday" ? this.renderAllDay() : this.mode === "ready" ? this.renderBoard(ready, "ui.emptyReady") : this.renderBoard(cooking, "ui.emptyDisplay")}
     </div>`;
   }
@@ -5368,8 +5368,8 @@ var ErpKitchenHistory = class extends i3 {
     const t7 = (k2) => erplora2().t(CATALOG2, k2);
     return b2`<div>
         <header><h2>${t7("ui.historyTitle")}</h2></header>
-        ${this.ctrl?.error ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
-        <ok-data-table .serverSide=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.order_number || r6.order_id || "\u2014")} .cardIcon=${() => "restaurant-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "desc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchLogs")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyLogs")} @pageChange=${(e6) => this.ctrl.setPage(e6.detail)} @sortChange=${(e6) => this.ctrl.setSort(e6.detail.sort, e6.detail.dir)} @searchChange=${(e6) => this.ctrl.setSearch(e6.detail)} @filterChange=${(e6) => this.ctrl.setFilter(e6.detail.col, e6.detail.value)}></ok-data-table>
+        ${this.ctrl?.error ? b2`<ok-inline-feedback data-testid="kitchen-history-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
+        <ok-data-table testid="kitchen-history-table" .serverSide=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.order_number || r6.order_id || "\u2014")} .cardIcon=${() => "restaurant-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "desc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchLogs")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyLogs")} @pageChange=${(e6) => this.ctrl.setPage(e6.detail)} @sortChange=${(e6) => this.ctrl.setSort(e6.detail.sort, e6.detail.dir)} @searchChange=${(e6) => this.ctrl.setSearch(e6.detail)} @filterChange=${(e6) => this.ctrl.setFilter(e6.detail.col, e6.detail.value)}></ok-data-table>
       </div>`;
   }
 };
@@ -5620,18 +5620,18 @@ var ErpKitchenOrdersActive = class extends i3 {
         <header>
           <h2>${t7("ui.ordersTitle")}</h2>
         </header>
-        <form class="form" @submit=${(e6) => this.createOrder(e6)}>
-          <ion-select mode="md" fill="outline" label-placement="floating" label=${t7("ui.colType")} .value=${this.newType} @ionChange=${(e6) => this.newType = e6.target.value}>
+        <form class="form" data-testid="kitchen-orders-form" @submit=${(e6) => this.createOrder(e6)}>
+          <ion-select data-testid="kitchen-orders-type" mode="md" fill="outline" label-placement="floating" label=${t7("ui.colType")} .value=${this.newType} @ionChange=${(e6) => this.newType = e6.target.value}>
             ${enumOptions(ORDER_TYPE_KEY).map(
       (o7) => b2`<ion-select-option value=${o7.value}>${o7.label}</ion-select-option>`
     )}
           </ion-select>
-          <ion-input mode="md" fill="outline" label-placement="floating" label=${t7("ui.colNotes")} .value=${this.newNotes} @ionInput=${(e6) => this.newNotes = e6.target.value}></ion-input>
-          <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t7("ui.creatingOrder") : t7("ui.newOrder")}</ion-button>
+          <ion-input data-testid="kitchen-orders-notes" mode="md" fill="outline" label-placement="floating" label=${t7("ui.colNotes")} .value=${this.newNotes} @ionInput=${(e6) => this.newNotes = e6.target.value}></ion-input>
+          <ion-button data-testid="kitchen-orders-submit" type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t7("ui.creatingOrder") : t7("ui.newOrder")}</ion-button>
         </form>
-        ${this.formError ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
-        ${this.ctrl?.error ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
-        <ok-data-table .serverSide=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.order_number ?? "\u2014")} .cardIcon=${() => "restaurant-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "desc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchOrders")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyOrders")} .actions=${this.rowActions} @rowAction=${(e6) => this.onRowAction(e6)} @pageChange=${(e6) => this.ctrl.setPage(e6.detail)} @sortChange=${(e6) => this.ctrl.setSort(e6.detail.sort, e6.detail.dir)} @searchChange=${(e6) => this.ctrl.setSearch(e6.detail)} @filterChange=${(e6) => this.ctrl.setFilter(e6.detail.col, e6.detail.value)}></ok-data-table>
+        ${this.formError ? b2`<ok-inline-feedback data-testid="kitchen-orders-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
+        ${this.ctrl?.error ? b2`<ok-inline-feedback data-testid="kitchen-orders-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
+        <ok-data-table testid="kitchen-orders-table" .serverSide=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.order_number ?? "\u2014")} .cardIcon=${() => "restaurant-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "desc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchOrders")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyOrders")} .actions=${this.rowActions} @rowAction=${(e6) => this.onRowAction(e6)} @pageChange=${(e6) => this.ctrl.setPage(e6.detail)} @sortChange=${(e6) => this.ctrl.setSort(e6.detail.sort, e6.detail.dir)} @searchChange=${(e6) => this.ctrl.setSearch(e6.detail)} @filterChange=${(e6) => this.ctrl.setFilter(e6.detail.col, e6.detail.value)}></ok-data-table>
       </div>`;
   }
 };
@@ -5891,15 +5891,15 @@ var ErpKitchenOrdersStations = class extends i3 {
   renderEditPanel() {
     if (!this.editing) return A;
     const t7 = (k2) => erplora5().t(CATALOG5, k2);
-    return b2`<section class="panel">
+    return b2`<section class="panel" data-testid="kitchen-stations-edit-panel">
       <h3>${t7("ui.editStationTitle")} · ${stationName(this.editing)}</h3>
-      <form class="form" @submit=${(e6) => this.saveEdit(e6)}>
-        <ion-input mode="md" fill="outline" label=${t7("ui.labelName")} label-placement="floating" .value=${this.editName} @ionInput=${(e6) => this.editName = e6.target.value}></ion-input>
-        <ion-input mode="md" fill="outline" label=${t7("ui.labelColor")} label-placement="floating" placeholder="#F97316" .value=${this.editColor} @ionInput=${(e6) => this.editColor = e6.target.value}></ion-input>
-        <ion-input mode="md" fill="outline" label=${t7("ui.labelPrinter")} label-placement="floating" .value=${this.editPrinter} @ionInput=${(e6) => this.editPrinter = e6.target.value}></ion-input>
-        <ion-toggle .checked=${this.editActive} @ionChange=${(e6) => this.editActive = e6.detail.checked}>${t7("ui.labelActive")}</ion-toggle>
-        <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t7("ui.saving") : t7("ui.save")}</ion-button>
-        <ion-button size="small" fill="outline" @click=${() => this.editing = null}>${t7("ui.cancel")}</ion-button>
+      <form class="form" data-testid="kitchen-stations-edit-form" @submit=${(e6) => this.saveEdit(e6)}>
+        <ion-input data-testid="kitchen-stations-edit-name" mode="md" fill="outline" label=${t7("ui.labelName")} label-placement="floating" .value=${this.editName} @ionInput=${(e6) => this.editName = e6.target.value}></ion-input>
+        <ion-input data-testid="kitchen-stations-edit-color" mode="md" fill="outline" label=${t7("ui.labelColor")} label-placement="floating" placeholder="#F97316" .value=${this.editColor} @ionInput=${(e6) => this.editColor = e6.target.value}></ion-input>
+        <ion-input data-testid="kitchen-stations-edit-printer" mode="md" fill="outline" label=${t7("ui.labelPrinter")} label-placement="floating" .value=${this.editPrinter} @ionInput=${(e6) => this.editPrinter = e6.target.value}></ion-input>
+        <ion-toggle data-testid="kitchen-stations-edit-active" .checked=${this.editActive} @ionChange=${(e6) => this.editActive = e6.detail.checked}>${t7("ui.labelActive")}</ion-toggle>
+        <ion-button data-testid="kitchen-stations-edit-submit" type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t7("ui.saving") : t7("ui.save")}</ion-button>
+        <ion-button data-testid="kitchen-stations-edit-cancel" size="small" fill="outline" @click=${() => this.editing = null}>${t7("ui.cancel")}</ion-button>
       </form>
     </section>`;
   }
@@ -5908,17 +5908,17 @@ var ErpKitchenOrdersStations = class extends i3 {
     const stations = this.ctrl?.rows ?? [];
     return b2`<section class="panel">
       <h3>${t7("ui.routingTitle")}</h3>
-      <form class="form" @submit=${(e6) => this.saveRouting(e6)}>
-        <ion-select mode="md" fill="outline" label-placement="floating" label=${t7("ui.colStation")} .value=${this.routeStationId} @ionChange=${(e6) => this.routeStationId = e6.target.value}>
+      <form class="form" data-testid="kitchen-stations-routing-form" @submit=${(e6) => this.saveRouting(e6)}>
+        <ion-select data-testid="kitchen-stations-routing-station" mode="md" fill="outline" label-placement="floating" label=${t7("ui.colStation")} .value=${this.routeStationId} @ionChange=${(e6) => this.routeStationId = e6.target.value}>
           ${stations.map((s5) => b2`<ion-select-option value=${s5.id}>${stationName(s5)}</ion-select-option>`)}
         </ion-select>
-        <ion-select mode="md" fill="outline" interface="popover" label-placement="floating" label=${t7("ui.labelProduct")} placeholder=${t7("ui.placeholderOptional")} .value=${this.routeProductId} @ionChange=${(e6) => this.routeProductId = e6.target.value ?? ""}>
+        <ion-select data-testid="kitchen-stations-routing-product" mode="md" fill="outline" interface="popover" label-placement="floating" label=${t7("ui.labelProduct")} placeholder=${t7("ui.placeholderOptional")} .value=${this.routeProductId} @ionChange=${(e6) => this.routeProductId = e6.target.value ?? ""}>
           ${this.productOptions.map((p4) => b2`<ion-select-option value=${p4.id}>${p4.name}</ion-select-option>`)}
         </ion-select>
-        <ion-select mode="md" fill="outline" interface="popover" label-placement="floating" label=${t7("ui.labelCategory")} placeholder=${t7("ui.placeholderOptional")} .value=${this.routeCategoryId} @ionChange=${(e6) => this.routeCategoryId = e6.target.value ?? ""}>
+        <ion-select data-testid="kitchen-stations-routing-category" mode="md" fill="outline" interface="popover" label-placement="floating" label=${t7("ui.labelCategory")} placeholder=${t7("ui.placeholderOptional")} .value=${this.routeCategoryId} @ionChange=${(e6) => this.routeCategoryId = e6.target.value ?? ""}>
           ${this.categoryOptions.map((c5) => b2`<ion-select-option value=${c5.id}>${c5.name}</ion-select-option>`)}
         </ion-select>
-        <ion-button type="submit" size="small" ?disabled=${this.saving || !this.routeStationId || !this.routeProductId && !this.routeCategoryId}>${this.saving ? t7("ui.saving") : t7("ui.saveRouting")}</ion-button>
+        <ion-button data-testid="kitchen-stations-routing-submit" type="submit" size="small" ?disabled=${this.saving || !this.routeStationId || !this.routeProductId && !this.routeCategoryId}>${this.saving ? t7("ui.saving") : t7("ui.saveRouting")}</ion-button>
       </form>
     </section>`;
   }
@@ -5930,16 +5930,16 @@ var ErpKitchenOrdersStations = class extends i3 {
     return b2`<div class="page">
         ${this.renderEditPanel()}
         ${this.renderRoutingPanel()}
-        ${this.formMsg ? b2`<p class="ok">${this.formMsg}</p>` : A}
-        ${this.formError ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
-        ${this.ctrl?.error ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
-        <ok-data-table .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => stationName(r6)} .cardIcon=${() => "flame-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchStations")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyStations")} .actions=${this.rowActions} .rowClickable=${true} @rowAction=${(e6) => this.onRowAction(e6)} @rowClick=${(e6) => this.onRowAction({ detail: { actionId: "edit", row: e6.detail.row } })} @pageChange=${(e6) => this.ctrl.setPage(e6.detail)} @pageSizeChange=${(e6) => this.ctrl.setPageSize(e6.detail)} @sortChange=${(e6) => this.ctrl.setSort(e6.detail.sort, e6.detail.dir)} @searchChange=${(e6) => this.ctrl.setSearch(e6.detail)} @filterChange=${(e6) => this.ctrl.setFilter(e6.detail.col, e6.detail.value)}>
+        ${this.formMsg ? b2`<p class="ok" data-testid="kitchen-stations-saved">${this.formMsg}</p>` : A}
+        ${this.formError ? b2`<ok-inline-feedback data-testid="kitchen-stations-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
+        ${this.ctrl?.error ? b2`<ok-inline-feedback data-testid="kitchen-stations-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
+        <ok-data-table testid="kitchen-stations-table" .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => stationName(r6)} .cardIcon=${() => "flame-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchStations")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyStations")} .actions=${this.rowActions} .rowClickable=${true} @rowAction=${(e6) => this.onRowAction(e6)} @rowClick=${(e6) => this.onRowAction({ detail: { actionId: "edit", row: e6.detail.row } })} @pageChange=${(e6) => this.ctrl.setPage(e6.detail)} @pageSizeChange=${(e6) => this.ctrl.setPageSize(e6.detail)} @sortChange=${(e6) => this.ctrl.setSort(e6.detail.sort, e6.detail.dir)} @searchChange=${(e6) => this.ctrl.setSearch(e6.detail)} @filterChange=${(e6) => this.ctrl.setFilter(e6.detail.col, e6.detail.value)}>
           <!-- Alta de estación: se proyecta SIEMPRE (aunque el panel esté cerrado); si se renderizara
                solo con el panel abierto, el «+» de la barra abriría un panel vacío. -->
-          <form slot="create" class="create-form" @submit=${(e6) => this.createStation(e6)}>
-            <ion-input mode="md" fill="outline" label-placement="floating" label=${t7("ui.labelName")} placeholder=${t7("ui.placeholderStationName")} .value=${this.newName} @ionInput=${(e6) => this.newName = e6.target.value}></ion-input>
-            <ion-input mode="md" fill="outline" label-placement="floating" label=${t7("ui.labelPrinter")} placeholder=${t7("ui.placeholderPrinterOptional")} .value=${this.newPrinter} @ionInput=${(e6) => this.newPrinter = e6.target.value}></ion-input>
-            <ion-button type="submit" ?disabled=${this.saving || !this.newName}>${this.saving ? t7("ui.saving") : t7("ui.addStation")}</ion-button>
+          <form slot="create" class="create-form" data-testid="kitchen-stations-create-form" @submit=${(e6) => this.createStation(e6)}>
+            <ion-input data-testid="kitchen-stations-create-name" mode="md" fill="outline" label-placement="floating" label=${t7("ui.labelName")} placeholder=${t7("ui.placeholderStationName")} .value=${this.newName} @ionInput=${(e6) => this.newName = e6.target.value}></ion-input>
+            <ion-input data-testid="kitchen-stations-create-printer" mode="md" fill="outline" label-placement="floating" label=${t7("ui.labelPrinter")} placeholder=${t7("ui.placeholderPrinterOptional")} .value=${this.newPrinter} @ionInput=${(e6) => this.newPrinter = e6.target.value}></ion-input>
+            <ion-button data-testid="kitchen-stations-create-submit" type="submit" ?disabled=${this.saving || !this.newName}>${this.saving ? t7("ui.saving") : t7("ui.addStation")}</ion-button>
           </form>
         </ok-data-table>
       </div>`;
@@ -6143,13 +6143,13 @@ var ErpKitchenPosComandas = class extends i3 {
   render() {
     if (!this.orderId || !this.comandas.length) return b2``;
     return b2`
-      <button class="chip" title=${t5("ui.posComandasTitle")} aria-label=${t5("ui.posComandasTitle")}
+      <button class="chip" data-testid="kitchen-comandas-open" title=${t5("ui.posComandasTitle")} aria-label=${t5("ui.posComandasTitle")}
               @click=${() => void this.openModal()}>
         <ion-icon name="receipt-outline"></ion-icon>
         ${t5("ui.posComandas")} · ${this.comandas.length}
       </button>
       ${this.open ? b2`
-        <dialog class="sheet" aria-label=${t5("ui.posComandasTitle")}
+        <dialog class="sheet" data-testid="kitchen-comandas-sheet" aria-label=${t5("ui.posComandasTitle")}
                 @click=${(e6) => {
       if (e6.target === e6.currentTarget) this.closeModal();
     }}
@@ -6158,10 +6158,10 @@ var ErpKitchenPosComandas = class extends i3 {
     }}>
           <div class="sheet-h">
             <span class="t">${t5("ui.posComandasTitle")}</span>
-            <button class="x" aria-label=${t5("ui.close")} @click=${() => this.closeModal()}>✕</button>
+            <button class="x" data-testid="kitchen-comandas-close" aria-label=${t5("ui.close")} @click=${() => this.closeModal()}>✕</button>
           </div>
           ${this.comandas.map((c5) => b2`
-            <div class="krow">
+            <div class="krow" data-testid=${`kitchen-comandas-row-${c5.id}`}>
               <div class="krow-h">
                 <ion-icon name="flame" style="color: var(--ion-color-warning)"></ion-icon>
                 <span>${t5("ui.comandaN", { n: String(c5.round_number) })}</span>
@@ -6295,7 +6295,7 @@ var ErpKitchenPosFire = class extends i3 {
     const urgentLabel = t6("ui.markUrgent");
     const pendientes = pendingCount(this.posState);
     return b2`
-      <ion-button class="urgent ${e5({ "tone-danger": this.urgent, "tone-medium": !this.urgent })}"
+      <ion-button data-testid="kitchen-fire-urgent" class="urgent ${e5({ "tone-danger": this.urgent, "tone-medium": !this.urgent })}"
                   fill=${this.urgent ? A : "outline"}
                   aria-pressed=${this.urgent ? "true" : "false"}
                   title=${urgentLabel} aria-label=${urgentLabel}
@@ -6304,7 +6304,7 @@ var ErpKitchenPosFire = class extends i3 {
     }}>
         <ion-icon slot="icon-only" name="flame-outline"></ion-icon>
       </ion-button>
-      <ion-button class="fire" fill="outline" ?disabled=${!canFire(this.posState)}
+      <ion-button data-testid="kitchen-fire-send" class="fire" fill="outline" ?disabled=${!canFire(this.posState)}
                   title=${label} aria-label=${label}
                   @click=${() => this.fire()}>
         <ion-icon slot="start" name="send-outline"></ion-icon>
