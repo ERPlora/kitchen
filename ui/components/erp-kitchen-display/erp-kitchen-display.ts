@@ -863,7 +863,7 @@ export class ErpKitchenDisplay extends LitElement {
     const seat = l.seat !== null ? html`<span>${t_('ui.seat')} ${l.seat}</span>` : nothing;
     const station = !this.station && l.station_id ? html`<span>${this.stationName(l)}</span>` : nothing;
     const printer = l.destination === 'printer' ? html`<ion-icon name="print-outline" aria-label=${t_('ui.printerOnly')}></ion-icon>` : nothing;
-    return html`<li class="line" data-item=${l.id} data-status=${l.status} role="button" tabindex=${actionable ? 0 : -1}
+    return html`<li class="line" data-testid=${`kds-line-${l.id}`} data-item=${l.id} data-status=${l.status} role="button" tabindex=${actionable ? 0 : -1}
         aria-disabled=${actionable ? 'false' : 'true'}
         aria-label=${`${formatQty(l.quantity, erplora().locale)} × ${l.product_name} — ${l.status === 'ready' ? t_('ui.tapToRecall') : t_('ui.tapToBump')}`}
         @click=${() => this.tapLine(t, l)}
@@ -904,7 +904,7 @@ export class ErpKitchenDisplay extends LitElement {
     const done = g.lines.every((l) => l.status === 'ready');
     const actionable = can('kitchen.change_order') && cooking;
     return html`<li class="combo" data-combo=${g.ref} data-combo-done=${done ? 'true' : 'false'}>
-      <div class="combo-head" role=${actionable ? 'button' : 'presentation'} tabindex=${actionable ? 0 : -1}
+      <div class="combo-head" data-testid=${`kds-ticket-${t.id}-combo-${g.ref}`} role=${actionable ? 'button' : 'presentation'} tabindex=${actionable ? 0 : -1}
           aria-disabled=${actionable ? 'false' : 'true'}
           title=${actionable ? t_('ui.tapMenuToBump') : ''}
           aria-label=${t_('ui.comboAria', { name: g.name, n: g.lines.length })}
@@ -929,8 +929,8 @@ export class ErpKitchenDisplay extends LitElement {
     const sem = semaphore(elapsed, this.settings);
     const waiter = this.waiterName(t);
     const short = t.number.includes('-') ? t.number.slice(t.number.lastIndexOf('-') + 1) : t.number;
-    return html`<article class="card" data-order=${t.id} data-status=${t.status} data-sem=${sem} aria-label=${t_('ui.ticketAria', { n: short })}>
-      <header class="head" role="button" tabindex=${canChange && cooking ? 0 : -1} aria-disabled=${canChange && cooking ? 'false' : 'true'}
+    return html`<article class="card" data-testid=${`kds-ticket-${t.id}`} data-order=${t.id} data-status=${t.status} data-sem=${sem} aria-label=${t_('ui.ticketAria', { n: short })}>
+      <header class="head" data-testid=${`kds-ticket-${t.id}-head`} role="button" tabindex=${canChange && cooking ? 0 : -1} aria-disabled=${canChange && cooking ? 'false' : 'true'}
           title=${canChange && cooking ? t_('ui.tapHeaderToBump') : ''}
           @click=${() => (cooking ? this.bumpTicket(t) : undefined)}
           @keydown=${(e: KeyboardEvent) => { if (cooking && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); this.bumpTicket(t); } }}>
@@ -948,9 +948,9 @@ export class ErpKitchenDisplay extends LitElement {
       ${t.notes ? html`<div class="notes">${t.notes}</div>` : nothing}
       ${canChange || (canServe && t.status === 'ready')
         ? html`<footer class="foot">
-            ${canChange && cooking ? html`<ion-button data-action="bump" @click=${() => this.bumpTicket(t)}>${t_('ui.bump')}</ion-button>` : nothing}
-            ${canChange && struck ? html`<ion-button data-action="recall" fill="outline" @click=${() => this.recallTicket(t)}>${t_('ui.recall')}</ion-button>` : nothing}
-            ${canServe && t.status === 'ready' ? html`<ion-button data-action="served" fill="outline" @click=${() => this.serveTicket(t)}>${t_('ui.rowMarkServed')}</ion-button>` : nothing}
+            ${canChange && cooking ? html`<ion-button data-testid=${`kds-ticket-${t.id}-bump`} data-action="bump" @click=${() => this.bumpTicket(t)}>${t_('ui.bump')}</ion-button>` : nothing}
+            ${canChange && struck ? html`<ion-button data-testid=${`kds-ticket-${t.id}-recall`} data-action="recall" fill="outline" @click=${() => this.recallTicket(t)}>${t_('ui.recall')}</ion-button>` : nothing}
+            ${canServe && t.status === 'ready' ? html`<ion-button data-testid=${`kds-ticket-${t.id}-served`} data-action="served" fill="outline" @click=${() => this.serveTicket(t)}>${t_('ui.rowMarkServed')}</ion-button>` : nothing}
           </footer>`
         : nothing}
     </article>`;
@@ -959,7 +959,7 @@ export class ErpKitchenDisplay extends LitElement {
   /** ONE grid of equal columns, or the empty state. Never two grids stacked down the page. */
   private renderBoard(tickets: Ticket[], emptyKey: string) {
     const t_ = (k: string): string => erplora().t(CATALOG, k);
-    if (!tickets.length) return html`<ok-empty-state icon="restaurant-outline" .title=${t_(emptyKey)}></ok-empty-state>`;
+    if (!tickets.length) return html`<ok-empty-state data-testid="kds-empty" icon="restaurant-outline" .title=${t_(emptyKey)}></ok-empty-state>`;
     return html`<div class="grid">${tickets.map((t) => this.renderTicket(t))}</div>`;
   }
 
@@ -986,10 +986,10 @@ export class ErpKitchenDisplay extends LitElement {
       const names = selected ? new Set([String(selected.name_es || ''), String(selected.name || '')]) : new Set(['']);
       rows = this.allDay.filter((r) => names.has(String(r.station_name ?? '')));
     }
-    if (!rows.length) return html`<ok-empty-state icon="restaurant-outline" .title=${t_('ui.emptyAllDay')}></ok-empty-state>`;
+    if (!rows.length) return html`<ok-empty-state data-testid="kds-empty" icon="restaurant-outline" .title=${t_('ui.emptyAllDay')}></ok-empty-state>`;
     // Same product on two stations (expo view) → two rows, each with its station: the fryer and
     // the grill do not share a batch.
-    return html`<table class="allday">
+    return html`<table class="allday" data-testid="kds-allday">
       <thead><tr><th>${t_('ui.colProduct')}</th><th></th><th></th></tr></thead>
       <tbody>${rows.map(
         (r) => html`<tr data-allday=${r.product_name}>
@@ -1024,7 +1024,7 @@ export class ErpKitchenDisplay extends LitElement {
     const t_ = (k: string): string => erplora().t(CATALOG, k);
     if (!this.chromeControls.includes('fullscreen')) return nothing;
     const label = t_(this.fullscreen ? 'ui.exitFullscreen' : 'ui.fullscreen');
-    return html`<button type="button" class="fs" data-action="fullscreen" title=${label} aria-label=${label}
+    return html`<button type="button" class="fs" data-testid="kds-fullscreen" data-action="fullscreen" title=${label} aria-label=${label}
         @click=${() => this.requestChrome('fullscreen')}>
       <ion-icon name=${this.fullscreen ? 'contract-outline' : 'expand-outline'} aria-hidden="true"></ion-icon>
     </button>`;
@@ -1037,22 +1037,22 @@ export class ErpKitchenDisplay extends LitElement {
     const ready = this.readyTickets;
     return html`<div>
       <div class="bar">
-        <ion-segment class="views" .value=${this.mode} @ionChange=${(e: CustomEvent<{ value: string }>) => (this.mode = (e.detail.value as 'tickets' | 'ready' | 'allday') || 'tickets')}>
-          <ion-segment-button value="tickets"><ion-label>${t_('ui.modeTickets')}<span class="count" data-count="cooking">${cooking.length}</span></ion-label></ion-segment-button>
-          <ion-segment-button value="ready"><ion-label>${t_('ui.readyRail')}<span class="count" data-count="ready">${ready.length}</span></ion-label></ion-segment-button>
-          <ion-segment-button value="allday"><ion-label>${t_('ui.modeAllDay')}</ion-label></ion-segment-button>
+        <ion-segment class="views" data-testid="kds-views" .value=${this.mode} @ionChange=${(e: CustomEvent<{ value: string }>) => (this.mode = (e.detail.value as 'tickets' | 'ready' | 'allday') || 'tickets')}>
+          <ion-segment-button value="tickets" data-testid="kds-view-tickets"><ion-label>${t_('ui.modeTickets')}<span class="count" data-testid="kds-count-cooking" data-count="cooking">${cooking.length}</span></ion-label></ion-segment-button>
+          <ion-segment-button value="ready" data-testid="kds-view-ready"><ion-label>${t_('ui.readyRail')}<span class="count" data-testid="kds-count-ready" data-count="ready">${ready.length}</span></ion-label></ion-segment-button>
+          <ion-segment-button value="allday" data-testid="kds-view-allday"><ion-label>${t_('ui.modeAllDay')}</ion-label></ion-segment-button>
         </ion-segment>
         ${this.renderFullscreen()}
         ${stations.length > 1 || this.station
-          ? html`<ion-segment class="stations" scrollable .value=${this.station || '__all'} @ionChange=${(e: CustomEvent<{ value: string }>) => (this.station = e.detail.value === '__all' ? '' : String(e.detail.value ?? ''))}>
-              <ion-segment-button value="__all"><ion-label>${t_('ui.stationAll')}</ion-label></ion-segment-button>
-              ${stations.map((s) => html`<ion-segment-button value=${s.id || NO_STATION}><ion-label>${s.id ? s.label : t_('ui.stationNone')}</ion-label></ion-segment-button>`)}
+          ? html`<ion-segment class="stations" data-testid="kds-stations" scrollable .value=${this.station || '__all'} @ionChange=${(e: CustomEvent<{ value: string }>) => (this.station = e.detail.value === '__all' ? '' : String(e.detail.value ?? ''))}>
+              <ion-segment-button value="__all" data-testid="kds-station-all"><ion-label>${t_('ui.stationAll')}</ion-label></ion-segment-button>
+              ${stations.map((s) => html`<ion-segment-button value=${s.id || NO_STATION} data-testid=${`kds-station-${s.id || 'none'}`}><ion-label>${s.id ? s.label : t_('ui.stationNone')}</ion-label></ion-segment-button>`)}
             </ion-segment>`
           : nothing}
       </div>
-      ${this.error ? html`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.error}</ok-inline-feedback>` : nothing}
+      ${this.error ? html`<ok-inline-feedback data-testid="kds-error" tone="danger" icon="alert-circle-outline">${this.error}</ok-inline-feedback>` : nothing}
       ${this.passWarning
-        ? html`<ok-inline-feedback data-pass-warning tone="warning" icon="print-outline">${this.passWarning}</ok-inline-feedback>`
+        ? html`<ok-inline-feedback data-testid="kds-pass-warning" data-pass-warning tone="warning" icon="print-outline">${this.passWarning}</ok-inline-feedback>`
         : nothing}
       ${this.mode === 'allday'
         ? this.renderAllDay()

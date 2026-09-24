@@ -116,14 +116,14 @@ export class ErpKitchenPosFire extends LitElement {
     // wipes the classes Ionic stamps on the host (ion-activatable, ion-focusable…), so the toggle
     // stops answering taps after the first one (kitchen#88).
     return html`
-      <ion-button class="urgent ${classMap({ 'tone-danger': this.urgent, 'tone-medium': !this.urgent })}"
+      <ion-button data-testid="kitchen-fire-urgent" class="urgent ${classMap({ 'tone-danger': this.urgent, 'tone-medium': !this.urgent })}"
                   fill=${this.urgent ? nothing : 'outline'}
                   aria-pressed=${this.urgent ? 'true' : 'false'}
                   title=${urgentLabel} aria-label=${urgentLabel}
                   @click=${() => { this.urgent = !this.urgent; }}>
         <ion-icon slot="icon-only" name="flame-outline"></ion-icon>
       </ion-button>
-      <ion-button class="fire" fill="outline" ?disabled=${!canFire(this.posState)}
+      <ion-button data-testid="kitchen-fire-send" class="fire" fill="outline" ?disabled=${!canFire(this.posState)}
                   title=${label} aria-label=${label}
                   @click=${() => this.fire()}>
         <ion-icon slot="start" name="send-outline"></ion-icon>

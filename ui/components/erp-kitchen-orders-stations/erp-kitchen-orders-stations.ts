@@ -331,15 +331,15 @@ export class ErpKitchenOrdersStations extends LitElement {
   private renderEditPanel() {
     if (!this.editing) return nothing;
     const t = (k: string): string => erplora().t(CATALOG, k);
-    return html`<section class="panel">
+    return html`<section class="panel" data-testid="kitchen-stations-edit-panel">
       <h3>${t('ui.editStationTitle')} · ${stationName(this.editing)}</h3>
-      <form class="form" @submit=${(e: Event) => this.saveEdit(e)}>
-        <ion-input mode="md" fill="outline" label=${t('ui.labelName')} label-placement="floating" .value=${this.editName} @ionInput=${(e: any) => (this.editName = e.target.value)}></ion-input>
-        <ion-input mode="md" fill="outline" label=${t('ui.labelColor')} label-placement="floating" placeholder="#F97316" .value=${this.editColor} @ionInput=${(e: any) => (this.editColor = e.target.value)}></ion-input>
-        <ion-input mode="md" fill="outline" label=${t('ui.labelPrinter')} label-placement="floating" .value=${this.editPrinter} @ionInput=${(e: any) => (this.editPrinter = e.target.value)}></ion-input>
-        <ion-toggle .checked=${this.editActive} @ionChange=${(e: any) => (this.editActive = e.detail.checked)}>${t('ui.labelActive')}</ion-toggle>
-        <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t('ui.saving') : t('ui.save')}</ion-button>
-        <ion-button size="small" fill="outline" @click=${() => (this.editing = null)}>${t('ui.cancel')}</ion-button>
+      <form class="form" data-testid="kitchen-stations-edit-form" @submit=${(e: Event) => this.saveEdit(e)}>
+        <ion-input data-testid="kitchen-stations-edit-name" mode="md" fill="outline" label=${t('ui.labelName')} label-placement="floating" .value=${this.editName} @ionInput=${(e: any) => (this.editName = e.target.value)}></ion-input>
+        <ion-input data-testid="kitchen-stations-edit-color" mode="md" fill="outline" label=${t('ui.labelColor')} label-placement="floating" placeholder="#F97316" .value=${this.editColor} @ionInput=${(e: any) => (this.editColor = e.target.value)}></ion-input>
+        <ion-input data-testid="kitchen-stations-edit-printer" mode="md" fill="outline" label=${t('ui.labelPrinter')} label-placement="floating" .value=${this.editPrinter} @ionInput=${(e: any) => (this.editPrinter = e.target.value)}></ion-input>
+        <ion-toggle data-testid="kitchen-stations-edit-active" .checked=${this.editActive} @ionChange=${(e: any) => (this.editActive = e.detail.checked)}>${t('ui.labelActive')}</ion-toggle>
+        <ion-button data-testid="kitchen-stations-edit-submit" type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t('ui.saving') : t('ui.save')}</ion-button>
+        <ion-button data-testid="kitchen-stations-edit-cancel" size="small" fill="outline" @click=${() => (this.editing = null)}>${t('ui.cancel')}</ion-button>
       </form>
     </section>`;
   }
@@ -353,17 +353,17 @@ export class ErpKitchenOrdersStations extends LitElement {
     // buscador nativo cuando la lista crezca.
     return html`<section class="panel">
       <h3>${t('ui.routingTitle')}</h3>
-      <form class="form" @submit=${(e: Event) => this.saveRouting(e)}>
-        <ion-select mode="md" fill="outline" label-placement="floating" label=${t('ui.colStation')} .value=${this.routeStationId} @ionChange=${(e: any) => (this.routeStationId = e.target.value)}>
+      <form class="form" data-testid="kitchen-stations-routing-form" @submit=${(e: Event) => this.saveRouting(e)}>
+        <ion-select data-testid="kitchen-stations-routing-station" mode="md" fill="outline" label-placement="floating" label=${t('ui.colStation')} .value=${this.routeStationId} @ionChange=${(e: any) => (this.routeStationId = e.target.value)}>
           ${stations.map((s) => html`<ion-select-option value=${s.id}>${stationName(s)}</ion-select-option>`)}
         </ion-select>
-        <ion-select mode="md" fill="outline" interface="popover" label-placement="floating" label=${t('ui.labelProduct')} placeholder=${t('ui.placeholderOptional')} .value=${this.routeProductId} @ionChange=${(e: any) => (this.routeProductId = e.target.value ?? '')}>
+        <ion-select data-testid="kitchen-stations-routing-product" mode="md" fill="outline" interface="popover" label-placement="floating" label=${t('ui.labelProduct')} placeholder=${t('ui.placeholderOptional')} .value=${this.routeProductId} @ionChange=${(e: any) => (this.routeProductId = e.target.value ?? '')}>
           ${this.productOptions.map((p) => html`<ion-select-option value=${p.id}>${p.name}</ion-select-option>`)}
         </ion-select>
-        <ion-select mode="md" fill="outline" interface="popover" label-placement="floating" label=${t('ui.labelCategory')} placeholder=${t('ui.placeholderOptional')} .value=${this.routeCategoryId} @ionChange=${(e: any) => (this.routeCategoryId = e.target.value ?? '')}>
+        <ion-select data-testid="kitchen-stations-routing-category" mode="md" fill="outline" interface="popover" label-placement="floating" label=${t('ui.labelCategory')} placeholder=${t('ui.placeholderOptional')} .value=${this.routeCategoryId} @ionChange=${(e: any) => (this.routeCategoryId = e.target.value ?? '')}>
           ${this.categoryOptions.map((c) => html`<ion-select-option value=${c.id}>${c.name}</ion-select-option>`)}
         </ion-select>
-        <ion-button type="submit" size="small" ?disabled=${this.saving || !this.routeStationId || (!this.routeProductId && !this.routeCategoryId)}>${this.saving ? t('ui.saving') : t('ui.saveRouting')}</ion-button>
+        <ion-button data-testid="kitchen-stations-routing-submit" type="submit" size="small" ?disabled=${this.saving || !this.routeStationId || (!this.routeProductId && !this.routeCategoryId)}>${this.saving ? t('ui.saving') : t('ui.saveRouting')}</ion-button>
       </form>
     </section>`;
   }
@@ -376,16 +376,16 @@ export class ErpKitchenOrdersStations extends LitElement {
     return html`<div class="page">
         ${this.renderEditPanel()}
         ${this.renderRoutingPanel()}
-        ${this.formMsg ? html`<p class="ok">${this.formMsg}</p>` : nothing}
-        ${this.formError ? html`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : nothing}
-        ${this.ctrl?.error ? html`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : nothing}
-        <ok-data-table .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => stationName(r)} .cardIcon=${() => 'flame-outline'} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .searchPlaceholder=${t('ui.searchStations')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyStations')} .actions=${this.rowActions} .rowClickable=${true} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @rowClick=${(e: CustomEvent<{ row: Record<string, unknown> }>) => this.onRowAction({ detail: { actionId: 'edit', row: e.detail.row } } as CustomEvent<{ actionId: string; row: Record<string, unknown> }>)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @pageSizeChange=${(e: CustomEvent<number>) => this.ctrl.setPageSize(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}>
+        ${this.formMsg ? html`<p class="ok" data-testid="kitchen-stations-saved">${this.formMsg}</p>` : nothing}
+        ${this.formError ? html`<ok-inline-feedback data-testid="kitchen-stations-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : nothing}
+        ${this.ctrl?.error ? html`<ok-inline-feedback data-testid="kitchen-stations-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : nothing}
+        <ok-data-table testid="kitchen-stations-table" .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => stationName(r)} .cardIcon=${() => 'flame-outline'} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .searchPlaceholder=${t('ui.searchStations')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyStations')} .actions=${this.rowActions} .rowClickable=${true} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @rowClick=${(e: CustomEvent<{ row: Record<string, unknown> }>) => this.onRowAction({ detail: { actionId: 'edit', row: e.detail.row } } as CustomEvent<{ actionId: string; row: Record<string, unknown> }>)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @pageSizeChange=${(e: CustomEvent<number>) => this.ctrl.setPageSize(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}>
           <!-- Alta de estación: se proyecta SIEMPRE (aunque el panel esté cerrado); si se renderizara
                solo con el panel abierto, el «+» de la barra abriría un panel vacío. -->
-          <form slot="create" class="create-form" @submit=${(e: Event) => this.createStation(e)}>
-            <ion-input mode="md" fill="outline" label-placement="floating" label=${t('ui.labelName')} placeholder=${t('ui.placeholderStationName')} .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
-            <ion-input mode="md" fill="outline" label-placement="floating" label=${t('ui.labelPrinter')} placeholder=${t('ui.placeholderPrinterOptional')} .value=${this.newPrinter} @ionInput=${(e: any) => (this.newPrinter = e.target.value)}></ion-input>
-            <ion-button type="submit" ?disabled=${this.saving || !this.newName}>${this.saving ? t('ui.saving') : t('ui.addStation')}</ion-button>
+          <form slot="create" class="create-form" data-testid="kitchen-stations-create-form" @submit=${(e: Event) => this.createStation(e)}>
+            <ion-input data-testid="kitchen-stations-create-name" mode="md" fill="outline" label-placement="floating" label=${t('ui.labelName')} placeholder=${t('ui.placeholderStationName')} .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
+            <ion-input data-testid="kitchen-stations-create-printer" mode="md" fill="outline" label-placement="floating" label=${t('ui.labelPrinter')} placeholder=${t('ui.placeholderPrinterOptional')} .value=${this.newPrinter} @ionInput=${(e: any) => (this.newPrinter = e.target.value)}></ion-input>
+            <ion-button data-testid="kitchen-stations-create-submit" type="submit" ?disabled=${this.saving || !this.newName}>${this.saving ? t('ui.saving') : t('ui.addStation')}</ion-button>
           </form>
         </ok-data-table>
       </div>`;
