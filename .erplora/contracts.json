@@ -26,6 +26,7 @@
       "kitchen.orders.create",
       "kitchen.orders.mark_served",
       "kitchen.orders.set_status",
+      "kitchen.orders.update",
       "kitchen.stations.create",
       "kitchen.stations.delete",
       "kitchen.stations.set_routing",
