@@ -144,6 +144,8 @@
     "stationNone": "No station",
     "bump": "Bump",
     "recall": "Recall",
+    "markRush": "Mark rush",
+    "clearRush": "Remove rush",
     "tapToBump": "tap to bump",
     "tapToRecall": "tap to recall",
     "tapHeaderToBump": "Bump every line on screen",

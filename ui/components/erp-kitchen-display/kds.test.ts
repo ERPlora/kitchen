@@ -132,7 +132,8 @@ const lines = (c: HTMLElement) => Array.from(c.querySelectorAll<HTMLElement>('[d
 describe('a grid of tickets, one card per order, lines inside', () => {
   it('groups the one-row-per-line feed into cards with label, number and lines', async () => {
     const el = await mount();
-    expect(cards(el).map((c) => c.dataset.order)).toEqual(['k1', 'k2']);
+    // kitchen#76 · k2 is a RUSH round: it leads the board, ahead of k1, which the feed lists first.
+    expect(cards(el).map((c) => c.dataset.order)).toEqual(['k2', 'k1']);
     const t4 = card(el, 'k1');
     expect(t4.textContent).toContain('Mesa 4');
     expect(t4.textContent).toContain('0001');
@@ -188,7 +189,7 @@ describe('kitchen#45: station names in the hub language, resolved by station_id'
     expect(byBar?.getAttribute('value'), 'the segment value is the station id, not its (localized) name').toBe('s-bar');
     el.station = 's-bar';
     await settle(el);
-    expect(cards(el).map((c) => c.dataset.order)).toEqual(['k1', 'k2']);
+    expect(cards(el).map((c) => c.dataset.order)).toEqual(['k2', 'k1']);
     expect(lines(card(el, 'k1')).map((l) => l.dataset.item)).toEqual(['i1']);
   });
 
@@ -250,7 +251,7 @@ describe('kitchen#63: the ticket header says which waiter fired it', () => {
     hubUsers = new Error('no permissions / no SDK');
     const el = await mount();
     // Degraded, never broken: the ticket, its lines and its bump are all still there.
-    expect(cards(el).map((c) => c.dataset.order)).toEqual(['k1', 'k2']);
+    expect(cards(el).map((c) => c.dataset.order)).toEqual(['k2', 'k1']);
     expect(waiterOf(el, 'k1')).toBeUndefined();
     expect(el.shadowRoot.textContent).not.toContain('u-ana');
   });
@@ -300,7 +301,7 @@ describe('kitchen#82: a team member without a hub user is named in the header', 
     firedBy('sm-marta');
     teamMembers = undefined;
     const el = await mount();
-    expect(cards(el).map((c) => c.dataset.order)).toEqual(['k1', 'k2']);
+    expect(cards(el).map((c) => c.dataset.order)).toEqual(['k2', 'k1']);
     expect(waiterOf(el, 'k1')).toBeUndefined();
     expect(el.shadowRoot.textContent).not.toContain('sm-marta');
   });
@@ -308,7 +309,7 @@ describe('kitchen#82: a team member without a hub user is named in the header', 
   it('a team read that fails (no permission) degrades the header, never the board', async () => {
     teamMembers = new Error('forbidden');
     const el = await mount();
-    expect(cards(el).map((c) => c.dataset.order)).toEqual(['k1', 'k2']);
+    expect(cards(el).map((c) => c.dataset.order)).toEqual(['k2', 'k1']);
     expect(waiterOf(el, 'k1'), 'the hub users still resolve').toBe('ui.firedBy:Ana');
   });
 
