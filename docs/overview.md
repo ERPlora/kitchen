@@ -38,6 +38,7 @@ produces without a dining room.
 | `order.fired` (from `sales`) | `kitchen.orders.create_from_order` | Creates the kitchen ticket for that round |
 | `kitchen.order.fired` / `.ready` / `.served` / `.recalled` / `.cancelled` | `kitchen.logs.create` | Writes the audit trail |
 | `kitchen.order.received` | `kitchen.logs.create` | Writes the FIRST audit row of a ticket: it reached the kitchen (kitchen#43). `kitchen.order.created` cannot be routed to the log itself — its payload carries keys of its own (`total`, `items_count`…) that `schemas/log_create.json` refuses, so every creation path also emits this narrow twin whose payload is exactly the log's schema |
+| `customer.merged` (from `customers`) | `kitchen._on_customer_merged` | When two customer sheets are merged, every kitchen order of the absorbed sheet (live or deleted, any status) moves to the surviving one, in this hub only; kitchen still does not depend on `customers` (customers#86) |
 
 **Events it emits**
 
