@@ -122,10 +122,11 @@ const COVERED: Record<string, { prefix: string; contract: string[] }> = {
     ],
   },
   // The «Comandas · N» chip the POS paints for the open check, and the sheet it opens. Each round
-  // is named by its order: `kitchen-comandas-row-${order.id}`.
+  // is named by its order: `kitchen-comandas-row-${order.id}`, and so is its rush toggle
+  // (kitchen#94): `kitchen-comandas-rush-${order.id}`.
   'erp-kitchen-pos-comandas/erp-kitchen-pos-comandas.ts': {
     prefix: 'kitchen-comandas-',
-    contract: ['kitchen-comandas-close', 'kitchen-comandas-open', 'kitchen-comandas-sheet'],
+    contract: ['kitchen-comandas-close', 'kitchen-comandas-error', 'kitchen-comandas-open', 'kitchen-comandas-sheet'],
   },
   // The two buttons the POS borrows from kitchen: arm URGENT, and fire the round.
   'erp-kitchen-pos-fire/erp-kitchen-pos-fire.ts': {

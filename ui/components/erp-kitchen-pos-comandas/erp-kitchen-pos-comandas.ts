@@ -11,6 +11,10 @@
 //   los eventos del KDS (kitchen.order.fired/ready/served/…): el camarero ve pasar la comanda
 //   a LISTA sin tocar nada. Modal = <dialog> nativo showModal() (top layer, patrón del picker
 //   de mesas de tables; los overlays de Ionic en shadow Lit se re-parentan, ADR-0028).
+//
+// kitchen#94: each round still cooking offers «Mark rush» / «Remove rush», the same command
+// (`kitchen.orders.update {priority}`) and the same permission (`kitchen.change_order`) as the
+// KDS card (kitchen#76).
 import { LitElement, css, html, nothing } from 'lit';
 import { state } from 'lit/decorators.js';
 import { define } from '@erplora/outfitkit/define';
@@ -24,6 +28,7 @@ interface Comanda {
   id: string;
   round_number: number;
   status: string;
+  priority?: string;
   fired_at?: string;
   created_at?: string;
 }
@@ -36,6 +41,8 @@ interface ErploraLike {
   queryAll<T = unknown>(name: string, params?: Record<string, unknown>): Promise<T[]>;
   /** Query PLANA (sin motor de listas): las de detalle (items) rechazan params de paginación. */
   query<T = unknown>(name: string, params?: Record<string, unknown>): Promise<T>;
+  hasPermission?(permission: string): boolean;
+  command<T = unknown>(name: string, params?: Record<string, unknown>): Promise<T>;
   on?(event: string, cb: (payload: unknown) => void): () => void;
 }
 
@@ -56,6 +63,23 @@ function t(key: string, params?: Record<string, unknown>): string {
   return c?.t ? c.t(CATALOG, key, params) : key;
 }
 
+function can(permission: string): boolean {
+  const c = erplora();
+  return typeof c.hasPermission === 'function' ? c.hasPermission(permission) : true;
+}
+
+/** Business codes (`kitchen.*`) translate through the module catalog `errors`; anything else falls
+ *  back to the generic status-update message (never the raw server message). */
+function errorText(e: unknown): string {
+  const code = (e as { code?: unknown } | null)?.code;
+  if (typeof code === 'string') {
+    const lang = (CATALOG[erplora().locale] ?? CATALOG.en) as { errors?: Record<string, string> } | undefined;
+    const text = lang?.errors?.[code] ?? (CATALOG.en as { errors?: Record<string, string> }).errors?.[code];
+    if (text) return text;
+  }
+  return t('ui.updateStatusError');
+}
+
 /** Estado del KDS → su clave i18n. Un estado nuevo cae al literal (nunca cadena vacía). */
 const STATUS_KEY: Record<string, string> = {
   pending: 'ui.stQueued',
@@ -66,11 +90,25 @@ const STATUS_KEY: Record<string, string> = {
   cancelled: 'ui.stCancelled',
 };
 
+/** Rounds still on the line (kitchen#94's KDS twin, kitchen#76). */
+const COOKING = ['pending', 'preparing'];
+
+/**
+ * A round offers the rush toggle only while it is still cooking, and only between `normal` and
+ * `rush`: a VIP round stays out, because undoing it would land back on `normal` and erase the VIP
+ * mark for good (kitchen#96).
+ */
+function rushToggleable(c: Comanda): boolean {
+  if (!COOKING.includes(c.status)) return false;
+  const priority = c.priority ?? 'normal';
+  return priority === 'normal' || priority === 'rush';
+}
+
 /** Eventos del KDS que cambian lo que este chip enseña (los emite el handler de set_status). */
 const KDS_EVENTS = [
   'kitchen.order.created', 'kitchen.order.fired', 'kitchen.order.ready',
   'kitchen.order.served', 'kitchen.order.recalled', 'kitchen.order.cancelled',
-  'kitchen.order.deleted',
+  'kitchen.order.deleted', 'kitchen.order.updated',
 ];
 
 export class ErpKitchenPosComandas extends LitElement {
@@ -105,6 +143,13 @@ export class ErpKitchenPosComandas extends LitElement {
     .kstate[data-st='ready'] { background: var(--ion-color-success, #2f9e44); color: #fff; }
     .kstate[data-st='served'] { background: #dee2e6; }
     .kstate[data-st='cancelled'] { background: var(--ion-color-danger, #d9480f); color: #fff; }
+    .kprio { margin-left: .35rem; font-size: .62rem; font-weight: 800; padding: .1rem .45rem;
+      border-radius: var(--ok-radius-pill, 999px); background: var(--ion-color-danger, #eb445a); color: #fff; }
+    .krush { margin-left: .35rem; min-height: 2rem; border: 1px solid var(--ion-color-danger, #eb445a);
+      border-radius: var(--ok-radius-pill, 999px); background: transparent; color: var(--ion-color-danger, #eb445a);
+      font-size: .7rem; font-weight: 800; padding: .15rem .55rem; cursor: pointer; }
+    .krush[data-rush] { background: var(--ion-color-danger, #eb445a); color: #fff; }
+    .kerr { color: var(--ion-color-danger, #d9480f); font-size: .82rem; margin: 0 0 .5rem; }
     .kitem { display: flex; gap: .5rem; padding: .35rem .7rem; font-size: .9rem; }
     .kitem .q { color: #8b897f; min-width: 2.2rem; }
   `;
@@ -113,6 +158,9 @@ export class ErpKitchenPosComandas extends LitElement {
   @state() private comandas: Comanda[] = [];
   @state() private items = new Map<string, ComandaItem[]>();
   @state() private open = false;
+  @state() private error = '';
+  /** Round ids with a rush toggle in flight: blocks a double tap while the server answers. */
+  @state() private busy = new Set<string>();
   private offs: Array<() => void> = [];
 
   connectedCallback() {
@@ -186,6 +234,28 @@ export class ErpKitchenPosComandas extends LitElement {
     return String((Number(raw) || 0) / 1_000_000);
   }
 
+  /**
+   * kitchen#94 · marks (or unmarks) a round rush from the POS sheet, same command and permission
+   * as the KDS card (kitchen#76). A refused command is shown, never swallowed, and the row is
+   * always reloaded from the server afterwards — success or failure — so it shows the real state.
+   */
+  private async toggleRush(c: Comanda): Promise<void> {
+    if (!can('kitchen.change_order')) return;
+    const next = (c.priority ?? 'normal') === 'rush' ? 'normal' : 'rush';
+    this.error = '';
+    this.busy = new Set(this.busy).add(c.id);
+    try {
+      await erplora().command('kitchen.orders.update', { order_id: c.id, priority: next });
+    } catch (e) {
+      this.error = errorText(e);
+    } finally {
+      const busy = new Set(this.busy);
+      busy.delete(c.id);
+      this.busy = busy;
+      await this.refresh();
+    }
+  }
+
   render() {
     if (!this.orderId || !this.comandas.length) return html``;
     return html`
@@ -202,17 +272,27 @@ export class ErpKitchenPosComandas extends LitElement {
             <span class="t">${t('ui.posComandasTitle')}</span>
             <button class="x" data-testid="kitchen-comandas-close" aria-label=${t('ui.close')} @click=${() => this.closeModal()}>✕</button>
           </div>
-          ${this.comandas.map((c) => html`
+          ${this.error ? html`<p class="kerr" data-testid="kitchen-comandas-error" role="alert">${this.error}</p>` : nothing}
+          ${this.comandas.map((c) => {
+            const rush = (c.priority ?? 'normal') === 'rush';
+            return html`
             <div class="krow" data-testid=${`kitchen-comandas-row-${c.id}`}>
               <div class="krow-h">
                 <ion-icon name="flame" style="color: var(--ion-color-warning)"></ion-icon>
                 <span>${t('ui.comandaN', { n: String(c.round_number) })}</span>
                 <span class="ktime">· ${(c.fired_at ?? c.created_at ?? '').replace('T', ' ').slice(11, 16)}</span>
                 <span class="kstate" data-st=${c.status}>${t(STATUS_KEY[c.status] ?? c.status)}</span>
+                ${rush ? html`<span class="kprio">${t('ui.priority_rush')}</span>` : nothing}
+                ${can('kitchen.change_order') && rushToggleable(c) ? html`
+                  <button class="krush" ?data-rush=${rush} data-testid=${`kitchen-comandas-rush-${c.id}`}
+                          ?disabled=${this.busy.has(c.id)} @click=${() => void this.toggleRush(c)}>
+                    ${rush ? t('ui.clearRush') : t('ui.markRush')}
+                  </button>` : nothing}
               </div>
               ${(this.items.get(c.id) ?? []).map((i) => html`
                 <div class="kitem"><span class="q">${this.qty(i.quantity)}×</span><span>${i.product_name}</span></div>`)}
-            </div>`)}
+            </div>`;
+          })}
         </dialog>` : nothing}`;
   }
 }
