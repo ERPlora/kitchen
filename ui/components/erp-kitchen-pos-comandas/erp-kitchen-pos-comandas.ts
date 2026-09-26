@@ -14,13 +14,14 @@
 //
 // kitchen#94: each round still cooking offers «Mark rush» / «Remove rush», the same command
 // (`kitchen.orders.update {priority}`) and the same permission (`kitchen.change_order`) as the
-// KDS card (kitchen#76).
+// KDS card (kitchen#76). Marking a round rush also prints the URGENT notice on paper (kitchen#100).
 import { LitElement, css, html, nothing } from 'lit';
 import { state } from 'lit/decorators.js';
 import { define } from '@erplora/outfitkit/define';
 import esLocale from '../../../locales/es.json';
 import enLocale from '../../../locales/en.json';
 import type { PosState } from '../../lib/pos-fire.js';
+import { printRushNotice } from '../../lib/pass-print';
 
 const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
 
@@ -44,6 +45,9 @@ interface ErploraLike {
   hasPermission?(permission: string): boolean;
   command<T = unknown>(name: string, params?: Record<string, unknown>): Promise<T>;
   on?(event: string, cb: (payload: unknown) => void): () => void;
+  /** The hub's print door (kitchen#70). Absent on a shell that bolted no print door on (module
+   *  preview): then the rush notice simply does not print, and nothing breaks. */
+  print?(req: Record<string, unknown>): Promise<{ via?: string; error?: string } | undefined | void>;
 }
 
 function rows<T>(r: unknown): T[] {
@@ -152,6 +156,7 @@ export class ErpKitchenPosComandas extends LitElement {
       font-size: .8rem; font-weight: 800; padding: .25rem .9rem; cursor: pointer; }
     .krush[data-rush] { background: var(--ion-color-danger, #eb445a); color: #fff; }
     .kerr { color: var(--ion-color-danger, #d9480f); font-size: .82rem; margin: 0 0 .5rem; }
+    .kwarn { color: var(--ion-color-warning-shade, #b26b00); font-size: .82rem; margin: 0 0 .5rem; }
     .kitem { display: flex; gap: .5rem; padding: .35rem .7rem; font-size: .9rem; }
     .kitem .q { color: #8b897f; min-width: 2.2rem; }
   `;
@@ -161,6 +166,8 @@ export class ErpKitchenPosComandas extends LitElement {
   @state() private items = new Map<string, ComandaItem[]>();
   @state() private open = false;
   @state() private error = '';
+  /** kitchen#100 — set when the URGENT notice for a rushed round could not be printed. */
+  @state() private rushNoticeWarning = '';
   /** Round ids with a rush toggle in flight: blocks a double tap while the server answers. */
   @state() private busy = new Set<string>();
   private offs: Array<() => void> = [];
@@ -248,6 +255,7 @@ export class ErpKitchenPosComandas extends LitElement {
     this.busy = new Set(this.busy).add(c.id);
     try {
       await erplora().command('kitchen.orders.update', { order_id: c.id, priority: next });
+      if (next === 'rush') await this.printRushNoticeFor(c.id);
     } catch (e) {
       this.error = errorText(e);
     } finally {
@@ -256,6 +264,25 @@ export class ErpKitchenPosComandas extends LitElement {
       this.busy = busy;
       await this.refresh();
     }
+  }
+
+  /**
+   * kitchen#100 — a paper-only kitchen must hear about a rush set from the POS sheet too: this
+   * puts the same URGENT chit the KDS prints (kitchen#93) on paper, same document and same
+   * `jobId` per (round, printer role), so a kitchen with a screen open too still gets ONE sheet —
+   * the queue drops the second request as a repeat.
+   */
+  private async printRushNoticeFor(orderId: string): Promise<void> {
+    const outcome = await printRushNotice(orderId, erplora());
+    if (outcome.ok) {
+      this.rushNoticeWarning = '';
+      return;
+    }
+    if (outcome.reason === 'no_gate') {
+      console.warn('[kitchen] this shell exposes no print door: the rush notice cannot be printed');
+      return;
+    }
+    this.rushNoticeWarning = t('ui.rushNoticeFailed');
   }
 
   render() {
@@ -275,6 +302,7 @@ export class ErpKitchenPosComandas extends LitElement {
             <button class="x" data-testid="kitchen-comandas-close" aria-label=${t('ui.close')} @click=${() => this.closeModal()}>✕</button>
           </div>
           ${this.error ? html`<p class="kerr" data-testid="kitchen-comandas-error" role="alert">${this.error}</p>` : nothing}
+          ${this.rushNoticeWarning ? html`<p class="kwarn" data-testid="kitchen-comandas-rush-notice-warning" role="status">${this.rushNoticeWarning}</p>` : nothing}
           ${this.comandas.map((c) => {
             const rush = (c.priority ?? 'normal') === 'rush';
             return html`
