@@ -1921,6 +1921,75 @@ async function printPass(orderId, deps, options = {}) {
   }
   return sheets === groups.length ? { ok: true, sheets } : { ok: false, sheets, reason: reason ?? "gate_error", detail };
 }
+var DONE_STATUSES = /* @__PURE__ */ new Set(["ready", "served", "cancelled"]);
+function rushRoles(items) {
+  const roles = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const item of items ?? []) {
+    if ((item?.destination ?? "both") === "display") continue;
+    if (DONE_STATUSES.has(str(item.status))) continue;
+    const role = str(item.printer_role) || DEFAULT_ROLE;
+    if (!seen.has(role)) {
+      seen.add(role);
+      roles.push(role);
+    }
+  }
+  return roles;
+}
+async function printRushNotice(orderId, deps, options = {}) {
+  const print = deps.print;
+  if (typeof print !== "function") return { ok: false, sheets: 0, reason: "no_gate" };
+  let roles;
+  let header;
+  try {
+    const [items, headers] = await Promise.all([
+      deps.query("kitchen.orders.items", { order_id: orderId }),
+      deps.query("kitchen.orders.get", { order_id: orderId })
+    ]);
+    roles = rushRoles(Array.isArray(items) ? items : []);
+    header = first(headers) ?? {};
+  } catch (e6) {
+    console.warn("[kitchen] the rush notice could not be read, so nothing was printed", e6);
+    return { ok: false, sheets: 0, reason: "threw", detail: message(e6) };
+  }
+  if (!roles.length) return { ok: true, sheets: 0, reason: "nothing_to_print" };
+  const waiter = options.resolveWaiter ? options.resolveWaiter(str(header.waiter_id)).trim() : "";
+  const data = {
+    receipt_id: str(header.order_number),
+    label: str(header.label),
+    round_number: num(header.round_number ?? 1),
+    ...waiter ? { waiter } : {},
+    priority: "HIGH",
+    items: []
+  };
+  let sheets = 0;
+  let reason;
+  let detail;
+  for (const role of roles) {
+    try {
+      const result = await print({
+        role,
+        documentType: "kitchen_order",
+        fallbackToBrowser: false,
+        jobId: `kitchen-rush-${orderId}-${role}`,
+        data
+      });
+      const via = result?.via ?? "none";
+      if (via === "bridge" || via === "queue" || via === "browser") {
+        sheets += 1;
+        continue;
+      }
+      reason = "no_printer";
+      detail = result?.error ?? detail;
+      console.warn(`[kitchen] no printer with role ${role}: the rush notice did not come out`, result?.error ?? "");
+    } catch (e6) {
+      reason = "threw";
+      detail = message(e6);
+      console.warn(`[kitchen] the ${role} printer refused the rush notice`, e6);
+    }
+  }
+  return sheets === roles.length ? { ok: true, sheets } : { ok: false, sheets, reason: reason ?? "gate_error", detail };
+}
 function first(v3) {
   return Array.isArray(v3) ? v3[0] : v3;
 }
@@ -2110,6 +2179,7 @@ var es_default = {
     comboAria: "Men\xFA {name}, {n} platos",
     comboCount: "{n} platos",
     passPrintFailed: "No se ha podido imprimir el pase. Revisa la impresora de la estaci\xF3n.",
+    rushNoticeFailed: "No se ha podido imprimir el aviso de urgencia. Avisa a cocina de viva voz y revisa su impresora.",
     comboFallbackName: "Men\xFA"
   },
   errors: {
@@ -2293,6 +2363,7 @@ var en_default = {
     comboAria: "Menu {name}, {n} dishes",
     comboCount: "{n} dishes",
     passPrintFailed: "The pass could not be printed. Check the printer of the station.",
+    rushNoticeFailed: "The urgent notice could not be printed. Tell the kitchen by voice and check its printer.",
     comboFallbackName: "Menu"
   },
   errors: {
@@ -2461,6 +2532,7 @@ var ErpKitchenDisplay = class extends i3 {
     this.waitersById = /* @__PURE__ */ new Map();
     this.error = "";
     this.passWarning = "";
+    this.rushNoticeWarning = "";
     this.loading = false;
     this.now = Date.now();
     /** kitchen#48 · the chime, one audio context for the whole shift. */
@@ -2699,6 +2771,8 @@ var ErpKitchenDisplay = class extends i3 {
     this.knownTickets = onScreen;
     this.knownRush = rushNow;
     if (!knownTickets || !knownRush) return;
+    const escalatedIds = [...rushNow].filter((id) => knownTickets.has(id) && !knownRush.has(id));
+    for (const id of escalatedIds) void this.printRushNoticeFor(id);
     if (!this.settings.sound_enabled) return;
     const arrived = [...onScreen].some((id) => !knownTickets.has(id));
     const escalated = [...rushNow].some((id) => !knownRush.has(id));
@@ -2734,6 +2808,27 @@ var ErpKitchenDisplay = class extends i3 {
       return;
     }
     this.passWarning = erplora().t(CATALOG, "ui.passPrintFailed");
+  }
+  /**
+   * Puts the RUSH NOTICE of an escalated ticket on paper (kitchen#93) — a short chit for a round
+   * pushed to the front after it already fired.
+   *
+   * Driven by `ringForNews`, never by the tap: never awaited by its caller and never able to
+   * throw — the board already has the rush in the database, paper is only the copy of it.
+   */
+  async printRushNoticeFor(orderId) {
+    const outcome = await printRushNotice(orderId, erplora(), {
+      resolveWaiter: (id) => this.waitersById.get(id) ?? ""
+    });
+    if (outcome.ok) {
+      this.rushNoticeWarning = "";
+      return;
+    }
+    if (outcome.reason === "no_gate") {
+      console.warn("[kitchen] this shell exposes no print door: the rush notice cannot be printed");
+      return;
+    }
+    this.rushNoticeWarning = erplora().t(CATALOG, "ui.rushNoticeFailed");
   }
   // ── derived ────────────────────────────────────────────────────────────────
   get tickets() {
@@ -3040,6 +3135,7 @@ var ErpKitchenDisplay = class extends i3 {
       </div>
       ${this.error ? b2`<ok-inline-feedback data-testid="kds-error" tone="danger" icon="alert-circle-outline">${this.error}</ok-inline-feedback>` : A}
       ${this.passWarning ? b2`<ok-inline-feedback data-testid="kds-pass-warning" data-pass-warning tone="warning" icon="print-outline">${this.passWarning}</ok-inline-feedback>` : A}
+      ${this.rushNoticeWarning ? b2`<ok-inline-feedback data-testid="kds-rush-notice-warning" tone="warning" icon="print-outline">${this.rushNoticeWarning}</ok-inline-feedback>` : A}
       ${this.mode === "allday" ? this.renderAllDay() : this.mode === "ready" ? this.renderBoard(ready, "ui.emptyReady") : this.renderBoard(cooking, "ui.emptyDisplay")}
     </div>`;
   }
@@ -3077,6 +3173,9 @@ __decorateClass([
 __decorateClass([
   r5()
 ], ErpKitchenDisplay.prototype, "passWarning", 2);
+__decorateClass([
+  r5()
+], ErpKitchenDisplay.prototype, "rushNoticeWarning", 2);
 __decorateClass([
   r5()
 ], ErpKitchenDisplay.prototype, "loading", 2);
