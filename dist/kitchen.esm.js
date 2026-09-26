@@ -1953,6 +1953,7 @@ async function printRushNotice(orderId, deps, options = {}) {
     return { ok: false, sheets: 0, reason: "threw", detail: message(e6) };
   }
   if (!roles.length) return { ok: true, sheets: 0, reason: "nothing_to_print" };
+  const rushCount = num(header.rush_count ?? 0);
   const waiter = options.resolveWaiter ? options.resolveWaiter(str(header.waiter_id)).trim() : "";
   const data = {
     receipt_id: str(header.order_number),
@@ -1971,7 +1972,7 @@ async function printRushNotice(orderId, deps, options = {}) {
         role,
         documentType: "kitchen_order",
         fallbackToBrowser: false,
-        jobId: `kitchen-rush-${orderId}-${role}`,
+        jobId: `kitchen-rush-${orderId}-${role}-${rushCount}`,
         data
       });
       const via = result?.via ?? "none";

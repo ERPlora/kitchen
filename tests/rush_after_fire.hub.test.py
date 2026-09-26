@@ -12,6 +12,9 @@ running hub can prove the door itself:
   2. Undoing it is the same door with `normal`, and nothing else on the ticket moves (label, round).
   3. TENANCY: another hub sending the same order id can neither see the ticket on its board nor
      change its priority — the command's `WHERE hub_id = :hub_id` is applied by the dispatcher.
+  4. kitchen#99: every turn TO rush bumps `rush_count` (read by `kitchen.orders.get`, the value the
+     rush notice's job id is built from), so marked → cleared → marked again reads 2; repeating
+     rush or editing only the notes (priority bound as NULL by the real dispatcher) does not count.
 
 Usage: `erplora test <dir> --against-hub [dev|stable|sha256:…]` (module-toolkit#110). Never on its
 own: without a runtime it fails, it does not skip.
@@ -91,6 +94,26 @@ def test_another_hub_cannot_rush_or_see_the_ticket(hub: Hub) -> None:
     )
 
 
+def rush_count(hub: Hub, ticket_id: str):
+    rows = hub.query("kitchen.orders.get", {"order_id": ticket_id})
+    return rows[0].get("rush_count") if rows else None
+
+
+def test_every_turn_to_rush_is_counted(hub: Hub) -> None:
+    print("\n4 · every turn to rush is counted, so the second rush gets its own notice (kitchen#99)")
+    ticket = fired_round(hub)
+    hub.check("a round fired normal was never rushed", rush_count(hub, ticket["id"]), 0)
+    hub.run("kitchen.orders.update", {"order_id": ticket["id"], "priority": "rush"})
+    hub.check("normal → rush counts 1", rush_count(hub, ticket["id"]), 1)
+    hub.run("kitchen.orders.update", {"order_id": ticket["id"], "priority": "rush"})
+    hub.check("rush → rush does not count", rush_count(hub, ticket["id"]), 1)
+    hub.run("kitchen.orders.update", {"order_id": ticket["id"], "notes": "sin cebolla"})
+    hub.check("an edit without a priority does not count", rush_count(hub, ticket["id"]), 1)
+    hub.run("kitchen.orders.update", {"order_id": ticket["id"], "priority": "normal"})
+    hub.run("kitchen.orders.update", {"order_id": ticket["id"], "priority": "rush"})
+    hub.check("cleared and marked again counts 2", rush_count(hub, ticket["id"]), 2)
+
+
 def main() -> int:
     hub = Hub("rush_after_fire.hub")
     print(
@@ -99,6 +122,7 @@ def main() -> int:
     test_a_fired_round_can_be_marked_rush(hub)
     test_undo_is_the_same_door_and_touches_nothing_else(hub)
     test_another_hub_cannot_rush_or_see_the_ticket(hub)
+    test_every_turn_to_rush_is_counted(hub)
     return hub.finish(
         "a fired round turns rush and back through its own hub's door only, against the real kernel"
     )

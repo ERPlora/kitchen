@@ -9,6 +9,9 @@
 //   · Only when the round turns rush, and only after the command succeeded.
 //   · Removing the rush prints nothing: the pressure coming off a ticket is not news.
 //   · A printer that is missing is SAID on the sheet; a shell with no print door says nothing.
+//   · kitchen#99 · the `jobId` carries the round's `rush_count` (bumped by `kitchen.orders.update`
+//     on every transition TO rush), so a round marked, cleared and marked again prints its second
+//     notice — and a KDS asking for that same second rush still adds no sheet.
 import { beforeEach, describe, expect, it } from 'vitest';
 import { printRushNotice, type PassPrintDeps } from '../../lib/pass-print';
 
@@ -21,6 +24,8 @@ let failNext: unknown;
 let printVia: string;
 /** The hub's print queue deduplicates by `jobId`: a repeat is accepted and prints nothing. */
 let queued: Set<string>;
+/** `kitchen_order.rush_count` as `commands/order_update.sql` keeps it: +1 on every turn TO rush. */
+let rushCount: Record<string, number>;
 
 const settle = async (el: Element) => {
   for (let i = 0; i < 4; i++) {
@@ -46,7 +51,9 @@ const print = async (req: Row) => {
 const query = async (name: string, params?: Row) => {
   const id = String(params?.order_id ?? '');
   if (name === 'kitchen.orders.items') return (ITEMS[id] ?? []).map((i) => ({ ...i }));
-  if (name === 'kitchen.orders.get') return [{ id, order_number: `T-${id}`, label: 'Mesa 4', round_number: 2 }];
+  if (name === 'kitchen.orders.get') {
+    return [{ id, order_number: `T-${id}`, label: 'Mesa 4', round_number: 2, rush_count: rushCount[id] ?? 0 }];
+  }
   return [];
 };
 
@@ -56,6 +63,7 @@ beforeEach(() => {
   failNext = undefined;
   printVia = 'queue';
   queued = new Set();
+  rushCount = { k3: 1 };
   comandasStub = [
     { id: 'k3', round_number: 3, status: 'pending', priority: 'rush', fired_at: '2026-09-26T20:40:00+00:00' },
     { id: 'k2', round_number: 2, status: 'preparing', priority: 'normal', fired_at: '2026-09-26T20:37:00+00:00' },
@@ -79,6 +87,9 @@ beforeEach(() => {
         throw e;
       }
       if (name === 'kitchen.orders.update') {
+        const id = String(params.order_id);
+        const before = comandasStub.find((c) => c.id === id)?.priority;
+        if (params.priority === 'rush' && before !== 'rush') rushCount[id] = (rushCount[id] ?? 0) + 1;
         comandasStub = comandasStub.map((c) => (c.id === params.order_id ? { ...c, priority: params.priority } : c));
       }
       return { ok: true };
@@ -113,8 +124,8 @@ describe('kitchen#100 · rush from the POS prints the URGENT notice in the kitch
 
     expect(commands).toEqual([{ name: 'kitchen.orders.update', params: { order_id: 'k2', priority: 'rush' } }]);
     expect(prints.map((p) => [p.role, p.documentType, p.jobId, p.fallbackToBrowser])).toEqual([
-      ['kitchen', 'kitchen_order', 'kitchen-rush-k2-kitchen', false],
-      ['bar', 'kitchen_order', 'kitchen-rush-k2-bar', false],
+      ['kitchen', 'kitchen_order', 'kitchen-rush-k2-kitchen-1', false],
+      ['bar', 'kitchen_order', 'kitchen-rush-k2-bar-1', false],
     ]);
     expect(prints[0].data, 'the short chit: flagged HIGH, no lines to cook twice').toMatchObject({
       receipt_id: 'T-k2', label: 'Mesa 4', priority: 'HIGH', items: [],
@@ -130,7 +141,24 @@ describe('kitchen#100 · rush from the POS prints the URGENT notice in the kitch
     await printRushNotice('k2', kdsDeps);
 
     expect(prints, 'both asked').toHaveLength(4);
-    expect(queued, 'the queue keeps one job per (round, station)').toEqual(new Set(['kitchen-rush-k2-kitchen', 'kitchen-rush-k2-bar']));
+    expect(queued, 'the queue keeps one job per (round, station)').toEqual(new Set(['kitchen-rush-k2-kitchen-1', 'kitchen-rush-k2-bar-1']));
+  });
+
+  it('kitchen#99 · marked, cleared and marked AGAIN: the second rush is a new sheet per station', async () => {
+    const el = await openSheet();
+    await tapRush(el, 'k2'); // mark
+    await tapRush(el, 'k2'); // clear
+    await tapRush(el, 'k2'); // mark again
+
+    expect(commands.map((c) => c.params.priority)).toEqual(['rush', 'normal', 'rush']);
+    expect(queued, 'two rushes, two sheets per station').toEqual(
+      new Set(['kitchen-rush-k2-kitchen-1', 'kitchen-rush-k2-bar-1', 'kitchen-rush-k2-kitchen-2', 'kitchen-rush-k2-bar-2']),
+    );
+    expect(warning(el)).toBeNull();
+
+    // The KDS sees the same second escalation and asks for its notice: still one sheet per station.
+    await printRushNotice('k2', { query: query as PassPrintDeps['query'], print });
+    expect(queued.size, 'the KDS asking for the same rush adds no sheet').toBe(4);
   });
 
   it('removing the rush prints nothing', async () => {
