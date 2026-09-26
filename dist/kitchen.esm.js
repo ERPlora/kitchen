@@ -6142,6 +6142,19 @@ function t5(key, params) {
   const c5 = globalThis.erplora;
   return c5?.t ? c5.t(CATALOG6, key, params) : key;
 }
+function can3(permission) {
+  const c5 = erplora6();
+  return typeof c5.hasPermission === "function" ? c5.hasPermission(permission) : true;
+}
+function errorText3(e6) {
+  const code = e6?.code;
+  if (typeof code === "string") {
+    const lang = CATALOG6[erplora6().locale] ?? CATALOG6.en;
+    const text = lang?.errors?.[code] ?? CATALOG6.en.errors?.[code];
+    if (text) return text;
+  }
+  return t5("ui.updateStatusError");
+}
 var STATUS_KEY = {
   pending: "ui.stQueued",
   preparing: "ui.stPreparing",
@@ -6150,6 +6163,12 @@ var STATUS_KEY = {
   paid: "ui.stPaid",
   cancelled: "ui.stCancelled"
 };
+var COOKING2 = ["pending", "preparing"];
+function rushToggleable2(c5) {
+  if (!COOKING2.includes(c5.status)) return false;
+  const priority = c5.priority ?? "normal";
+  return priority === "normal" || priority === "rush";
+}
 var KDS_EVENTS = [
   "kitchen.order.created",
   "kitchen.order.fired",
@@ -6157,7 +6176,8 @@ var KDS_EVENTS = [
   "kitchen.order.served",
   "kitchen.order.recalled",
   "kitchen.order.cancelled",
-  "kitchen.order.deleted"
+  "kitchen.order.deleted",
+  "kitchen.order.updated"
 ];
 var ErpKitchenPosComandas = class extends i3 {
   constructor() {
@@ -6165,6 +6185,8 @@ var ErpKitchenPosComandas = class extends i3 {
     this.comandas = [];
     this.items = /* @__PURE__ */ new Map();
     this.open = false;
+    this.error = "";
+    this.busy = /* @__PURE__ */ new Set();
     this.offs = [];
     this.onPosState = (e6) => {
       const next = e6.detail?.order_id;
@@ -6181,7 +6203,7 @@ var ErpKitchenPosComandas = class extends i3 {
       background: none; border-radius: var(--ok-radius-pill, 999px); padding: .15rem .6rem; font-size: .72rem;
       font-weight: 800; cursor: pointer; }
     .chip ion-icon { font-size: .9rem; }
-    dialog.sheet { border: none; border-radius: var(--ok-radius-lg, 16px); padding: 1rem; width: min(94vw, 26rem);
+    dialog.sheet { box-sizing: border-box; border: none; border-radius: var(--ok-radius-lg, 16px); padding: 1rem; width: min(94vw, 26rem);
       max-height: 85vh; overflow: auto; background: var(--ion-background-color, #fff);
       color: var(--ion-text-color, #1c1b18); box-shadow: 0 12px 48px rgba(0,0,0,.35); }
     dialog.sheet::backdrop { background: rgba(0,0,0,.45); }
@@ -6205,6 +6227,15 @@ var ErpKitchenPosComandas = class extends i3 {
     .kstate[data-st='ready'] { background: var(--ion-color-success, #2f9e44); color: #fff; }
     .kstate[data-st='served'] { background: #dee2e6; }
     .kstate[data-st='cancelled'] { background: var(--ion-color-danger, #d9480f); color: #fff; }
+    .kprio { margin-left: .35rem; font-size: .62rem; font-weight: 800; padding: .1rem .45rem;
+      border-radius: var(--ok-radius-pill, 999px); background: var(--ion-color-danger, #eb445a); color: #fff; }
+    .krow-h > * { white-space: nowrap; }
+    .krow-a { display: flex; justify-content: flex-end; padding: 0 .7rem .5rem; }
+    .krush { min-height: 2.5rem; border: 1px solid var(--ion-color-danger, #eb445a);
+      border-radius: var(--ok-radius-pill, 999px); background: transparent; color: var(--ion-color-danger, #eb445a);
+      font-size: .8rem; font-weight: 800; padding: .25rem .9rem; cursor: pointer; }
+    .krush[data-rush] { background: var(--ion-color-danger, #eb445a); color: #fff; }
+    .kerr { color: var(--ion-color-danger, #d9480f); font-size: .82rem; margin: 0 0 .5rem; }
     .kitem { display: flex; gap: .5rem; padding: .35rem .7rem; font-size: .9rem; }
     .kitem .q { color: #8b897f; min-width: 2.2rem; }
   `;
@@ -6271,6 +6302,27 @@ var ErpKitchenPosComandas = class extends i3 {
   qty(raw) {
     return String((Number(raw) || 0) / 1e6);
   }
+  /**
+   * kitchen#94 · marks (or unmarks) a round rush from the POS sheet, same command and permission
+   * as the KDS card (kitchen#76). A refused command is shown, never swallowed, and the row is
+   * always reloaded from the server afterwards — success or failure — so it shows the real state.
+   */
+  async toggleRush(c5) {
+    if (!can3("kitchen.change_order")) return;
+    const next = (c5.priority ?? "normal") === "rush" ? "normal" : "rush";
+    this.error = "";
+    this.busy = new Set(this.busy).add(c5.id);
+    try {
+      await erplora6().command("kitchen.orders.update", { order_id: c5.id, priority: next });
+    } catch (e6) {
+      this.error = errorText3(e6);
+    } finally {
+      const busy = new Set(this.busy);
+      busy.delete(c5.id);
+      this.busy = busy;
+      await this.refresh();
+    }
+  }
   render() {
     if (!this.orderId || !this.comandas.length) return b2``;
     return b2`
@@ -6291,17 +6343,29 @@ var ErpKitchenPosComandas = class extends i3 {
             <span class="t">${t5("ui.posComandasTitle")}</span>
             <button class="x" data-testid="kitchen-comandas-close" aria-label=${t5("ui.close")} @click=${() => this.closeModal()}>✕</button>
           </div>
-          ${this.comandas.map((c5) => b2`
+          ${this.error ? b2`<p class="kerr" data-testid="kitchen-comandas-error" role="alert">${this.error}</p>` : A}
+          ${this.comandas.map((c5) => {
+      const rush = (c5.priority ?? "normal") === "rush";
+      return b2`
             <div class="krow" data-testid=${`kitchen-comandas-row-${c5.id}`}>
               <div class="krow-h">
                 <ion-icon name="flame" style="color: var(--ion-color-warning)"></ion-icon>
                 <span>${t5("ui.comandaN", { n: String(c5.round_number) })}</span>
                 <span class="ktime">· ${(c5.fired_at ?? c5.created_at ?? "").replace("T", " ").slice(11, 16)}</span>
                 <span class="kstate" data-st=${c5.status}>${t5(STATUS_KEY[c5.status] ?? c5.status)}</span>
+                ${rush ? b2`<span class="kprio">${t5("ui.priority_rush")}</span>` : A}
               </div>
               ${(this.items.get(c5.id) ?? []).map((i7) => b2`
                 <div class="kitem"><span class="q">${this.qty(i7.quantity)}×</span><span>${i7.product_name}</span></div>`)}
-            </div>`)}
+              ${can3("kitchen.change_order") && rushToggleable2(c5) ? b2`
+                <div class="krow-a">
+                  <button class="krush" ?data-rush=${rush} data-testid=${`kitchen-comandas-rush-${c5.id}`}
+                          ?disabled=${this.busy.has(c5.id)} @click=${() => void this.toggleRush(c5)}>
+                    ${rush ? t5("ui.clearRush") : t5("ui.markRush")}
+                  </button>
+                </div>` : A}
+            </div>`;
+    })}
         </dialog>` : A}`;
   }
 };
@@ -6317,6 +6381,12 @@ __decorateClass([
 __decorateClass([
   r5()
 ], ErpKitchenPosComandas.prototype, "open", 2);
+__decorateClass([
+  r5()
+], ErpKitchenPosComandas.prototype, "error", 2);
+__decorateClass([
+  r5()
+], ErpKitchenPosComandas.prototype, "busy", 2);
 define("erp-kitchen-pos-comandas", ErpKitchenPosComandas);
 
 // lit-html/directives/class-map.js
