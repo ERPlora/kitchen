@@ -751,12 +751,22 @@
       "sql": [
         "commands/order_delete.sql"
       ]
+    },
+    "kitchen._on_customer_merged": {
+      "permission": "kitchen.change_order",
+      "transaction": true,
+      "sql": [
+        "commands/customer_merge_orders.sql"
+      ]
     }
   },
   "events": {
     "listen": {
       "order.fired": {
         "command": "kitchen.orders.create_from_order"
+      },
+      "customer.merged": {
+        "command": "kitchen._on_customer_merged"
       },
       "order.completed": {
         "command": "kitchen.orders.close_from_order"
