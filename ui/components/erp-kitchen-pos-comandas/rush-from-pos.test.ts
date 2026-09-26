@@ -159,6 +159,27 @@ describe('kitchen#94 · rush from the POS «Comandas» sheet', () => {
     expect(err.textContent).not.toContain('ECONNREFUSED');
   });
 
+  it('a second tap while the kitchen is still answering sends nothing: the toggle is disabled in flight', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    const sdk = (globalThis as { erplora: { command: (name: string, params: Row) => Promise<unknown> } }).erplora;
+    const real = sdk.command;
+    sdk.command = async (name, params) => { await gate; return real(name, params); };
+
+    const el = await openSheet();
+    rushButton(el, 'k2')!.click();
+    await settle(el);
+    expect(rushButton(el, 'k2')!.hasAttribute('disabled'), 'the toggle is disabled while the command is in flight').toBe(true);
+    rushButton(el, 'k2')!.click();
+    await settle(el);
+
+    release();
+    await settle(el);
+    expect(commands, 'one command for two taps').toHaveLength(1);
+    expect(rushButton(el, 'k2')!.hasAttribute('disabled'), 'the toggle is enabled again once the server answered').toBe(false);
+    expect(rushButton(el, 'k2')!.textContent).toContain('ui.clearRush');
+  });
+
   it('a rush set from ANOTHER screen reaches the open sheet live (kitchen.order.updated)', async () => {
     const el = await openSheet();
     expect(subs['kitchen.order.updated'], 'the sheet listens to the update event').toBeTruthy();
