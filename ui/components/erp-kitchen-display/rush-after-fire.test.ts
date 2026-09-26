@@ -227,3 +227,30 @@ describe('kitchen#76: marking a round rush after it was fired', () => {
     expect(rushButton(el, 'k9')).toBeNull();
   });
 });
+
+// kitchen#96 — `vip` is the third word of the kitchen's priority vocabulary (`order.fired` carries
+// it from `sales`, flows and third-party emitters, so it stays in the contract). Before: the rush
+// toggle flipped `vip` → `rush` → `normal`, erasing the VIP mark for good, and the board only
+// moved `rush` forward, so a VIP round waited behind older normal ones.
+describe('kitchen#96: a VIP round keeps its mark and its place', () => {
+  it('a VIP ticket offers no rush toggle, so the mark cannot be lost; a normal one still does (control)', async () => {
+    displayRows = [round('k1', 20), round('k2', 10, 'vip')];
+    const el = await mount();
+    expect(el.shadowRoot.querySelector('[data-order="k2"]'), 'control: the VIP ticket is on screen').not.toBeNull();
+    expect(rushButton(el, 'k1'), 'control: a normal ticket keeps its rush toggle').not.toBeNull();
+    expect(rushButton(el, 'k2'), 'the toggle on a VIP ticket can only end at «normal»').toBeNull();
+  });
+
+  it('a VIP ticket still shows its VIP pill', async () => {
+    displayRows = [round('k2', 10, 'vip')];
+    const el = await mount();
+    const pill = el.shadowRoot.querySelector('[data-order="k2"] .pill.vip');
+    expect(pill?.textContent?.trim()).toBe('ui.priority_vip');
+  });
+
+  it('the board reads rush first, then VIP, then the rest — each group oldest-first', async () => {
+    displayRows = [round('k1', 20), round('k2', 10, 'vip'), round('k3', 2, 'rush'), round('k4', 1, 'vip'), round('k5', 0)];
+    const el = await mount();
+    expect(order(el)).toEqual(['k3', 'k2', 'k4', 'k1', 'k5']);
+  });
+});

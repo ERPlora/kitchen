@@ -327,8 +327,16 @@ export function groupTickets(rows: DisplayRow[]): Ticket[] {
  *  the order they were fired. */
 export function rushFirst(tickets: Ticket[]): Ticket[] {
   const rush = tickets.filter((t) => t.priority === 'rush');
-  const rest = tickets.filter((t) => t.priority !== 'rush');
-  return [...rush, ...rest];
+  // kitchen#96 · `vip` is the kitchen's other priority word (it arrives with `order.fired`): it
+  // reads right behind rush, ahead of the normal rounds.
+  const vip = tickets.filter((t) => t.priority === 'vip');
+  const rest = tickets.filter((t) => t.priority !== 'rush' && t.priority !== 'vip');
+  return [...rush, ...vip, ...rest];
+}
+
+/** kitchen#96 · the rush toggle only moves a round between `normal` and `rush`. */
+function rushToggleable(t: Ticket): boolean {
+  return t.priority === 'normal' || t.priority === 'rush';
 }
 
 /** A menu with its components, or a single à-la-carte line (`ref === null`). */
@@ -882,13 +890,14 @@ export class ErpKitchenDisplay extends LitElement {
   /**
    * kitchen#76 · marks (or unmarks) a round rush from its card, once it is already on the line —
    * before this, the only moment a round could be urgent was when it was fired (hub#1411). Same
-   * button undoes it: no confirm dialog, the way every other action on this screen works.
+   * button undoes it: no confirm dialog, the way every other action on this screen works. Only
+   * between `normal` and `rush` (the card offers no toggle on a `vip` round): undoing it there would
+   * land on `normal` and erase the VIP mark for good (kitchen#96).
    */
   private toggleRush(t: Ticket) {
     if (!can('kitchen.change_order')) return;
-    return this.run(() =>
-      erplora().command('kitchen.orders.update', { order_id: t.id, priority: t.priority === 'rush' ? 'normal' : 'rush' }),
-    );
+    const next = t.priority === 'normal' ? 'rush' : 'normal';
+    return this.run(() => erplora().command('kitchen.orders.update', { order_id: t.id, priority: next }));
   }
 
   // ── render ─────────────────────────────────────────────────────────────────
@@ -985,7 +994,7 @@ export class ErpKitchenDisplay extends LitElement {
       ${canChange || (canServe && t.status === 'ready')
         ? html`<footer class="foot">
             ${canChange && cooking ? html`<ion-button data-testid=${`kds-ticket-${t.id}-bump`} data-action="bump" @click=${() => this.bumpTicket(t)}>${t_('ui.bump')}</ion-button>` : nothing}
-            ${canChange && cooking
+            ${canChange && cooking && rushToggleable(t)
               ? html`<ion-button data-testid=${`kds-ticket-${t.id}-rush`} data-action="rush" fill="outline" @click=${() => this.toggleRush(t)}>${t.priority === 'rush' ? t_('ui.clearRush') : t_('ui.markRush')}</ion-button>`
               : nothing}
             ${canChange && struck ? html`<ion-button data-testid=${`kds-ticket-${t.id}-recall`} data-action="recall" fill="outline" @click=${() => this.recallTicket(t)}>${t_('ui.recall')}</ion-button>` : nothing}
