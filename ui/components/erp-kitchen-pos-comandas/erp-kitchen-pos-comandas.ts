@@ -119,7 +119,7 @@ export class ErpKitchenPosComandas extends LitElement {
       background: none; border-radius: var(--ok-radius-pill, 999px); padding: .15rem .6rem; font-size: .72rem;
       font-weight: 800; cursor: pointer; }
     .chip ion-icon { font-size: .9rem; }
-    dialog.sheet { border: none; border-radius: var(--ok-radius-lg, 16px); padding: 1rem; width: min(94vw, 26rem);
+    dialog.sheet { box-sizing: border-box; border: none; border-radius: var(--ok-radius-lg, 16px); padding: 1rem; width: min(94vw, 26rem);
       max-height: 85vh; overflow: auto; background: var(--ion-background-color, #fff);
       color: var(--ion-text-color, #1c1b18); box-shadow: 0 12px 48px rgba(0,0,0,.35); }
     dialog.sheet::backdrop { background: rgba(0,0,0,.45); }
@@ -145,9 +145,11 @@ export class ErpKitchenPosComandas extends LitElement {
     .kstate[data-st='cancelled'] { background: var(--ion-color-danger, #d9480f); color: #fff; }
     .kprio { margin-left: .35rem; font-size: .62rem; font-weight: 800; padding: .1rem .45rem;
       border-radius: var(--ok-radius-pill, 999px); background: var(--ion-color-danger, #eb445a); color: #fff; }
-    .krush { margin-left: .35rem; min-height: 2rem; border: 1px solid var(--ion-color-danger, #eb445a);
+    .krow-h > * { white-space: nowrap; }
+    .krow-a { display: flex; justify-content: flex-end; padding: 0 .7rem .5rem; }
+    .krush { min-height: 2.5rem; border: 1px solid var(--ion-color-danger, #eb445a);
       border-radius: var(--ok-radius-pill, 999px); background: transparent; color: var(--ion-color-danger, #eb445a);
-      font-size: .7rem; font-weight: 800; padding: .15rem .55rem; cursor: pointer; }
+      font-size: .8rem; font-weight: 800; padding: .25rem .9rem; cursor: pointer; }
     .krush[data-rush] { background: var(--ion-color-danger, #eb445a); color: #fff; }
     .kerr { color: var(--ion-color-danger, #d9480f); font-size: .82rem; margin: 0 0 .5rem; }
     .kitem { display: flex; gap: .5rem; padding: .35rem .7rem; font-size: .9rem; }
@@ -283,14 +285,16 @@ export class ErpKitchenPosComandas extends LitElement {
                 <span class="ktime">· ${(c.fired_at ?? c.created_at ?? '').replace('T', ' ').slice(11, 16)}</span>
                 <span class="kstate" data-st=${c.status}>${t(STATUS_KEY[c.status] ?? c.status)}</span>
                 ${rush ? html`<span class="kprio">${t('ui.priority_rush')}</span>` : nothing}
-                ${can('kitchen.change_order') && rushToggleable(c) ? html`
-                  <button class="krush" ?data-rush=${rush} data-testid=${`kitchen-comandas-rush-${c.id}`}
-                          ?disabled=${this.busy.has(c.id)} @click=${() => void this.toggleRush(c)}>
-                    ${rush ? t('ui.clearRush') : t('ui.markRush')}
-                  </button>` : nothing}
               </div>
               ${(this.items.get(c.id) ?? []).map((i) => html`
                 <div class="kitem"><span class="q">${this.qty(i.quantity)}×</span><span>${i.product_name}</span></div>`)}
+              ${can('kitchen.change_order') && rushToggleable(c) ? html`
+                <div class="krow-a">
+                  <button class="krush" ?data-rush=${rush} data-testid=${`kitchen-comandas-rush-${c.id}`}
+                          ?disabled=${this.busy.has(c.id)} @click=${() => void this.toggleRush(c)}>
+                    ${rush ? t('ui.clearRush') : t('ui.markRush')}
+                  </button>
+                </div>` : nothing}
             </div>`;
           })}
         </dialog>` : nothing}`;

@@ -148,6 +148,17 @@ describe('kitchen#94 · rush from the POS «Comandas» sheet', () => {
     expect(rushButton(el, 'k2')!.textContent, 'nothing changed server-side').toContain('ui.markRush');
   });
 
+  it('a failure with no known code shows the generic message, never the raw server text', async () => {
+    failNext = new Error('connect ECONNREFUSED 10.0.0.1:5432');
+    const el = await openSheet();
+    rushButton(el, 'k2')!.click();
+    await settle(el);
+
+    const err = el.shadowRoot!.querySelector('[data-testid="kitchen-comandas-error"]')!;
+    expect(err.textContent).toContain('ui.updateStatusError');
+    expect(err.textContent).not.toContain('ECONNREFUSED');
+  });
+
   it('a rush set from ANOTHER screen reaches the open sheet live (kitchen.order.updated)', async () => {
     const el = await openSheet();
     expect(subs['kitchen.order.updated'], 'the sheet listens to the update event').toBeTruthy();
