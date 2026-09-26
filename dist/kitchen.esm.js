@@ -6186,6 +6186,7 @@ var ErpKitchenPosComandas = class extends i3 {
     this.items = /* @__PURE__ */ new Map();
     this.open = false;
     this.error = "";
+    this.rushNoticeWarning = "";
     this.busy = /* @__PURE__ */ new Set();
     this.offs = [];
     this.onPosState = (e6) => {
@@ -6236,6 +6237,7 @@ var ErpKitchenPosComandas = class extends i3 {
       font-size: .8rem; font-weight: 800; padding: .25rem .9rem; cursor: pointer; }
     .krush[data-rush] { background: var(--ion-color-danger, #eb445a); color: #fff; }
     .kerr { color: var(--ion-color-danger, #d9480f); font-size: .82rem; margin: 0 0 .5rem; }
+    .kwarn { color: var(--ion-color-warning-shade, #b26b00); font-size: .82rem; margin: 0 0 .5rem; }
     .kitem { display: flex; gap: .5rem; padding: .35rem .7rem; font-size: .9rem; }
     .kitem .q { color: #8b897f; min-width: 2.2rem; }
   `;
@@ -6314,6 +6316,7 @@ var ErpKitchenPosComandas = class extends i3 {
     this.busy = new Set(this.busy).add(c5.id);
     try {
       await erplora6().command("kitchen.orders.update", { order_id: c5.id, priority: next });
+      if (next === "rush") await this.printRushNoticeFor(c5.id);
     } catch (e6) {
       this.error = errorText3(e6);
     } finally {
@@ -6322,6 +6325,24 @@ var ErpKitchenPosComandas = class extends i3 {
       this.busy = busy;
       await this.refresh();
     }
+  }
+  /**
+   * kitchen#100 — a paper-only kitchen must hear about a rush set from the POS sheet too: this
+   * puts the same URGENT chit the KDS prints (kitchen#93) on paper, same document and same
+   * `jobId` per (round, printer role), so a kitchen with a screen open too still gets ONE sheet —
+   * the queue drops the second request as a repeat.
+   */
+  async printRushNoticeFor(orderId) {
+    const outcome = await printRushNotice(orderId, erplora6());
+    if (outcome.ok) {
+      this.rushNoticeWarning = "";
+      return;
+    }
+    if (outcome.reason === "no_gate") {
+      console.warn("[kitchen] this shell exposes no print door: the rush notice cannot be printed");
+      return;
+    }
+    this.rushNoticeWarning = t5("ui.rushNoticeFailed");
   }
   render() {
     if (!this.orderId || !this.comandas.length) return b2``;
@@ -6344,6 +6365,7 @@ var ErpKitchenPosComandas = class extends i3 {
             <button class="x" data-testid="kitchen-comandas-close" aria-label=${t5("ui.close")} @click=${() => this.closeModal()}>✕</button>
           </div>
           ${this.error ? b2`<p class="kerr" data-testid="kitchen-comandas-error" role="alert">${this.error}</p>` : A}
+          ${this.rushNoticeWarning ? b2`<p class="kwarn" data-testid="kitchen-comandas-rush-notice-warning" role="status">${this.rushNoticeWarning}</p>` : A}
           ${this.comandas.map((c5) => {
       const rush = (c5.priority ?? "normal") === "rush";
       return b2`
@@ -6384,6 +6406,9 @@ __decorateClass([
 __decorateClass([
   r5()
 ], ErpKitchenPosComandas.prototype, "error", 2);
+__decorateClass([
+  r5()
+], ErpKitchenPosComandas.prototype, "rushNoticeWarning", 2);
 __decorateClass([
   r5()
 ], ErpKitchenPosComandas.prototype, "busy", 2);

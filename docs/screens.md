@@ -186,7 +186,10 @@ When the table says it is in a hurry, open **Comandas** and tap **Mark rush** on
 still cooking (**Remove rush** undoes it). It is the same gesture as on the KDS card: the round
 jumps to the front of every kitchen board, carries the **Rush** badge and the boards chime. Rounds
 already ready or served, and **VIP** rounds, offer no toggle. If the kitchen refuses the change,
-the sheet says why. Requires `kitchen.change_order`.
+the sheet says why. Marking a round rush also prints the same **short urgent notice** the KDS
+prints (kitchen#100) on the printer of every station still cooking it, so a kitchen that works on
+paper only hears about it too; with a kitchen screen open as well, it is still one sheet per
+station. If a printer does not take it, the sheet says so. Requires `kitchen.change_order`.
 
 ## Kitchen — settings
 

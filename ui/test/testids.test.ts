@@ -127,7 +127,13 @@ const COVERED: Record<string, { prefix: string; contract: string[] }> = {
   // (kitchen#94): `kitchen-comandas-rush-${order.id}`.
   'erp-kitchen-pos-comandas/erp-kitchen-pos-comandas.ts': {
     prefix: 'kitchen-comandas-',
-    contract: ['kitchen-comandas-close', 'kitchen-comandas-error', 'kitchen-comandas-open', 'kitchen-comandas-sheet'],
+    contract: [
+      'kitchen-comandas-close',
+      'kitchen-comandas-error',
+      'kitchen-comandas-open',
+      'kitchen-comandas-rush-notice-warning',
+      'kitchen-comandas-sheet',
+    ],
   },
   // The two buttons the POS borrows from kitchen: arm URGENT, and fire the round.
   'erp-kitchen-pos-fire/erp-kitchen-pos-fire.ts': {
