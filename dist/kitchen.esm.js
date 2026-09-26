@@ -2480,8 +2480,12 @@ function groupTickets(rows2) {
 }
 function rushFirst(tickets) {
   const rush = tickets.filter((t7) => t7.priority === "rush");
-  const rest = tickets.filter((t7) => t7.priority !== "rush");
-  return [...rush, ...rest];
+  const vip = tickets.filter((t7) => t7.priority === "vip");
+  const rest = tickets.filter((t7) => t7.priority !== "rush" && t7.priority !== "vip");
+  return [...rush, ...vip, ...rest];
+}
+function rushToggleable(t7) {
+  return t7.priority === "normal" || t7.priority === "rush";
 }
 function groupCombos(lines) {
   const out = [];
@@ -2931,13 +2935,14 @@ var ErpKitchenDisplay = class extends i3 {
   /**
    * kitchen#76 · marks (or unmarks) a round rush from its card, once it is already on the line —
    * before this, the only moment a round could be urgent was when it was fired (hub#1411). Same
-   * button undoes it: no confirm dialog, the way every other action on this screen works.
+   * button undoes it: no confirm dialog, the way every other action on this screen works. Only
+   * between `normal` and `rush` (the card offers no toggle on a `vip` round): undoing it there would
+   * land on `normal` and erase the VIP mark for good (kitchen#96).
    */
   toggleRush(t7) {
     if (!can("kitchen.change_order")) return;
-    return this.run(
-      () => erplora().command("kitchen.orders.update", { order_id: t7.id, priority: t7.priority === "rush" ? "normal" : "rush" })
-    );
+    const next = t7.priority === "normal" ? "rush" : "normal";
+    return this.run(() => erplora().command("kitchen.orders.update", { order_id: t7.id, priority: next }));
   }
   // ── render ─────────────────────────────────────────────────────────────────
   renderLine(t7, l3) {
@@ -3041,7 +3046,7 @@ var ErpKitchenDisplay = class extends i3 {
       ${t7.notes ? b2`<div class="notes">${t7.notes}</div>` : A}
       ${canChange || canServe && t7.status === "ready" ? b2`<footer class="foot">
             ${canChange && cooking ? b2`<ion-button data-testid=${`kds-ticket-${t7.id}-bump`} data-action="bump" @click=${() => this.bumpTicket(t7)}>${t_("ui.bump")}</ion-button>` : A}
-            ${canChange && cooking ? b2`<ion-button data-testid=${`kds-ticket-${t7.id}-rush`} data-action="rush" fill="outline" @click=${() => this.toggleRush(t7)}>${t7.priority === "rush" ? t_("ui.clearRush") : t_("ui.markRush")}</ion-button>` : A}
+            ${canChange && cooking && rushToggleable(t7) ? b2`<ion-button data-testid=${`kds-ticket-${t7.id}-rush`} data-action="rush" fill="outline" @click=${() => this.toggleRush(t7)}>${t7.priority === "rush" ? t_("ui.clearRush") : t_("ui.markRush")}</ion-button>` : A}
             ${canChange && struck ? b2`<ion-button data-testid=${`kds-ticket-${t7.id}-recall`} data-action="recall" fill="outline" @click=${() => this.recallTicket(t7)}>${t_("ui.recall")}</ion-button>` : A}
             ${canServe && t7.status === "ready" ? b2`<ion-button data-testid=${`kds-ticket-${t7.id}-served`} data-action="served" fill="outline" @click=${() => this.serveTicket(t7)}>${t_("ui.rowMarkServed")}</ion-button>` : A}
           </footer>` : A}

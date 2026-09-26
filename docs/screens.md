@@ -37,6 +37,10 @@ to read the team, that header stays blank, never a raw id. The pass on paper use
   printer however many screens are open; it does not depend on **Sound**; a round fired already
   rush gets none (its comanda already said it); if the printer does not take it, the board says so.
   Needs `kitchen.change_order`.
+- **VIP rounds.** A round that arrives as **VIP** (the till or a flow sends it with the round) goes
+  right behind the rush tickets, ahead of the normal ones, and keeps its **VIP** badge. Its card
+  has no **Mark rush**: rush and VIP share one priority, so toggling rush on and off would bring it
+  back as a normal round and lose the VIP mark.
 - **Ready is a view, not a section.** It used to be a second grid painted under the first one, so a
   finished ticket dropped *below* the one still cooking instead of leaving the line. Every KDS
   reviewed moves it out of the active board — a tab in Square and Loyverse, a recall bar in Toast
