@@ -227,9 +227,11 @@ function rushRoles(items: PassItem[]): string[] {
  * the kitchen header (hub `render_kitchen_order`). The document type stays the CLOSED vocabulary
  * every deployed device renders — a new one would cross the gate and print nothing (inventory#44).
  *
- * The `jobId` is per (order, role), distinct from both the fire comanda's (`kitchen-<order>-<role>`)
- * and the pass's (`kitchen-pass-<order>-<role>`), so several mounted boards asking for the same
- * rush are one sheet in the queue, not one per screen.
+ * The `jobId` is per (order, role, rush_count), distinct from both the fire comanda's
+ * (`kitchen-<order>-<role>`) and the pass's (`kitchen-pass-<order>-<role>`). The count comes from
+ * the round itself, so every mounted board and the POS asking for the SAME rush share one id (one
+ * sheet), while a round marked, cleared and marked again gets a new id — a repeated id would be
+ * dropped by the queue as a duplicate and the second notice would never print (kitchen#99).
  */
 export async function printRushNotice(
   orderId: string,
@@ -257,6 +259,7 @@ export async function printRushNotice(
 
   if (!roles.length) return { ok: true, sheets: 0, reason: 'nothing_to_print' };
 
+  const rushCount = num(header.rush_count ?? 0);
   const waiter = options.resolveWaiter ? options.resolveWaiter(str(header.waiter_id)).trim() : '';
   const data = {
     receipt_id: str(header.order_number),
@@ -278,7 +281,7 @@ export async function printRushNotice(
         role,
         documentType: 'kitchen_order',
         fallbackToBrowser: false,
-        jobId: `kitchen-rush-${orderId}-${role}`,
+        jobId: `kitchen-rush-${orderId}-${role}-${rushCount}`,
         data,
       });
       const via = result?.via ?? 'none';

@@ -34,7 +34,8 @@ to read the team, that header stays blank, never a raw id. The pass on paper use
   prints its comanda also gets a **short urgent notice** on its printer (kitchen#93): the table,
   the ticket number and «!! URGENTE !!», **without the plates** — the comanda is never reprinted,
   because two copies of the same round on the rail is how a plate gets cooked twice. One notice per
-  printer however many screens are open; it does not depend on **Sound**; a round fired already
+  printer however many screens are open, and a new one **every time** the round turns rush (rush
+  removed and marked again prints again, kitchen#99); it does not depend on **Sound**; a round fired already
   rush gets none (its comanda already said it); if the printer does not take it, the board says so.
   Needs `kitchen.change_order`.
 - **VIP rounds.** A round that arrives as **VIP** (the till or a flow sends it with the round) goes

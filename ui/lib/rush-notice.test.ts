@@ -16,7 +16,11 @@
 //   · screen-only lines, and lines that already left the pass, print nothing;
 //   · the `jobId` is stable per (order, role) and distinct from the comanda's and the pass's, so
 //     three mounted boards are one sheet and the queue does not drop it as a repeat of either;
-//   · nothing throws: the rush is already in the database, paper is the copy.
+//   · nothing throws: the rush is already in the database, paper is the copy;
+//   · kitchen#99 · the `jobId` also carries the round's `rush_count`, bumped by
+//     `kitchen.orders.update` on every transition TO rush: every screen reads the same number for
+//     the same rush (one sheet), and a round marked, cleared and marked again gets a NEW id — the
+//     queue would drop a repeated id as `Duplicate` and the second notice would never print.
 import { describe, expect, it } from 'vitest';
 import { printRushNotice, type PassItem, type PassPrintDeps } from './pass-print';
 
@@ -37,13 +41,13 @@ function item(over: Partial<PassItem> & { status?: string } = {}): PassItem & { 
   };
 }
 
-function deps(items: Array<PassItem & { status?: string }>, over: Partial<PassPrintDeps> = {}) {
+function deps(items: Array<PassItem & { status?: string }>, over: Partial<PassPrintDeps> = {}, rushCount = 1) {
   const calls: Record<string, unknown>[] = [];
   const d: PassPrintDeps = {
     query: (async (name: string) => {
       if (name === 'kitchen.orders.items') return items;
       if (name === 'kitchen.orders.get') {
-        return [{ id: 'o1', order_number: '20260926-0003', label: 'Mesa 4', round_number: 2, waiter_id: 'u1' }];
+        return [{ id: 'o1', order_number: '20260926-0003', label: 'Mesa 4', round_number: 2, waiter_id: 'u1', rush_count: rushCount }];
       }
       return [];
     }) as PassPrintDeps['query'],
@@ -70,7 +74,7 @@ describe('kitchen#93: the rush notice on paper', () => {
     expect(kitchen).toMatchObject({
       documentType: 'kitchen_order',
       fallbackToBrowser: false,
-      jobId: 'kitchen-rush-o1-kitchen',
+      jobId: 'kitchen-rush-o1-kitchen-1',
     });
     expect(kitchen.data).toEqual({
       receipt_id: '20260926-0003',
@@ -80,6 +84,18 @@ describe('kitchen#93: the rush notice on paper', () => {
       priority: 'HIGH',
       items: [],
     });
+  });
+
+  it('kitchen#99 · a SECOND rush of the same round gets its own job id; the same rush keeps one', async () => {
+    const first = deps([item()], {}, 1);
+    const again = deps([item()], {}, 1);
+    const second = deps([item()], {}, 2);
+    await printRushNotice('o1', first.d);
+    await printRushNotice('o1', again.d);
+    await printRushNotice('o1', second.d);
+    expect(first.calls[0].jobId, 'two screens, same rush: one sheet in the queue').toBe(again.calls[0].jobId);
+    expect(second.calls[0].jobId).toBe('kitchen-rush-o1-kitchen-2');
+    expect(second.calls[0].jobId).not.toBe(first.calls[0].jobId);
   });
 
   it('never shares a job id with the fire comanda or the pass of the same order', async () => {

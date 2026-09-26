@@ -51,7 +51,11 @@ function round(orderId: string, priority = 'normal'): Row {
   };
 }
 
+/** `kitchen_order.rush_count` as `commands/order_update.sql` keeps it (kitchen#99). */
+let rushCount: Record<string, number>;
+
 beforeEach(() => {
+  rushCount = {};
   listeners = {};
   printed = [];
   printResult = async () => ({ via: 'queue' });
@@ -65,7 +69,8 @@ beforeEach(() => {
         return [{ order_id: params?.order_id, product_name: 'Hamburguesa', quantity: 1_000_000, destination: 'printer', printer_role: 'kitchen', status: 'pending' }];
       }
       if (name === 'kitchen.orders.get') {
-        return [{ id: params?.order_id, order_number: `20260926-${String(params?.order_id)}`, label: 'Mesa 4', round_number: 1 }];
+        const id = String(params?.order_id);
+        return [{ id, order_number: `20260926-${id}`, label: 'Mesa 4', round_number: 1, rush_count: rushCount[id] ?? 0 }];
       }
       return [];
     },
@@ -116,10 +121,21 @@ describe('kitchen#93: a round that turns rush reaches the paper', () => {
   it('prints the RUSH notice for a ticket the board already had', async () => {
     const el = await mount();
     expect(printed, 'control: nothing prints while nothing changes').toHaveLength(0);
+    rushCount.k2 = 1;
     await updated(el, [round('k1'), round('k2', 'rush')]);
     expect(printed, 'the round went rush and the paper kitchen heard nothing').toHaveLength(1);
-    expect(printed[0]).toMatchObject({ role: 'kitchen', documentType: 'kitchen_order', jobId: 'kitchen-rush-k2-kitchen' });
+    expect(printed[0]).toMatchObject({ role: 'kitchen', documentType: 'kitchen_order', jobId: 'kitchen-rush-k2-kitchen-1' });
     expect(printed[0].data).toMatchObject({ priority: 'HIGH', items: [] });
+  });
+
+  it('kitchen#99 · rush cleared and set again asks for a NEW sheet, not a repeat the queue drops', async () => {
+    const el = await mount();
+    rushCount.k2 = 1;
+    await updated(el, [round('k1'), round('k2', 'rush')]);
+    await updated(el, [round('k1'), round('k2')]);
+    rushCount.k2 = 2;
+    await updated(el, [round('k1'), round('k2', 'rush')]);
+    expect(printed.map((p) => p.jobId)).toEqual(['kitchen-rush-k2-kitchen-1', 'kitchen-rush-k2-kitchen-2']);
   });
 
   it('a ticket that ARRIVES rush prints no notice — its comanda already said URGENTE', async () => {
