@@ -1,7 +1,7 @@
 {
   "file": "dist/kitchen.esm.js",
-  "sources_sha256": "b8a510d59424a555c9894a9f0e186acd7cc7d23918c0cd24546d8ddd4a80a079",
-  "locales_sha256": "98f6b8274f8921efc6bca8fbda13f02c0a9e93c8ba1e652d2a2430a746cfdf6e",
-  "bundle_sha256": "dc5f30ca04af3dc2d881840b708ed63324ec82f74030f4f7fb367eee53273a9e",
-  "built_at": "2026-09-26T02:09:47.355Z"
+  "sources_sha256": "50a4791dbffc2ac115dc9a17f775bb3d9a1a7614f5c635fc6a6316a2d70a113a",
+  "locales_sha256": "a3d5023712017a772e589f3377418757302e3a892ce4248814d974463b476331",
+  "bundle_sha256": "44e455060c57ab46097c358d78866ad65b6ff806dfa5aaa9da506c62feba9160",
+  "built_at": "2026-09-26T02:23:13.582Z"
 }

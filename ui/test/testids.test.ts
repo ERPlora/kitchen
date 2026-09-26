@@ -65,6 +65,7 @@ const COVERED: Record<string, { prefix: string; contract: string[] }> = {
       'kds-error',
       'kds-fullscreen',
       'kds-pass-warning',
+      'kds-rush-notice-warning',
       'kds-station-all',
       'kds-stations',
       'kds-view-allday',

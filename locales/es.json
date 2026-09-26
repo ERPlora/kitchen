@@ -173,6 +173,7 @@
     "comboAria": "Menú {name}, {n} platos",
     "comboCount": "{n} platos",
     "passPrintFailed": "No se ha podido imprimir el pase. Revisa la impresora de la estación.",
+    "rushNoticeFailed": "No se ha podido imprimir el aviso de urgencia. Avisa a cocina de viva voz y revisa su impresora.",
     "comboFallbackName": "Menú"
   },
   "errors": {

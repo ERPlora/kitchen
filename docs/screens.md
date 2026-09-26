@@ -30,9 +30,13 @@ to read the team, that header stays blank, never a raw id. The pass on paper use
 - **Rush after the fact.** A ticket still cooking has **Mark rush** on its card (and **Remove
   rush** once it is rush), for the table that says it is in a hurry after the round already went
   out. A rush ticket jumps to the **front** of every station's board, carries the **Rush** badge,
-  and every board that already had it on screen chimes once (with **Sound** on). The paper already
-  on the pass is not reprinted — a kitchen that only works on paper does not hear about it yet
-  (kitchen#93). Needs `kitchen.change_order`.
+  and every board that already had it on screen chimes once (with **Sound** on). A station that
+  prints its comanda also gets a **short urgent notice** on its printer (kitchen#93): the table,
+  the ticket number and «!! URGENTE !!», **without the plates** — the comanda is never reprinted,
+  because two copies of the same round on the rail is how a plate gets cooked twice. One notice per
+  printer however many screens are open; it does not depend on **Sound**; a round fired already
+  rush gets none (its comanda already said it); if the printer does not take it, the board says so.
+  Needs `kitchen.change_order`.
 - **VIP rounds.** A round that arrives as **VIP** (the till or a flow sends it with the round) goes
   right behind the rush tickets, ahead of the normal ones, and keeps its **VIP** badge. Its card
   has no **Mark rush**: rush and VIP share one priority, so toggling rush on and off would bring it

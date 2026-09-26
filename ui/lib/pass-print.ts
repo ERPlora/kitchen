@@ -38,6 +38,8 @@ export interface PassItem {
   destination?: string | null;
   /** Printer ROLE (`kitchen`, `bar`, …), never a device. */
   printer_role?: string | null;
+  /** The line's status in `kitchen.orders.items` (`pending`, `preparing`, `ready`, …). */
+  status?: string | null;
 }
 
 /** One line as it goes to paper. Keys that carry nothing are OMITTED, never sent empty: a device
@@ -192,6 +194,109 @@ export async function printPass(
   }
 
   return sheets === groups.length ? { ok: true, sheets } : { ok: false, sheets, reason: reason ?? 'gate_error', detail };
+}
+
+/** Lines whose status already left the pass: nothing there is left to hurry. */
+const DONE_STATUSES = new Set(['ready', 'served', 'cancelled']);
+
+/**
+ * The printer ROLES still cooking something of this round, in first-seen order. A screen-only
+ * line has no printer to hand a chit to, and a line whose status is `ready`/`served`/`cancelled`
+ * already left the pass — nothing there is left to speed up.
+ */
+function rushRoles(items: PassItem[]): string[] {
+  const roles: string[] = [];
+  const seen = new Set<string>();
+  for (const item of items ?? []) {
+    if ((item?.destination ?? 'both') === 'display') continue;
+    if (DONE_STATUSES.has(str(item.status))) continue;
+    const role = str(item.printer_role) || DEFAULT_ROLE;
+    if (!seen.has(role)) {
+      seen.add(role);
+      roles.push(role);
+    }
+  }
+  return roles;
+}
+
+/**
+ * Puts a RUSH NOTICE of one ticket on paper (kitchen#93) — a round rushed after it already fired.
+ *
+ * A short chit, `items: []` so nothing on the rail gets cooked twice, flagged `priority: 'HIGH'`,
+ * the flag the device's ESC/POS `kitchen_order` renderer already turns into «!! URGENTE !!» under
+ * the kitchen header (hub `render_kitchen_order`). The document type stays the CLOSED vocabulary
+ * every deployed device renders — a new one would cross the gate and print nothing (inventory#44).
+ *
+ * The `jobId` is per (order, role), distinct from both the fire comanda's (`kitchen-<order>-<role>`)
+ * and the pass's (`kitchen-pass-<order>-<role>`), so several mounted boards asking for the same
+ * rush are one sheet in the queue, not one per screen.
+ */
+export async function printRushNotice(
+  orderId: string,
+  deps: PassPrintDeps,
+  options: PassPrintOptions = {},
+): Promise<PassPrintOutcome> {
+  const print = deps.print;
+  if (typeof print !== 'function') return { ok: false, sheets: 0, reason: 'no_gate' };
+
+  let roles: string[];
+  let header: Record<string, unknown>;
+  try {
+    const [items, headers] = await Promise.all([
+      deps.query<PassItem[]>('kitchen.orders.items', { order_id: orderId }),
+      deps.query<Record<string, unknown>[]>('kitchen.orders.get', { order_id: orderId }),
+    ]);
+    roles = rushRoles(Array.isArray(items) ? items : []);
+    header = first(headers) ?? {};
+  } catch (e) {
+    // Same visibility as the pass: a rush notice that never printed because the lines could not
+    // be read is a degradation the kitchen has to hear about.
+    console.warn('[kitchen] the rush notice could not be read, so nothing was printed', e);
+    return { ok: false, sheets: 0, reason: 'threw', detail: message(e) };
+  }
+
+  if (!roles.length) return { ok: true, sheets: 0, reason: 'nothing_to_print' };
+
+  const waiter = options.resolveWaiter ? options.resolveWaiter(str(header.waiter_id)).trim() : '';
+  const data = {
+    receipt_id: str(header.order_number),
+    label: str(header.label),
+    round_number: num(header.round_number ?? 1),
+    ...(waiter ? { waiter } : {}),
+    priority: 'HIGH',
+    items: [],
+  };
+
+  let sheets = 0;
+  let reason: PassPrintOutcome['reason'];
+  let detail: string | undefined;
+  // In sequence, each with its own guard, exactly like the pass: a printer out of paper must not
+  // keep the other station's rush chit from going out.
+  for (const role of roles) {
+    try {
+      const result = await print({
+        role,
+        documentType: 'kitchen_order',
+        fallbackToBrowser: false,
+        jobId: `kitchen-rush-${orderId}-${role}`,
+        data,
+      });
+      const via = result?.via ?? 'none';
+      if (via === 'bridge' || via === 'queue' || via === 'browser') {
+        sheets += 1;
+        continue;
+      }
+      reason = 'no_printer';
+      detail = result?.error ?? detail;
+      console.warn(`[kitchen] no printer with role ${role}: the rush notice did not come out`, result?.error ?? '');
+    } catch (e) {
+      reason = 'threw';
+      detail = message(e);
+      console.warn(`[kitchen] the ${role} printer refused the rush notice`, e);
+    }
+  }
+
+  return sheets === roles.length ? { ok: true, sheets } : { ok: false, sheets, reason: reason ?? 'gate_error', detail };
 }
 
 function first<T>(v: T[] | T | undefined): T | undefined {

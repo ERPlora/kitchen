@@ -172,6 +172,7 @@
     "comboAria": "Menu {name}, {n} dishes",
     "comboCount": "{n} dishes",
     "passPrintFailed": "The pass could not be printed. Check the printer of the station.",
+    "rushNoticeFailed": "The urgent notice could not be printed. Tell the kitchen by voice and check its printer.",
     "comboFallbackName": "Menu"
   },
   "errors": {

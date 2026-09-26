@@ -5,7 +5,7 @@ import '@erplora/outfitkit/ok-inline-feedback';
 import '@erplora/outfitkit/ok-empty-state';
 // kitchen#48 · «Sonido» is a switch that MOVES something: the pass hears the ticket land.
 import { Chime, CHIME_TONES, DEFAULT_TONE, DEFAULT_VOLUME, type ChimeTone } from '../../lib/chime';
-import { printPass } from '../../lib/pass-print';
+import { printPass, printRushNotice } from '../../lib/pass-print';
 // Module i18n catalog (ADR-0055): esbuild inlines these JSON into the WC `dist`.
 import esLocale from '../../../locales/es.json';
 import enLocale from '../../../locales/en.json';
@@ -575,6 +575,10 @@ export class ErpKitchenDisplay extends LitElement {
    *  warning nobody in a service ever reads. */
   @state() private passWarning = '';
 
+  /** kitchen#93 · the rush notice did not come out of a printer. Same lifetime as `passWarning`:
+   *  it stays until a later notice does. */
+  @state() private rushNoticeWarning = '';
+
   @state() private loading = false;
 
   @state() private now = Date.now();
@@ -724,6 +728,12 @@ export class ErpKitchenDisplay extends LitElement {
     this.knownTickets = onScreen;
     this.knownRush = rushNow;
     if (!knownTickets || !knownRush) return; // first feed: the board is being learnt, nothing is "news" yet
+    // kitchen#93 · a ticket the board already had that just turned rush needs paper: its comanda
+    // went out before the round was pushed to the front. One that ARRIVES already rush is left
+    // out on purpose — its own comanda already printed «!! URGENTE !!» (hub#1411). Not gated by
+    // the chime switch: a muted kitchen still has to get the sheet.
+    const escalatedIds = [...rushNow].filter((id) => knownTickets.has(id) && !knownRush.has(id));
+    for (const id of escalatedIds) void this.printRushNoticeFor(id);
     if (!this.settings.sound_enabled) return;
     const arrived = [...onScreen].some((id) => !knownTickets.has(id));
     const escalated = [...rushNow].some((id) => !knownRush.has(id));
@@ -764,6 +774,28 @@ export class ErpKitchenDisplay extends LitElement {
       return;
     }
     this.passWarning = erplora().t(CATALOG, 'ui.passPrintFailed');
+  }
+
+  /**
+   * Puts the RUSH NOTICE of an escalated ticket on paper (kitchen#93) — a short chit for a round
+   * pushed to the front after it already fired.
+   *
+   * Driven by `ringForNews`, never by the tap: never awaited by its caller and never able to
+   * throw — the board already has the rush in the database, paper is only the copy of it.
+   */
+  private async printRushNoticeFor(orderId: string) {
+    const outcome = await printRushNotice(orderId, erplora(), {
+      resolveWaiter: (id) => this.waitersById.get(id) ?? '',
+    });
+    if (outcome.ok) {
+      this.rushNoticeWarning = '';
+      return;
+    }
+    if (outcome.reason === 'no_gate') {
+      console.warn('[kitchen] this shell exposes no print door: the rush notice cannot be printed');
+      return;
+    }
+    this.rushNoticeWarning = erplora().t(CATALOG, 'ui.rushNoticeFailed');
   }
 
   // ── derived ────────────────────────────────────────────────────────────────
@@ -1102,6 +1134,7 @@ export class ErpKitchenDisplay extends LitElement {
       ${this.passWarning
         ? html`<ok-inline-feedback data-testid="kds-pass-warning" data-pass-warning tone="warning" icon="print-outline">${this.passWarning}</ok-inline-feedback>`
         : nothing}
+      ${this.rushNoticeWarning ? html`<ok-inline-feedback data-testid="kds-rush-notice-warning" tone="warning" icon="print-outline">${this.rushNoticeWarning}</ok-inline-feedback>` : nothing}
       ${this.mode === 'allday'
         ? this.renderAllDay()
         : this.mode === 'ready'
