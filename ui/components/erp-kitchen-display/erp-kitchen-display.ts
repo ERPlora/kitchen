@@ -28,6 +28,9 @@ const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
 //     `kitchen_settings`), honouring `show_timer` and `color_coding_enabled`, and the clock keeps
 //     counting in red — it never stops nor disappears;
 //   · All-Day: what is left to cook, summed per product (`kitchen.orders.all_day`);
+//   · a round already on the line can be marked RUSH from its card (kitchen#76, Toast «Rush»,
+//     Fresh KDS «Prioritize»): it jumps to the FRONT of the board and every station hears it; the
+//     paper already on the pass is NOT reprinted;
 //   · live refresh on `kitchen.order.*` / `kitchen.item.*` events (no polling), 44 px targets.
 // Elapsed time and the semaphore are derived HERE, against `kitchen_settings`: presentation, and
 // the clock must not depend on the latency of the query.
@@ -318,6 +321,16 @@ export function groupTickets(rows: DisplayRow[]): Ticket[] {
   return Array.from(byId.values());
 }
 
+/** kitchen#76 · rush tickets FIRST, the rest kept oldest-first behind them — the way Toast «Rush»
+ *  and Fresh KDS «Prioritize» jump a round to the front of the board without reshuffling anything
+ *  else. `filter` keeps the relative order inside each group, so two rush tickets still read in
+ *  the order they were fired. */
+export function rushFirst(tickets: Ticket[]): Ticket[] {
+  const rush = tickets.filter((t) => t.priority === 'rush');
+  const rest = tickets.filter((t) => t.priority !== 'rush');
+  return [...rush, ...rest];
+}
+
 /** A menu with its components, or a single à-la-carte line (`ref === null`). */
 export interface LineGroup {
   ref: string | null;
@@ -569,6 +582,11 @@ export class ErpKitchenDisplay extends LitElement {
    *  lands: that one teaches the board what is already on the line and never rings. */
   private knownTickets?: Set<string>;
 
+  /** kitchen#76 · the tickets that were already RUSH on the previous feed, so a board can tell a
+   *  round that just turned rush from one that already was. Kept in step with `knownTickets`:
+   *  both are learnt on the same first feed and updated together on every reload after it. */
+  private knownRush?: Set<string>;
+
   private readonly onLocaleChange = (): void => this.requestUpdate();
 
   async connectedCallback() {
@@ -657,7 +675,7 @@ export class ErpKitchenDisplay extends LitElement {
         readTeam(erplora()),
       ]);
       this.rows = Array.isArray(rows) ? rows : [];
-      this.ringForArrivals();
+      this.ringForNews();
       this.allDay = Array.isArray(allDay) ? allDay : [];
       this.stationsById = new Map((Array.isArray(stations) ? stations : []).map((s) => [String(s.id), s]));
       this.waitersById = new Map([
@@ -676,29 +694,35 @@ export class ErpKitchenDisplay extends LitElement {
   }
 
   /**
-   * Rings once when the feed brings a ticket this board had not seen (kitchen#48).
+   * Rings once when the feed brings NEWS the kitchen has not heard yet: a ticket this board had
+   * not seen (kitchen#48), or one already on the line that just turned rush (kitchen#76).
    *
-   * ARRIVAL, not presence: the board reloads on every bump, recall and status change, so «there
-   * are tickets» is not news — «there is a ticket that was not here a moment ago» is. And the
-   * FIRST feed never rings: a KDS opened halfway through a service would otherwise greet whoever
-   * turns it on with an alarm for orders already being cooked.
+   * ARRIVAL and ESCALATION, not presence: the board reloads on every bump, recall and status
+   * change, so «there are tickets» is not news — «there is a ticket that was not here a moment
+   * ago» or «this one just got pushed to the front» is. And the FIRST feed never rings: a KDS
+   * opened halfway through a service would otherwise greet whoever turns it on with an alarm for
+   * orders already being cooked, rush ones included.
    *
-   * One chime per reload, however many tickets landed together: a delivery burst that beeps six
-   * times is the noise the Square forum complains about, not an alert.
+   * One chime per reload, however many things landed together: a ticket arriving already rush, or
+   * an arrival AND an escalation in the same feed, is still one chime — a delivery burst that
+   * beeps six times is the noise the Square forum complains about, not an alert. Clearing rush is
+   * never news: a kitchen expects silence, not a chime, when the pressure comes OFF a ticket.
    */
-  private ringForArrivals() {
+  private ringForNews() {
     const onScreen = new Set(this.rows.map((r) => String(r.order_id ?? '')));
-    const known = this.knownTickets;
+    const rushNow = new Set(this.rows.filter((r) => String(r.priority ?? '') === 'rush').map((r) => String(r.order_id ?? '')));
+    const knownTickets = this.knownTickets;
+    const knownRush = this.knownRush;
     this.knownTickets = onScreen;
-    if (!known) return; // first feed: the board is being learnt, nothing "arrived"
+    this.knownRush = rushNow;
+    if (!knownTickets || !knownRush) return; // first feed: the board is being learnt, nothing is "news" yet
     if (!this.settings.sound_enabled) return;
-    for (const id of onScreen) {
-      if (!known.has(id)) {
-        // kitchen#72 · how loud and which notes are the hub's to choose; the defaults are exactly
-        // the chime this module rang before the controls existed.
-        this.chime.play({ volume: this.settings.sound_volume, tone: this.settings.sound_tone });
-        return;
-      }
+    const arrived = [...onScreen].some((id) => !knownTickets.has(id));
+    const escalated = [...rushNow].some((id) => !knownRush.has(id));
+    if (arrived || escalated) {
+      // kitchen#72 · how loud and which notes are the hub's to choose; the defaults are exactly
+      // the chime this module rang before the controls existed.
+      this.chime.play({ volume: this.settings.sound_volume, tone: this.settings.sound_tone });
     }
   }
 
@@ -777,9 +801,9 @@ export class ErpKitchenDisplay extends LitElement {
     return this.tickets.filter((t) => this.visibleLines(t).length > 0 || (!this.station && t.lines.length === 0));
   }
 
-  /** The active board: what the kitchen still has to cook. */
+  /** The active board: what the kitchen still has to cook, rush tickets FIRST (kitchen#76). */
   private get cookingTickets(): Ticket[] {
-    return this.visibleTickets.filter((t) => t.status !== 'ready');
+    return rushFirst(this.visibleTickets.filter((t) => t.status !== 'ready'));
   }
 
   /** Done and waiting to be picked up. Out of the active board, one tap away (kitchen#60). The
@@ -853,6 +877,18 @@ export class ErpKitchenDisplay extends LitElement {
   private serveTicket(t: Ticket) {
     if (!can('kitchen.complete_order')) return;
     return this.run(() => erplora().command('kitchen.orders.mark_served', { order_id: t.id }));
+  }
+
+  /**
+   * kitchen#76 · marks (or unmarks) a round rush from its card, once it is already on the line —
+   * before this, the only moment a round could be urgent was when it was fired (hub#1411). Same
+   * button undoes it: no confirm dialog, the way every other action on this screen works.
+   */
+  private toggleRush(t: Ticket) {
+    if (!can('kitchen.change_order')) return;
+    return this.run(() =>
+      erplora().command('kitchen.orders.update', { order_id: t.id, priority: t.priority === 'rush' ? 'normal' : 'rush' }),
+    );
   }
 
   // ── render ─────────────────────────────────────────────────────────────────
@@ -949,6 +985,9 @@ export class ErpKitchenDisplay extends LitElement {
       ${canChange || (canServe && t.status === 'ready')
         ? html`<footer class="foot">
             ${canChange && cooking ? html`<ion-button data-testid=${`kds-ticket-${t.id}-bump`} data-action="bump" @click=${() => this.bumpTicket(t)}>${t_('ui.bump')}</ion-button>` : nothing}
+            ${canChange && cooking
+              ? html`<ion-button data-testid=${`kds-ticket-${t.id}-rush`} data-action="rush" fill="outline" @click=${() => this.toggleRush(t)}>${t.priority === 'rush' ? t_('ui.clearRush') : t_('ui.markRush')}</ion-button>`
+              : nothing}
             ${canChange && struck ? html`<ion-button data-testid=${`kds-ticket-${t.id}-recall`} data-action="recall" fill="outline" @click=${() => this.recallTicket(t)}>${t_('ui.recall')}</ion-button>` : nothing}
             ${canServe && t.status === 'ready' ? html`<ion-button data-testid=${`kds-ticket-${t.id}-served`} data-action="served" fill="outline" @click=${() => this.serveTicket(t)}>${t_('ui.rowMarkServed')}</ion-button>` : nothing}
           </footer>`

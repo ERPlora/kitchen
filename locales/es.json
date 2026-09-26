@@ -145,6 +145,8 @@
     "stationNone": "Sin estación",
     "bump": "Listo",
     "recall": "Recuperar",
+    "markRush": "Marcar urgente",
+    "clearRush": "Quitar urgente",
     "tapToBump": "toca para marcar listo",
     "tapToRecall": "toca para recuperar",
     "tapHeaderToBump": "Marcar listas todas las líneas en pantalla",

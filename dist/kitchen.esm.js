@@ -2082,6 +2082,8 @@ var es_default = {
     stationNone: "Sin estaci\xF3n",
     bump: "Listo",
     recall: "Recuperar",
+    markRush: "Marcar urgente",
+    clearRush: "Quitar urgente",
     tapToBump: "toca para marcar listo",
     tapToRecall: "toca para recuperar",
     tapHeaderToBump: "Marcar listas todas las l\xEDneas en pantalla",
@@ -2263,6 +2265,8 @@ var en_default = {
     stationNone: "No station",
     bump: "Bump",
     recall: "Recall",
+    markRush: "Mark rush",
+    clearRush: "Remove rush",
     tapToBump: "tap to bump",
     tapToRecall: "tap to recall",
     tapHeaderToBump: "Bump every line on screen",
@@ -2402,6 +2406,11 @@ function groupTickets(rows2) {
     }
   }
   return Array.from(byId.values());
+}
+function rushFirst(tickets) {
+  const rush = tickets.filter((t7) => t7.priority === "rush");
+  const rest = tickets.filter((t7) => t7.priority !== "rush");
+  return [...rush, ...rest];
 }
 function groupCombos(lines) {
   const out = [];
@@ -2650,7 +2659,7 @@ var ErpKitchenDisplay = class extends i3 {
         readTeam(erplora())
       ]);
       this.rows = Array.isArray(rows2) ? rows2 : [];
-      this.ringForArrivals();
+      this.ringForNews();
       this.allDay = Array.isArray(allDay) ? allDay : [];
       this.stationsById = new Map((Array.isArray(stations) ? stations : []).map((s5) => [String(s5.id), s5]));
       this.waitersById = new Map([
@@ -2664,27 +2673,33 @@ var ErpKitchenDisplay = class extends i3 {
     }
   }
   /**
-   * Rings once when the feed brings a ticket this board had not seen (kitchen#48).
+   * Rings once when the feed brings NEWS the kitchen has not heard yet: a ticket this board had
+   * not seen (kitchen#48), or one already on the line that just turned rush (kitchen#76).
    *
-   * ARRIVAL, not presence: the board reloads on every bump, recall and status change, so «there
-   * are tickets» is not news — «there is a ticket that was not here a moment ago» is. And the
-   * FIRST feed never rings: a KDS opened halfway through a service would otherwise greet whoever
-   * turns it on with an alarm for orders already being cooked.
+   * ARRIVAL and ESCALATION, not presence: the board reloads on every bump, recall and status
+   * change, so «there are tickets» is not news — «there is a ticket that was not here a moment
+   * ago» or «this one just got pushed to the front» is. And the FIRST feed never rings: a KDS
+   * opened halfway through a service would otherwise greet whoever turns it on with an alarm for
+   * orders already being cooked, rush ones included.
    *
-   * One chime per reload, however many tickets landed together: a delivery burst that beeps six
-   * times is the noise the Square forum complains about, not an alert.
+   * One chime per reload, however many things landed together: a ticket arriving already rush, or
+   * an arrival AND an escalation in the same feed, is still one chime — a delivery burst that
+   * beeps six times is the noise the Square forum complains about, not an alert. Clearing rush is
+   * never news: a kitchen expects silence, not a chime, when the pressure comes OFF a ticket.
    */
-  ringForArrivals() {
+  ringForNews() {
     const onScreen = new Set(this.rows.map((r6) => String(r6.order_id ?? "")));
-    const known = this.knownTickets;
+    const rushNow = new Set(this.rows.filter((r6) => String(r6.priority ?? "") === "rush").map((r6) => String(r6.order_id ?? "")));
+    const knownTickets = this.knownTickets;
+    const knownRush = this.knownRush;
     this.knownTickets = onScreen;
-    if (!known) return;
+    this.knownRush = rushNow;
+    if (!knownTickets || !knownRush) return;
     if (!this.settings.sound_enabled) return;
-    for (const id of onScreen) {
-      if (!known.has(id)) {
-        this.chime.play({ volume: this.settings.sound_volume, tone: this.settings.sound_tone });
-        return;
-      }
+    const arrived = [...onScreen].some((id) => !knownTickets.has(id));
+    const escalated = [...rushNow].some((id) => !knownRush.has(id));
+    if (arrived || escalated) {
+      this.chime.play({ volume: this.settings.sound_volume, tone: this.settings.sound_tone });
     }
   }
   /**
@@ -2753,9 +2768,9 @@ var ErpKitchenDisplay = class extends i3 {
   get visibleTickets() {
     return this.tickets.filter((t7) => this.visibleLines(t7).length > 0 || !this.station && t7.lines.length === 0);
   }
-  /** The active board: what the kitchen still has to cook. */
+  /** The active board: what the kitchen still has to cook, rush tickets FIRST (kitchen#76). */
   get cookingTickets() {
-    return this.visibleTickets.filter((t7) => t7.status !== "ready");
+    return rushFirst(this.visibleTickets.filter((t7) => t7.status !== "ready"));
   }
   /** Done and waiting to be picked up. Out of the active board, one tap away (kitchen#60). The
    *  divider is the SERVER's ticket status, which is what closes the ticket when its last line is
@@ -2817,6 +2832,17 @@ var ErpKitchenDisplay = class extends i3 {
   serveTicket(t7) {
     if (!can("kitchen.complete_order")) return;
     return this.run(() => erplora().command("kitchen.orders.mark_served", { order_id: t7.id }));
+  }
+  /**
+   * kitchen#76 · marks (or unmarks) a round rush from its card, once it is already on the line —
+   * before this, the only moment a round could be urgent was when it was fired (hub#1411). Same
+   * button undoes it: no confirm dialog, the way every other action on this screen works.
+   */
+  toggleRush(t7) {
+    if (!can("kitchen.change_order")) return;
+    return this.run(
+      () => erplora().command("kitchen.orders.update", { order_id: t7.id, priority: t7.priority === "rush" ? "normal" : "rush" })
+    );
   }
   // ── render ─────────────────────────────────────────────────────────────────
   renderLine(t7, l3) {
@@ -2920,6 +2946,7 @@ var ErpKitchenDisplay = class extends i3 {
       ${t7.notes ? b2`<div class="notes">${t7.notes}</div>` : A}
       ${canChange || canServe && t7.status === "ready" ? b2`<footer class="foot">
             ${canChange && cooking ? b2`<ion-button data-testid=${`kds-ticket-${t7.id}-bump`} data-action="bump" @click=${() => this.bumpTicket(t7)}>${t_("ui.bump")}</ion-button>` : A}
+            ${canChange && cooking ? b2`<ion-button data-testid=${`kds-ticket-${t7.id}-rush`} data-action="rush" fill="outline" @click=${() => this.toggleRush(t7)}>${t7.priority === "rush" ? t_("ui.clearRush") : t_("ui.markRush")}</ion-button>` : A}
             ${canChange && struck ? b2`<ion-button data-testid=${`kds-ticket-${t7.id}-recall`} data-action="recall" fill="outline" @click=${() => this.recallTicket(t7)}>${t_("ui.recall")}</ion-button>` : A}
             ${canServe && t7.status === "ready" ? b2`<ion-button data-testid=${`kds-ticket-${t7.id}-served`} data-action="served" fill="outline" @click=${() => this.serveTicket(t7)}>${t_("ui.rowMarkServed")}</ion-button>` : A}
           </footer>` : A}

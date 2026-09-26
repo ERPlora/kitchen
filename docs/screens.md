@@ -27,6 +27,12 @@ to read the team, that header stays blank, never a raw id. The pass on paper use
   is left cooking, the ticket goes **ready** by itself and **leaves the active board** for the
   **Ready** view, where **Recall** brings it back and **Served** hands it over. There is never a
   confirmation dialog: recall is the undo.
+- **Rush after the fact.** A ticket still cooking has **Mark rush** on its card (and **Remove
+  rush** once it is rush), for the table that says it is in a hurry after the round already went
+  out. A rush ticket jumps to the **front** of every station's board, carries the **Rush** badge,
+  and every board that already had it on screen chimes once (with **Sound** on). The paper already
+  on the pass is not reprinted — a kitchen that only works on paper does not hear about it yet
+  (kitchen#93). Needs `kitchen.change_order`.
 - **Ready is a view, not a section.** It used to be a second grid painted under the first one, so a
   finished ticket dropped *below* the one still cooking instead of leaving the line. Every KDS
   reviewed moves it out of the active board — a tab in Square and Loyverse, a recall bar in Toast
