@@ -46,6 +46,17 @@ export const PRIORITY_KEY: Record<string, string> = {
   vip: 'ui.priority_vip',
 };
 
+/** `kitchen_order.status` — where the order is on the line; the commands move it through these five
+ *  (`fire`, `mark_ready`, `recall`, `mark_served`, `cancel`). These keys were the status FILTER's
+ *  labels; the cell printed the raw value («pending») until it read them from here too (kitchen#108). */
+export const STATUS_KEY: Record<string, string> = {
+  pending: 'ui.statusPending',
+  preparing: 'ui.statusPreparing',
+  ready: 'ui.statusReady',
+  served: 'ui.statusServed',
+  cancelled: 'ui.statusCancelled',
+};
+
 /**
  * The label of `value` in the active language.
  *

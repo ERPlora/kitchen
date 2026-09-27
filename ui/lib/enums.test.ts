@@ -12,7 +12,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import esLocale from '../../locales/es.json';
-import { ORDER_TYPE_KEY, PRIORITY_KEY, enumLabel, enumOptions } from './enums';
+import { ORDER_TYPE_KEY, PRIORITY_KEY, STATUS_KEY, enumLabel, enumOptions } from './enums';
 
 const es = (esLocale as { ui: Record<string, string> }).ui;
 
@@ -39,6 +39,10 @@ describe('the closed domains are exactly the ones the schemas accept', () => {
     // has to offer it, or the default state of every order is unfilterable.
     expect(Object.keys(PRIORITY_KEY).sort()).toEqual(['normal', 'rush', 'vip']);
   });
+
+  it('`status` is where the order is on the line, the five the commands move it through (kitchen#108)', () => {
+    expect(Object.keys(STATUS_KEY).sort()).toEqual(['cancelled', 'pending', 'preparing', 'ready', 'served']);
+  });
 });
 
 describe('every value reads in the language of the hub', () => {
@@ -55,9 +59,21 @@ describe('every value reads in the language of the hub', () => {
     }
   });
 
+  it('no status resolves to its own i18n key, and it reuses the labels the filter already had (kitchen#108)', () => {
+    for (const [value, key] of Object.entries(STATUS_KEY)) {
+      expect(enumLabel(STATUS_KEY, value), `${key} is missing from es.json`).not.toBe(key);
+    }
+    expect(enumLabel(STATUS_KEY, 'pending')).toBe(es.statusPending);
+    expect(enumLabel(STATUS_KEY, 'preparing')).toBe(es.statusPreparing);
+    expect(enumLabel(STATUS_KEY, 'ready')).toBe(es.statusReady);
+    expect(enumLabel(STATUS_KEY, 'served')).toBe(es.statusServed);
+    expect(enumLabel(STATUS_KEY, 'cancelled')).toBe(es.statusCancelled);
+  });
+
   it('English says the same thing its own way — nothing is hardcoded', () => {
     shellSpeaking('en');
     expect(enumLabel(ORDER_TYPE_KEY, 'takeaway')).toBe('Takeaway');
+    expect(enumLabel(STATUS_KEY, 'preparing')).toBe('Preparing');
   });
 
   it('a value the catalogue does not know is printed AS IS, never blank', () => {
@@ -69,7 +85,7 @@ describe('every value reads in the language of the hub', () => {
 
 describe('the filter options and the cell cannot drift apart', () => {
   it('the options carry the SAME labels the cell prints', () => {
-    for (const keys of [ORDER_TYPE_KEY, PRIORITY_KEY]) {
+    for (const keys of [ORDER_TYPE_KEY, PRIORITY_KEY, STATUS_KEY]) {
       for (const opt of enumOptions(keys)) {
         expect(opt.label).toBe(enumLabel(keys, opt.value));
       }
@@ -79,5 +95,6 @@ describe('the filter options and the cell cannot drift apart', () => {
   it('the options offer every value of the domain, so no order is unreachable', () => {
     expect(enumOptions(ORDER_TYPE_KEY).map((o) => o.value).sort()).toEqual(Object.keys(ORDER_TYPE_KEY).sort());
     expect(enumOptions(PRIORITY_KEY).map((o) => o.value).sort()).toEqual(Object.keys(PRIORITY_KEY).sort());
+    expect(enumOptions(STATUS_KEY).map((o) => o.value).sort()).toEqual(Object.keys(STATUS_KEY).sort());
   });
 });
