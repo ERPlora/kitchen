@@ -32,6 +32,8 @@ beforeEach(() => {
       formateos.push(cents);
       return `${((cents || 0) / 100).toFixed(2)} €`;
     },
+    // The real client always exposes it (module-sdk getter); the list declares `moneyFilters` (pm#501).
+    currencyDecimals: 2,
   };
 });
 
