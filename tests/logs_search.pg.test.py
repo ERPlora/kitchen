@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Typing in the Historial search box must REDUCE the list (ERPlora/kitchen#34).
+"""Typing in the Historial search box must REDUCE the list (ERPlora/kitchen#34, #113).
 
 The contract half is `tests/searchable_promises_search.contract.test.py`: the manifest must declare
 a `search` block for a table that paints a box. This is the other half — that the block actually
@@ -13,8 +13,14 @@ ways to still be broken, and neither raises anything the contract test can see:
     time — the Historial would stop loading altogether, which is worse than not searching.
   * a column that is there but never matches what the placeholder promised.
 
-WHAT IS REPRODUCED of the list engine (`hub/crates/runtime/src/queries.rs`), and only that: the base
-SELECT wrapped as a derived table, the OR-ed `CAST(sub.<col> AS TEXT) LIKE '%' || :search || '%'`
+kitchen#113: the box searches what the row shows as TEXT — the order number and the notes. The
+action is a closed list the row paints TRANSLATED («Lanzadas», «Listas (bump)») while the engine
+compares the stored key (`started`, `bumped`), so it is picked in its column filter, not typed:
+the raw key must no longer match, or a row would appear for a word nobody can see in it.
+
+WHAT IS REPRODUCED of the list engine (`hub/crates/runtime/src/queries.rs`, `contains_ci`), and only
+that: the base SELECT wrapped as a derived table, the OR-ed
+`translate(lower(CAST(sub.<col> AS TEXT)), …) LIKE '%' || translate(lower(:search), …) || '%'`
 composed FROM THE MANIFEST (never hardcoded here — a wrong manifest must fail this test, not be
 papered over by it), and the `hub_id` scoping the base SQL already carries.
 
@@ -41,6 +47,9 @@ HUB = "hub-under-test"
 OTHER_HUB = "hub-next-door"
 NOW = "2026-08-18T10:00:00Z"
 
+#: Same fold as the runtime (`FOLD_FROM` / `FOLD_TO`).
+FOLD_FROM = "áàâäãåéèêëíìîïóòôöõúùûüñçÁÀÂÄÃÅÉÈÊËÍÌÎÏÓÒÔÖÕÚÙÛÜÑÇ"
+FOLD_TO = "aaaaaaeeeeiiiiooooouuuuncaaaaaaeeeeiiiiooooouuuunc"
 #: The engine only emits a condition for a syntactically safe identifier (`is_ident`).
 IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
@@ -115,6 +124,10 @@ class ScratchDb:
         return json.loads(out.strip() or "[]")
 
 
+def fold(expr: str) -> str:
+    return f"translate(lower({expr}), '{FOLD_FROM}', '{FOLD_TO}')"
+
+
 def list_query(db: ScratchDb, search: str | None, hub: str = HUB) -> list[dict]:
     """Run `kitchen.logs.list` the way the runtime composes it, search included."""
     spec = MANIFEST["queries"][QUERY]
@@ -128,7 +141,7 @@ def list_query(db: ScratchDb, search: str | None, hub: str = HUB) -> list[dict]:
     ]
     if columns and search is not None:
         likes = [
-            f"CAST(sub.{c} AS TEXT) LIKE '%' || CAST({literal(search)} AS TEXT) || '%'"
+            f"{fold(f'CAST(sub.{c} AS TEXT)')} LIKE '%' || {fold(literal(search))} || '%'"
             for c in columns
         ]
         conds.append("(" + " OR ".join(likes) + ")")
@@ -188,10 +201,10 @@ def seed(db: ScratchDb) -> None:
     )
     rows = [
         # id,     order_id,      action,     notes,                 hub
-        ("l1", "k-alpha", "fired", "sin cebolla", HUB),
+        ("l1", "k-alpha", "started", "sin cebolla", HUB),
         ("l2", "k-beta", "bumped", "mesa 7 con prisa", HUB),
         ("l3", "k-gamma", "recalled", "plato devuelto", HUB),
-        ("l4", "k-alpha-x", "fired", "sin cebolla", OTHER_HUB),
+        ("l4", "k-alpha-x", "started", "sin cebolla", OTHER_HUB),
     ]
     values = ",".join(
         "("
@@ -234,9 +247,9 @@ def check_manifest() -> list[str]:
         )
         return []
 
-    # The placeholder promises three things; the block must cover all three.
+    # The placeholder promises the order and the notes; the block must cover both.
     base = (MODULE_DIR / spec["sql"]).read_text()
-    for promised in ("action", "order_number", "notes"):
+    for promised in ("order_number", "notes"):
         if promised not in columns:
             fail(
                 f"the placeholder promises `{promised}` but `search` does not cover it: {columns}"
@@ -260,11 +273,11 @@ def check_behaviour(db: ScratchDb) -> None:
         )
         return
 
-    # One term per promised field, each matching exactly one row.
+    # One term per promised field, each matching exactly one row; case- and accent-folded.
     for label, term, expected_id in (
-        ("by ACTION", "recalled", "l3"),
         ("by ORDER number", "0002", "l2"),
         ("by NOTES", "cebolla", "l1"),
+        ("by NOTES, folded", "CEBÓLLA", "l1"),
     ):
         got = list_query(db, term)
         ids = sorted(str(r["id"]) for r in got)
@@ -272,6 +285,15 @@ def check_behaviour(db: ScratchDb) -> None:
             fail(
                 f"searching {label} («{term}») returned {ids or 'nothing'}, expected ['{expected_id}'] — "
                 f"the box does not narrow the list (kitchen#34)"
+            )
+
+    # kitchen#113: the stored action key is not what the row shows — it must not match any more.
+    for key in ("recalled", "bumped", "started"):
+        hidden = sorted(str(r["id"]) for r in list_query(db, key))
+        if hidden:
+            fail(
+                f"typing the internal action key «{key}» returned {hidden}: the row paints a "
+                f"translated label, so it matches for a word nobody sees (kitchen#113)"
             )
 
     # A term that matches nothing must empty the list — proves it filters rather than passing through.
