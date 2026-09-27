@@ -19,8 +19,9 @@ would "search" anything):
   2. the destination (`label`, «Mesa 4», «Barra») is searched — it is what a cook types;
   3. no header of a shown-but-NOT-searched column appears in the placeholder, in `en` nor in `es`
      — that is the exact lie of kitchen#110 («estado»);
-  4. every searched column's `es` header does appear in the `es` placeholder. Only `es`: the `en`
-     header of `label` is the terse «Where», which reads wrong in a sentence («destination»).
+  4. every searched column is named in the placeholder, in `en` and in `es`: by its header, or by
+     the word in `SENTENCE_WORD` when the header reads wrong in a sentence (the `en` header of
+     `label` is the terse «Where»; the box says «destination»).
 
 Usage: tests/orders_search_says_what_it_searches.contract.test.py   (exit 0 = green). No Postgres.
 """
@@ -42,6 +43,8 @@ COLUMN_RE = re.compile(
     r"key:\s*'([a-z_]+)'\s*,\s*header:\s*t\(\s*'([^']+)'\s*\)", re.MULTILINE
 )
 PLACEHOLDER_RE = re.compile(r"\.searchPlaceholder\s*=\s*\$\{\s*t\(\s*'([^']+)'")
+#: (lang, column) → the word the box uses when the column header is not a sentence word.
+SENTENCE_WORD = {("en", "label"): "destination"}
 
 failures: list[str] = []
 
@@ -100,10 +103,11 @@ def main() -> int:
                     f"[{lang}] the box says «{promise}» — it names «{header}» (`{col}`), which "
                     f"`{QUERY}` does not search (kitchen#110)"
                 )
-            if lang == "es" and col in searched and not names(promise, header):
+            word = SENTENCE_WORD.get((lang, col), header)
+            if col in searched and not names(promise, word):
                 failures.append(
-                    f"[es] the box says «{promise}» but does not name «{header}» (`{col}`), which "
-                    f"it does search"
+                    f"[{lang}] the box says «{promise}» but does not name «{word}» (`{col}`), "
+                    f"which it does search"
                 )
 
     if failures:
