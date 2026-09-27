@@ -85,7 +85,7 @@
     "creatingOrder": "Creando…",
     "createOrderError": "No se pudo crear la comanda",
     "updateStatusError": "No se pudo actualizar el estado",
-    "searchOrders": "Buscar comanda o estado…",
+    "searchOrders": "Buscar comanda o destino…",
     "emptyOrders": "Sin comandas.",
     "stationsTitle": "Estaciones de producción",
     "colStation": "Estación",
