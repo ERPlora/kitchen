@@ -84,7 +84,7 @@
     "creatingOrder": "Creating…",
     "createOrderError": "Could not create order",
     "updateStatusError": "Could not update status",
-    "searchOrders": "Search order or status…",
+    "searchOrders": "Search order or destination…",
     "emptyOrders": "No orders.",
     "stationsTitle": "Production stations",
     "colStation": "Station",

@@ -145,8 +145,7 @@
       "list": {
         "search": [
           "order_number",
-          "customer_id",
-          "round_number"
+          "label"
         ],
         "sort": [
           "id",
