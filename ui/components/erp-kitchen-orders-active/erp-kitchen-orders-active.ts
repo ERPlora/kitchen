@@ -8,7 +8,7 @@ import { createListController } from '@erplora/module-sdk';
 import type { ListController, ListClient, ListParams, ListPage } from '@erplora/module-sdk';
 // One catalogue for the module's closed domains: the CELL, the column FILTER and the new-order
 // picker all read from it, so they cannot say different things about the same value (kitchen#39).
-import { ORDER_TYPE_KEY, PRIORITY_KEY, enumLabel, enumOptions } from '../../lib/enums';
+import { ORDER_TYPE_KEY, PRIORITY_KEY, STATUS_KEY, enumLabel, enumOptions } from '../../lib/enums';
 // Catálogo i18n del módulo (ADR-0055): esbuild inlinea estos JSON en el `dist` del WC.
 import esLocale from '../../../locales/es.json';
 import enLocale from '../../../locales/en.json';
@@ -167,13 +167,10 @@ export class ErpKitchenOrdersActive extends LitElement {
       sortable: true,
       filterable: true,
       filterType: 'select',
-      options: [
-        { value: 'pending', label: t('ui.statusPending') },
-        { value: 'preparing', label: t('ui.statusPreparing') },
-        { value: 'ready', label: t('ui.statusReady') },
-        { value: 'served', label: t('ui.statusServed') },
-        { value: 'cancelled', label: t('ui.statusCancelled') },
-      ],
+      // The cell reads the same catalogue as its filter: without `format` the table painted the
+      // raw value («pending») while the filter offered «Pendiente» (kitchen#108).
+      format: (r) => enumLabel(STATUS_KEY, r.status),
+      options: enumOptions(STATUS_KEY),
     },
     {
       key: 'total',

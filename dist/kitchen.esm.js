@@ -5580,6 +5580,13 @@ var PRIORITY_KEY = {
   rush: "ui.priority_rush",
   vip: "ui.priority_vip"
 };
+var STATUS_KEY = {
+  pending: "ui.statusPending",
+  preparing: "ui.statusPreparing",
+  ready: "ui.statusReady",
+  served: "ui.statusServed",
+  cancelled: "ui.statusCancelled"
+};
 function enumLabel(keys, value) {
   const raw = value == null ? "" : String(value);
   const key = keys[raw];
@@ -5686,13 +5693,10 @@ var ErpKitchenOrdersActive = class extends i3 {
         sortable: true,
         filterable: true,
         filterType: "select",
-        options: [
-          { value: "pending", label: t7("ui.statusPending") },
-          { value: "preparing", label: t7("ui.statusPreparing") },
-          { value: "ready", label: t7("ui.statusReady") },
-          { value: "served", label: t7("ui.statusServed") },
-          { value: "cancelled", label: t7("ui.statusCancelled") }
-        ]
+        // The cell reads the same catalogue as its filter: without `format` the table painted the
+        // raw value («pending») while the filter offered «Pendiente» (kitchen#108).
+        format: (r6) => enumLabel(STATUS_KEY, r6.status),
+        options: enumOptions(STATUS_KEY)
       },
       {
         key: "total",
@@ -6215,7 +6219,7 @@ function errorText3(e6) {
   }
   return t5("ui.updateStatusError");
 }
-var STATUS_KEY = {
+var STATUS_KEY2 = {
   pending: "ui.stQueued",
   preparing: "ui.stPreparing",
   ready: "ui.stReady",
@@ -6434,7 +6438,7 @@ var ErpKitchenPosComandas = class extends i3 {
                 <ion-icon name="flame" style="color: var(--ion-color-warning)"></ion-icon>
                 <span>${t5("ui.comandaN", { n: String(c5.round_number) })}</span>
                 <span class="ktime">· ${(c5.fired_at ?? c5.created_at ?? "").replace("T", " ").slice(11, 16)}</span>
-                <span class="kstate" data-st=${c5.status}>${t5(STATUS_KEY[c5.status] ?? c5.status)}</span>
+                <span class="kstate" data-st=${c5.status}>${t5(STATUS_KEY2[c5.status] ?? c5.status)}</span>
                 ${rush ? b2`<span class="kprio">${t5("ui.priority_rush")}</span>` : A}
               </div>
               ${(this.items.get(c5.id) ?? []).map((i7) => b2`
