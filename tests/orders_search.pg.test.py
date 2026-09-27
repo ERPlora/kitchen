@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Typing a destination or an order number in the Comandas box narrows the list (ERPlora/kitchen#110).
 
-The contract half is `orders_search_says_what_it_searches.contract.test.py`: the box promises only
+The contract half is `search_box_says_what_it_searches.contract.test.py`: the box promises only
 what `kitchen.orders.list` searches. This is the behaviour underneath, on a real Postgres with this
 module's migrations and SQL: «mesa 4» finds the round sent to «Mesa 4» (case- and accent-folded like
 every search box of the hub), a piece of the number still finds its order, a hidden value (the
