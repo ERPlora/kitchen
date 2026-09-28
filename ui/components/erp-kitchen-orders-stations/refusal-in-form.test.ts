@@ -358,6 +358,22 @@ describe('pm#513 · stations: one form does not wipe the refusal another form is
     expect(whereIs(el, 'That printer does not exist.')).toEqual(['edit']);
     expect(whereIs(el, REFUSAL)).toEqual(['routing']);
   });
+
+  it('in the edit and routing rows the refusal takes a whole line, not a sliver between a field and the button', async () => {
+    // Those two forms are flex rows that wrap: without its own line the notice shrinks to fit
+    // next to the toggle or the category select and the reason is read a word per line.
+    const el = await mount();
+    await openEdit(el);
+    await refusedRouting(el);
+    refuse = 'That printer does not exist.';
+    await el.saveEdit(submitEvent());
+    await settle(el);
+    for (const [form, testid] of [[EDIT, 'kitchen-stations-edit-error'], [ROUTING, 'kitchen-stations-routing-error']]) {
+      const notice = inside(el, form, testid)!;
+      expect(notice, testid).not.toBeNull();
+      expect(getComputedStyle(notice).flexBasis, testid).toBe('100%');
+    }
+  });
 });
 
 describe('pm#513 · stations: what goes wrong OUTSIDE the save stays on the page (rv-appointments-227)', () => {
