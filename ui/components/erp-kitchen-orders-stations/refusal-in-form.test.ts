@@ -41,6 +41,7 @@ let revealed: Element[] = [];
 let paintedWhenRevealed: boolean[] = [];
 
 beforeEach(() => {
+  document.body.querySelectorAll('ion-alert').forEach((a) => a.remove());
   refuse = null;
   hold = null;
   loadFails = false;
@@ -144,8 +145,15 @@ async function refusedRouting(el: Wc, reason = REFUSAL): Promise<void> {
   await settle(el);
 }
 
+/** A row «Delete», confirmed: since kitchen#115 the trash can asks first (delete-asks-first.test.ts). */
 async function deleteRow(el: Wc): Promise<void> {
   await el.onRowAction({ detail: { actionId: 'delete', row: STATIONS[1] } });
+  const alert = document.body.querySelector('ion-alert[data-testid="kitchen-stations-delete-confirm"]') as
+    | (HTMLElement & { buttons: Array<{ role?: string; handler?: () => unknown }> })
+    | null;
+  expect(alert, 'the delete confirmation is open').toBeTruthy();
+  await alert?.buttons.find((b) => b.role === 'destructive')?.handler?.();
+  alert?.remove();
   await settle(el);
 }
 
@@ -393,11 +401,15 @@ describe('pm#513 · stations: what goes wrong OUTSIDE the save stays on the page
     refuse = null;
     let release!: () => void;
     hold = new Promise((r) => (release = r));
-    const action = el.onRowAction({ detail: { actionId: 'delete', row: STATIONS[0] } });
+    await el.onRowAction({ detail: { actionId: 'delete', row: STATIONS[0] } });
+    const alert = document.body.querySelector('ion-alert[data-testid="kitchen-stations-delete-confirm"]') as
+      | (HTMLElement & { buttons: Array<{ role?: string; handler?: () => unknown }> })
+      | null;
+    alert?.buttons.find((b) => b.role === 'destructive')?.handler?.();
     await settle(el);
     expect(whereIs(el, REFUSAL)).toEqual([]);
     release();
-    await action;
+    await settle(el);
   });
 
   it('a «Delete» does not wipe a refusal the person is still reading in a form', async () => {

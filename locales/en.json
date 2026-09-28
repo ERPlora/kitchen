@@ -119,6 +119,8 @@
     "routingSaved": "Routing saved",
     "saveRoutingError": "Could not save routing",
     "deleteStationError": "Could not delete station",
+    "deleteStationTitle": "Delete «{name}»?",
+    "deleteStationMessage": "The station leaves the list and stops receiving tickets. Tickets already sent keep it in their history.",
     "searchStations": "Search station…",
     "emptyStations": "No stations.",
     "colLabel": "Where",
