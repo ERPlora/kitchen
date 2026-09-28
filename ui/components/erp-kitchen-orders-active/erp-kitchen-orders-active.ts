@@ -280,6 +280,10 @@ export class ErpKitchenOrdersActive extends LitElement {
       });
       this.newNotes = '';
       this.dataTable()?.close(); // otherwise the panel stays open over the order just created
+      // Newest first: the new order heads page 1, so reloading the page the person was on would hide
+      // it (kitchen#133). Search, filters and sort stay as the person left them. `setPage` does not
+      // return the load, hence the state + awaited load.
+      this.ctrl.state.page = 0;
       await this.ctrl.load();
     } catch (e) {
       this.createError = e instanceof Error && e.message ? e.message : erplora().t(CATALOG, 'ui.createOrderError');
@@ -340,7 +344,7 @@ export class ErpKitchenOrdersActive extends LitElement {
         ${this.ctrl?.error ? html`<ok-inline-feedback data-testid="kitchen-orders-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : nothing}
         <!-- kitchen#122: the quick add is the table's own «+ New order» panel, as in Stations. Above
              the list it read as a filter: «Type: Dine in» over a «Takeaway» card. -->
-        <ok-data-table testid="kitchen-orders-table" .serverSide=${true} .addable=${true} .labels=${{ add: t('ui.newOrder'), newRecord: t('ui.newOrder') }} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.order_number ?? '—')} .cardIcon=${() => 'restaurant-outline'} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'desc'} .searchable=${true} .searchPlaceholder=${t('ui.searchOrders')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyOrders')} .actions=${this.rowActions} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}>
+        <ok-data-table testid="kitchen-orders-table" .serverSide=${true} .addable=${true} .labels=${{ add: t('ui.newOrder'), newRecord: t('ui.newOrder') }} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.order_number ?? '—')} .cardIcon=${() => 'restaurant-outline'} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'desc'} .searchable=${true} .searchPlaceholder=${t('ui.searchOrders')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyOrders')} .actions=${this.rowActions} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @pageSizeChange=${(e: CustomEvent<number>) => this.ctrl.setPageSize(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}>
           <!-- Projected ALWAYS (even with the panel closed): rendered only when open, «+» would open an empty panel. -->
           <form slot="create" class="create-form" data-testid="kitchen-orders-form" @submit=${(e: Event) => this.createOrder(e)}>
             <!-- Both labels stacked: floating put «Type» on the border (it has a value) and «Notes»
