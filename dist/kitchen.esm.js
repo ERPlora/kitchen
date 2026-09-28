@@ -3125,10 +3125,13 @@ var ErpKitchenDisplay = class extends i3 {
     const ready = this.readyTickets;
     return b2`<div>
       <div class="bar">
+        <!-- The tab is named by the view alone (kitchen#116): without aria-label the counter glued to
+             the word made it «Comandas0». Ionic copies aria-label onto its role="tab" button once, at
+             load, so it is the static view name and the counter stays visual. -->
         <ion-segment class="views" data-testid="kds-views" .value=${this.mode} @ionChange=${(e6) => this.mode = e6.detail.value || "tickets"}>
-          <ion-segment-button value="tickets" data-testid="kds-view-tickets"><ion-label>${t_("ui.modeTickets")}<span class="count" data-testid="kds-count-cooking" data-count="cooking">${cooking.length}</span></ion-label></ion-segment-button>
-          <ion-segment-button value="ready" data-testid="kds-view-ready"><ion-label>${t_("ui.readyRail")}<span class="count" data-testid="kds-count-ready" data-count="ready">${ready.length}</span></ion-label></ion-segment-button>
-          <ion-segment-button value="allday" data-testid="kds-view-allday"><ion-label>${t_("ui.modeAllDay")}</ion-label></ion-segment-button>
+          <ion-segment-button value="tickets" data-testid="kds-view-tickets" aria-label=${t_("ui.modeTickets")}><ion-label>${t_("ui.modeTickets")}<span class="count" data-testid="kds-count-cooking" data-count="cooking">${cooking.length}</span></ion-label></ion-segment-button>
+          <ion-segment-button value="ready" data-testid="kds-view-ready" aria-label=${t_("ui.readyRail")}><ion-label>${t_("ui.readyRail")}<span class="count" data-testid="kds-count-ready" data-count="ready">${ready.length}</span></ion-label></ion-segment-button>
+          <ion-segment-button value="allday" data-testid="kds-view-allday" aria-label=${t_("ui.modeAllDay")}><ion-label>${t_("ui.modeAllDay")}</ion-label></ion-segment-button>
         </ion-segment>
         ${this.renderFullscreen()}
         ${stations.length > 1 || this.station ? b2`<ion-segment class="stations" data-testid="kds-stations" scrollable .value=${this.station || "__all"} @ionChange=${(e6) => this.station = e6.detail.value === "__all" ? "" : String(e6.detail.value ?? "")}>
