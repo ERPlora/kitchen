@@ -79,13 +79,15 @@ const COVERED: Record<string, { prefix: string; contract: string[] }> = {
     prefix: 'kitchen-history-',
     contract: ['kitchen-history-load-error', 'kitchen-history-table'],
   },
-  // The active orders (`/m/kitchen/orders`): the quick form that opens an order by hand, and the
+  // The active orders (`/m/kitchen/orders`): the quick form that opens an order by hand (projected
+  // into the table's create panel, kitchen#122), the page notice of a refused row action, and the
   // table whose row actions move it along (`kitchen-orders-table-row-<id>-<action>`, painted by
   // `ok-data-table` from the `testid` given here — outfitkit#143).
   'erp-kitchen-orders-active/erp-kitchen-orders-active.ts': {
     prefix: 'kitchen-orders-',
     contract: [
       'kitchen-orders-form',
+      'kitchen-orders-error',
       'kitchen-orders-form-error',
       'kitchen-orders-load-error',
       'kitchen-orders-notes',

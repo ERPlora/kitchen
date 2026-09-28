@@ -2089,6 +2089,7 @@ var es_default = {
     placeholderType: "Tipo",
     placeholderNotes: "Notas",
     newOrder: "Nueva comanda",
+    createOrder: "Crear comanda",
     creatingOrder: "Creando\u2026",
     createOrderError: "No se pudo crear la comanda",
     updateStatusError: "No se pudo actualizar el estado",
@@ -2273,6 +2274,7 @@ var en_default = {
     placeholderType: "Type",
     placeholderNotes: "Notes",
     newOrder: "New order",
+    createOrder: "Create order",
     creatingOrder: "Creating\u2026",
     createOrderError: "Could not create order",
     updateStatusError: "Could not update status",
@@ -5639,7 +5641,8 @@ function errorText2(e6, fallbackKey) {
 var ErpKitchenOrdersActive = class extends i3 {
   constructor() {
     super(...arguments);
-    this.formError = "";
+    this.createError = "";
+    this.pageError = "";
     this.newType = DEFAULT_ORDER_TYPE;
     this.newNotes = "";
     this.saving = false;
@@ -5651,8 +5654,9 @@ var ErpKitchenOrdersActive = class extends i3 {
     :host { display:block; font-family: system-ui, sans-serif; color: var(--ion-text-color, #1c1b18); }
     header { display:flex; gap:.5rem; align-items:center; margin-bottom:.75rem; }
     h2 { margin:0; font-size:1.15rem; flex:1; }
-    .form { display:flex; gap:.75rem; flex-wrap:wrap; align-items:end; margin:.5rem 0 1rem; }
-    .form ion-input, .form ion-select { flex:1 1 11rem; min-width:9rem; }
+    /* The quick add lives in the table's side panel (kitchen#122): a column, button at the end. */
+    .create-form { display:flex; flex-direction:column; gap:.7rem; }
+    .create-form ion-button { align-self:flex-end; }
     .err { color:#d9480f; font-weight:600; }
     .actions { display:flex; gap:.35rem; }
   `;
@@ -5769,10 +5773,15 @@ var ErpKitchenOrdersActive = class extends i3 {
       this.newType = DEFAULT_ORDER_TYPE;
     }
   }
+  /** The table, to close its create panel once the order exists. */
+  dataTable() {
+    return this.renderRoot.querySelector("ok-data-table");
+  }
   async createOrder(ev) {
     ev.preventDefault();
     this.saving = true;
-    this.formError = "";
+    this.createError = "";
+    this.pageError = "";
     try {
       await erplora4().command("kitchen.orders.create", {
         order_type: this.newType,
@@ -5781,16 +5790,29 @@ var ErpKitchenOrdersActive = class extends i3 {
         items: []
       });
       this.newNotes = "";
+      this.dataTable()?.close();
       await this.ctrl.load();
     } catch (e6) {
-      this.formError = e6 instanceof Error ? e6.message : erplora4().t(CATALOG4, "ui.createOrderError");
+      this.createError = e6 instanceof Error && e6.message ? e6.message : erplora4().t(CATALOG4, "ui.createOrderError");
     } finally {
       this.saving = false;
     }
   }
+  /** pm#513: the refusal appears above the button that was pressed — on a phone the panel is a
+   *  full-screen sheet and it can land below the fold. Bring it into view when it appears. */
+  updated(changed) {
+    super.updated(changed);
+    if (changed.has("createError") && this.createError) void this.revealCreateError();
+  }
+  /** ok-inline-feedback lays itself out in its own update: scrolled to before it, the box is empty. */
+  async revealCreateError() {
+    const banner = this.renderRoot.querySelector('[data-testid="kitchen-orders-form-error"]');
+    await banner?.updateComplete;
+    banner?.scrollIntoView?.({ block: "center" });
+  }
   async onRowAction(ev) {
     const { actionId, row } = ev.detail;
-    this.formError = "";
+    this.pageError = "";
     try {
       const order_id = row.id;
       switch (actionId) {
@@ -5805,7 +5827,7 @@ var ErpKitchenOrdersActive = class extends i3 {
       }
       await this.ctrl.load();
     } catch (e6) {
-      this.formError = errorText2(e6, "ui.updateStatusError");
+      this.pageError = errorText2(e6, "ui.updateStatusError");
       await this.ctrl.load().catch(() => void 0);
     }
   }
@@ -5815,24 +5837,36 @@ var ErpKitchenOrdersActive = class extends i3 {
         <header>
           <h2>${t7("ui.ordersTitle")}</h2>
         </header>
-        <form class="form" data-testid="kitchen-orders-form" @submit=${(e6) => this.createOrder(e6)}>
-          <ion-select data-testid="kitchen-orders-type" mode="md" fill="outline" label-placement="floating" label=${t7("ui.colType")} .value=${this.newType} @ionChange=${(e6) => this.newType = e6.target.value}>
-            ${enumOptions(ORDER_TYPE_KEY).map(
+        ${this.pageError ? b2`<ok-inline-feedback data-testid="kitchen-orders-error" tone="danger" icon="alert-circle-outline">${this.pageError}</ok-inline-feedback>` : A}
+        ${this.ctrl?.error ? b2`<ok-inline-feedback data-testid="kitchen-orders-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
+        <!-- kitchen#122: the quick add is the table's own «+ New order» panel, as in Stations. Above
+             the list it read as a filter: «Type: Dine in» over a «Takeaway» card. -->
+        <ok-data-table testid="kitchen-orders-table" .serverSide=${true} .addable=${true} .labels=${{ add: t7("ui.newOrder"), newRecord: t7("ui.newOrder") }} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.order_number ?? "\u2014")} .cardIcon=${() => "restaurant-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "desc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchOrders")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyOrders")} .actions=${this.rowActions} @rowAction=${(e6) => this.onRowAction(e6)} @pageChange=${(e6) => this.ctrl.setPage(e6.detail)} @sortChange=${(e6) => this.ctrl.setSort(e6.detail.sort, e6.detail.dir)} @searchChange=${(e6) => this.ctrl.setSearch(e6.detail)} @filterChange=${(e6) => this.ctrl.setFilter(e6.detail.col, e6.detail.value)}>
+          <!-- Projected ALWAYS (even with the panel closed): rendered only when open, «+» would open an empty panel. -->
+          <form slot="create" class="create-form" data-testid="kitchen-orders-form" @submit=${(e6) => this.createOrder(e6)}>
+            <!-- Both labels stacked: floating put «Type» on the border (it has a value) and «Notes»
+                 inside its empty box, so the two fields of one form looked different (kitchen#122). -->
+            <ion-select data-testid="kitchen-orders-type" mode="md" fill="outline" label-placement="stacked" label=${t7("ui.colType")} .value=${this.newType} @ionChange=${(e6) => this.newType = e6.target.value}>
+              ${enumOptions(ORDER_TYPE_KEY).map(
       (o7) => b2`<ion-select-option value=${o7.value}>${o7.label}</ion-select-option>`
     )}
-          </ion-select>
-          <ion-input data-testid="kitchen-orders-notes" mode="md" fill="outline" label-placement="floating" label=${t7("ui.colNotes")} .value=${this.newNotes} @ionInput=${(e6) => this.newNotes = e6.target.value}></ion-input>
-          <ion-button data-testid="kitchen-orders-submit" type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t7("ui.creatingOrder") : t7("ui.newOrder")}</ion-button>
-        </form>
-        ${this.formError ? b2`<ok-inline-feedback data-testid="kitchen-orders-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
-        ${this.ctrl?.error ? b2`<ok-inline-feedback data-testid="kitchen-orders-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
-        <ok-data-table testid="kitchen-orders-table" .serverSide=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.order_number ?? "\u2014")} .cardIcon=${() => "restaurant-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "desc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchOrders")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyOrders")} .actions=${this.rowActions} @rowAction=${(e6) => this.onRowAction(e6)} @pageChange=${(e6) => this.ctrl.setPage(e6.detail)} @sortChange=${(e6) => this.ctrl.setSort(e6.detail.sort, e6.detail.dir)} @searchChange=${(e6) => this.ctrl.setSearch(e6.detail)} @filterChange=${(e6) => this.ctrl.setFilter(e6.detail.col, e6.detail.value)}></ok-data-table>
+            </ion-select>
+            <ion-input data-testid="kitchen-orders-notes" mode="md" fill="outline" label-placement="stacked" label=${t7("ui.colNotes")} placeholder=${t7("ui.placeholderOptional")} .value=${this.newNotes} @ionInput=${(e6) => this.newNotes = e6.target.value}></ion-input>
+            <!-- pm#513: the refusal travels WITH the form — under 834 px the panel is a full-screen
+                 sheet and a notice on the page underneath it is never seen. -->
+            ${this.createError ? b2`<ok-inline-feedback data-testid="kitchen-orders-form-error" tone="danger" icon="alert-circle-outline">${this.createError}</ok-inline-feedback>` : A}
+            <ion-button data-testid="kitchen-orders-submit" type="submit" ?disabled=${this.saving}>${this.saving ? t7("ui.creatingOrder") : t7("ui.createOrder")}</ion-button>
+          </form>
+        </ok-data-table>
       </div>`;
   }
 };
 __decorateClass([
   r5()
-], ErpKitchenOrdersActive.prototype, "formError", 2);
+], ErpKitchenOrdersActive.prototype, "createError", 2);
+__decorateClass([
+  r5()
+], ErpKitchenOrdersActive.prototype, "pageError", 2);
 __decorateClass([
   r5()
 ], ErpKitchenOrdersActive.prototype, "newType", 2);
