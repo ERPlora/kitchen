@@ -119,6 +119,8 @@ describe('a longer status name still fits the phone (kitchen#112)', () => {
     const header = el.shadowRoot!.querySelector('[data-testid="kitchen-comandas-row-k-preparing"] .krow-h') as HTMLElement;
     const icon = header.querySelector('ion-icon') as HTMLElement;
     expect(getComputedStyle(header).flexWrap).toBe('wrap');
+    // The wrapped pills keep a gap from the first line instead of touching it.
+    expect(getComputedStyle(header).rowGap).toBe('.25rem');
     expect(getComputedStyle(icon).flexShrink).toBe('0');
   });
 });
