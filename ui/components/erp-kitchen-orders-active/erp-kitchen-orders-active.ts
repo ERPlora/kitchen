@@ -280,6 +280,10 @@ export class ErpKitchenOrdersActive extends LitElement {
       });
       this.newNotes = '';
       this.dataTable()?.close(); // otherwise the panel stays open over the order just created
+      // Newest first: the new order heads page 1, so reloading the page the person was on would hide
+      // it (kitchen#133). Search, filters and sort stay as the person left them. `setPage` does not
+      // return the load, hence the state + awaited load.
+      this.ctrl.state.page = 0;
       await this.ctrl.load();
     } catch (e) {
       this.createError = e instanceof Error && e.message ? e.message : erplora().t(CATALOG, 'ui.createOrderError');

@@ -5791,6 +5791,7 @@ var ErpKitchenOrdersActive = class extends i3 {
       });
       this.newNotes = "";
       this.dataTable()?.close();
+      this.ctrl.state.page = 0;
       await this.ctrl.load();
     } catch (e6) {
       this.createError = e6 instanceof Error && e6.message ? e6.message : erplora4().t(CATALOG4, "ui.createOrderError");
