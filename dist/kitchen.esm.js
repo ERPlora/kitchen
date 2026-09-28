@@ -5919,9 +5919,11 @@ var ErpKitchenOrdersStations = class extends i3 {
   static {
     this.styles = i`
     :host { display:flex; flex-direction:column; height:100%; min-height:0; font-family: system-ui, sans-serif; color: var(--ion-text-color, #1c1b18); }
-    /* La vista llena el alto: el data-table ocupa lo que sobra (scroll interno, pie fijo). */
+    /* The view fills the height: the data-table takes what is left (inner scroll, fixed footer).
+       Its floor keeps ~20 rows of text when the edit/routing panels fill a short landscape screen:
+       the PAGE scrolls instead of the list collapsing to its toolbar (kitchen#131, as the demo). */
     .page { display:flex; flex-direction:column; min-height:0; flex:1 1 auto; }
-    .page > ok-data-table { flex:1 1 auto; min-height:0; }
+    .page > ok-data-table { flex:1 1 auto; min-height:20rem; }
     h3 { margin:.25rem 0 .5rem; font-size:1rem; }
     /* Los paneles de edición/enrutado siguen fuera de la tabla (no son altas de fila): ahí el form
        es ancho y va en fila. El alta, dentro del panel lateral de la tabla, va en columna. */
