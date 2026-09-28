@@ -3125,9 +3125,13 @@ var ErpKitchenDisplay = class extends i3 {
     const ready = this.readyTickets;
     return b2`<div>
       <div class="bar">
+        <!-- The tab is named by the view alone (kitchen#116): the counter glued to the word made it
+             «Comandas0», so the counter is aria-hidden and the name is the word it paints. Not aria-label:
+             Ionic copies it onto its role="tab" button once, at load, and this screen repaints in place
+             on a language change. -->
         <ion-segment class="views" data-testid="kds-views" .value=${this.mode} @ionChange=${(e6) => this.mode = e6.detail.value || "tickets"}>
-          <ion-segment-button value="tickets" data-testid="kds-view-tickets"><ion-label>${t_("ui.modeTickets")}<span class="count" data-testid="kds-count-cooking" data-count="cooking">${cooking.length}</span></ion-label></ion-segment-button>
-          <ion-segment-button value="ready" data-testid="kds-view-ready"><ion-label>${t_("ui.readyRail")}<span class="count" data-testid="kds-count-ready" data-count="ready">${ready.length}</span></ion-label></ion-segment-button>
+          <ion-segment-button value="tickets" data-testid="kds-view-tickets"><ion-label>${t_("ui.modeTickets")}<span class="count" aria-hidden="true" data-testid="kds-count-cooking" data-count="cooking">${cooking.length}</span></ion-label></ion-segment-button>
+          <ion-segment-button value="ready" data-testid="kds-view-ready"><ion-label>${t_("ui.readyRail")}<span class="count" aria-hidden="true" data-testid="kds-count-ready" data-count="ready">${ready.length}</span></ion-label></ion-segment-button>
           <ion-segment-button value="allday" data-testid="kds-view-allday"><ion-label>${t_("ui.modeAllDay")}</ion-label></ion-segment-button>
         </ion-segment>
         ${this.renderFullscreen()}
@@ -5796,6 +5800,7 @@ var ErpKitchenOrdersActive = class extends i3 {
       });
       this.newNotes = "";
       this.dataTable()?.close();
+      this.ctrl.state.page = 0;
       await this.ctrl.load();
     } catch (e6) {
       this.createError = e6 instanceof Error && e6.message ? e6.message : erplora4().t(CATALOG4, "ui.createOrderError");
@@ -5846,7 +5851,7 @@ var ErpKitchenOrdersActive = class extends i3 {
         ${this.ctrl?.error ? b2`<ok-inline-feedback data-testid="kitchen-orders-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
         <!-- kitchen#122: the quick add is the table's own «+ New order» panel, as in Stations. Above
              the list it read as a filter: «Type: Dine in» over a «Takeaway» card. -->
-        <ok-data-table testid="kitchen-orders-table" .serverSide=${true} .addable=${true} .labels=${{ add: t7("ui.newOrder"), newRecord: t7("ui.newOrder") }} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.order_number ?? "\u2014")} .cardIcon=${() => "restaurant-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "desc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchOrders")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyOrders")} .actions=${this.rowActions} @rowAction=${(e6) => this.onRowAction(e6)} @pageChange=${(e6) => this.ctrl.setPage(e6.detail)} @sortChange=${(e6) => this.ctrl.setSort(e6.detail.sort, e6.detail.dir)} @searchChange=${(e6) => this.ctrl.setSearch(e6.detail)} @filterChange=${(e6) => this.ctrl.setFilter(e6.detail.col, e6.detail.value)}>
+        <ok-data-table testid="kitchen-orders-table" .serverSide=${true} .addable=${true} .labels=${{ add: t7("ui.newOrder"), newRecord: t7("ui.newOrder") }} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.order_number ?? "\u2014")} .cardIcon=${() => "restaurant-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "desc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchOrders")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyOrders")} .actions=${this.rowActions} @rowAction=${(e6) => this.onRowAction(e6)} @pageChange=${(e6) => this.ctrl.setPage(e6.detail)} @pageSizeChange=${(e6) => this.ctrl.setPageSize(e6.detail)} @sortChange=${(e6) => this.ctrl.setSort(e6.detail.sort, e6.detail.dir)} @searchChange=${(e6) => this.ctrl.setSearch(e6.detail)} @filterChange=${(e6) => this.ctrl.setFilter(e6.detail.col, e6.detail.value)}>
           <!-- Projected ALWAYS (even with the panel closed): rendered only when open, «+» would open an empty panel. -->
           <form slot="create" class="create-form" data-testid="kitchen-orders-form" @submit=${(e6) => this.createOrder(e6)}>
             <!-- Both labels stacked: floating put «Type» on the border (it has a value) and «Notes»

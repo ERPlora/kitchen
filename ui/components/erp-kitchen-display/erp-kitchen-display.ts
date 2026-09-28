@@ -1121,9 +1121,13 @@ export class ErpKitchenDisplay extends LitElement {
     const ready = this.readyTickets;
     return html`<div>
       <div class="bar">
+        <!-- The tab is named by the view alone (kitchen#116): the counter glued to the word made it
+             «Comandas0», so the counter is aria-hidden and the name is the word it paints. Not aria-label:
+             Ionic copies it onto its role="tab" button once, at load, and this screen repaints in place
+             on a language change. -->
         <ion-segment class="views" data-testid="kds-views" .value=${this.mode} @ionChange=${(e: CustomEvent<{ value: string }>) => (this.mode = (e.detail.value as 'tickets' | 'ready' | 'allday') || 'tickets')}>
-          <ion-segment-button value="tickets" data-testid="kds-view-tickets"><ion-label>${t_('ui.modeTickets')}<span class="count" data-testid="kds-count-cooking" data-count="cooking">${cooking.length}</span></ion-label></ion-segment-button>
-          <ion-segment-button value="ready" data-testid="kds-view-ready"><ion-label>${t_('ui.readyRail')}<span class="count" data-testid="kds-count-ready" data-count="ready">${ready.length}</span></ion-label></ion-segment-button>
+          <ion-segment-button value="tickets" data-testid="kds-view-tickets"><ion-label>${t_('ui.modeTickets')}<span class="count" aria-hidden="true" data-testid="kds-count-cooking" data-count="cooking">${cooking.length}</span></ion-label></ion-segment-button>
+          <ion-segment-button value="ready" data-testid="kds-view-ready"><ion-label>${t_('ui.readyRail')}<span class="count" aria-hidden="true" data-testid="kds-count-ready" data-count="ready">${ready.length}</span></ion-label></ion-segment-button>
           <ion-segment-button value="allday" data-testid="kds-view-allday"><ion-label>${t_('ui.modeAllDay')}</ion-label></ion-segment-button>
         </ion-segment>
         ${this.renderFullscreen()}
