@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import type { PropertyValues } from 'lit';
 import { state } from 'lit/decorators.js';
 import { define } from '@erplora/outfitkit/define';
 import '@erplora/outfitkit/ok-inline-feedback';
@@ -68,6 +69,7 @@ export class ErpKitchenOrdersStations extends LitElement {
        es ancho y va en fila. El alta, dentro del panel lateral de la tabla, va en columna. */
     .form { display:flex; gap:.75rem; flex-wrap:wrap; align-items:end; margin:.5rem 0 1rem; }
     .form ion-input, .form ion-select { flex:1 1 11rem; min-width:9rem; }
+    .form ok-inline-feedback { flex:1 1 100%; }
     .create-form { display:flex; flex-direction:column; gap:.7rem; }
     .create-form ion-button { align-self:flex-end; }
     .panel { border:1px solid var(--ion-border-color,#e7e2d6); border-radius: var(--ok-radius-sm, 10px); padding:.75rem 1rem; margin:0 0 1rem; background:var(--ok-surface-2, var(--ion-color-step-50, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.04))); }
@@ -75,7 +77,17 @@ export class ErpKitchenOrdersStations extends LitElement {
     .ok { color:#2b8a3e; font-weight:600; }
   `;
 
-  @state() formError = '';
+  /** What «Add» in the «New station» panel was refused: painted inside that form, never on the page (pm#513). */
+  @state() createError = '';
+
+  /** What «Save» in the edit panel was refused: painted inside the edit form (pm#513). */
+  @state() editError = '';
+
+  /** What «Save routing» was refused: painted inside the routing form (pm#513). */
+  @state() routingError = '';
+
+  /** What a row «Delete» was refused: no form is involved then, so it goes on the page. */
+  @state() pageError = '';
 
   @state() formMsg = '';
 
@@ -228,7 +240,8 @@ export class ErpKitchenOrdersStations extends LitElement {
     ev.preventDefault();
     if (!this.newName.trim()) return;
     this.saving = true;
-    this.formError = '';
+    this.createError = '';
+    this.pageError = ''; // a save is the next thing the person did: an older row refusal is stale (staff#75)
     this.formMsg = '';
     try {
       await erplora().command('kitchen.stations.create', {
@@ -240,7 +253,7 @@ export class ErpKitchenOrdersStations extends LitElement {
       this.dataTable()?.close(); // si no, el panel se queda abierto tapando la estación recién creada
       await this.reload();
     } catch (e) {
-      this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.createStationError');
+      this.createError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.createStationError');
     } finally {
       this.saving = false;
     }
@@ -252,7 +265,7 @@ export class ErpKitchenOrdersStations extends LitElement {
     this.editPrinter = st.printer_name ?? '';
     this.editColor = st.color ?? '';
     this.editActive = Boolean(Number(st.is_active));
-    this.formError = '';
+    this.editError = ''; // a refusal is about the station it was saved for, not the one opened now (rv-tickets-43)
     this.formMsg = '';
   }
 
@@ -260,7 +273,8 @@ export class ErpKitchenOrdersStations extends LitElement {
     ev.preventDefault();
     if (!this.editing) return;
     this.saving = true;
-    this.formError = '';
+    this.editError = '';
+    this.pageError = '';
     this.formMsg = '';
     try {
       await erplora().command('kitchen.stations.update', {
@@ -274,7 +288,7 @@ export class ErpKitchenOrdersStations extends LitElement {
       this.editing = null;
       await this.reload();
     } catch (e) {
-      this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.updateStationError');
+      this.editError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.updateStationError');
     } finally {
       this.saving = false;
     }
@@ -286,7 +300,8 @@ export class ErpKitchenOrdersStations extends LitElement {
     // command espera strings con "" como ausencia.
     if (!this.routeStationId || (!this.routeProductId && !this.routeCategoryId)) return;
     this.saving = true;
-    this.formError = '';
+    this.routingError = '';
+    this.pageError = '';
     this.formMsg = '';
     try {
       await erplora().command('kitchen.stations.set_routing', {
@@ -299,7 +314,7 @@ export class ErpKitchenOrdersStations extends LitElement {
       this.routeCategoryId = '';
       await this.reload();
     } catch (e) {
-      this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.saveRoutingError');
+      this.routingError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.saveRoutingError');
     } finally {
       this.saving = false;
     }
@@ -313,19 +328,35 @@ export class ErpKitchenOrdersStations extends LitElement {
     }
     if (ev.detail.actionId === 'route') {
       this.routeStationId = station.id;
-      this.formError = '';
+      this.routingError = '';
       this.formMsg = '';
       return;
     }
     if (ev.detail.actionId !== 'delete') return;
-    this.formError = '';
+    this.pageError = '';
     this.formMsg = '';
     try {
       await erplora().command('kitchen.stations.delete', { station_id: station.id });
       await this.reload();
     } catch (e) {
-      this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.deleteStationError');
+      this.pageError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.deleteStationError');
     }
+  }
+
+  /** pm#513: each refusal appears above the button that was pressed — on a phone that can leave it
+   *  under the sheet or below the fold. Bring it into view when it appears, not again on every keystroke. */
+  updated(changed: PropertyValues): void {
+    super.updated(changed);
+    if (changed.has('createError') && this.createError) void this.revealRefusal('[data-testid="kitchen-stations-create-error"]');
+    if (changed.has('editError') && this.editError) void this.revealRefusal('[data-testid="kitchen-stations-edit-error"]');
+    if (changed.has('routingError') && this.routingError) void this.revealRefusal('[data-testid="kitchen-stations-routing-error"]');
+  }
+
+  /** ok-inline-feedback lays itself out in its own update: scrolled to before it, the box is empty. */
+  private async revealRefusal(selector: string): Promise<void> {
+    const banner = this.renderRoot.querySelector(selector) as (HTMLElement & { updateComplete?: Promise<unknown> }) | null;
+    await banner?.updateComplete;
+    banner?.scrollIntoView?.({ block: 'center' });
   }
 
   private renderEditPanel() {
@@ -338,6 +369,7 @@ export class ErpKitchenOrdersStations extends LitElement {
         <ion-input data-testid="kitchen-stations-edit-color" mode="md" fill="outline" label=${t('ui.labelColor')} label-placement="floating" placeholder="#F97316" .value=${this.editColor} @ionInput=${(e: any) => (this.editColor = e.target.value)}></ion-input>
         <ion-input data-testid="kitchen-stations-edit-printer" mode="md" fill="outline" label=${t('ui.labelPrinter')} label-placement="floating" .value=${this.editPrinter} @ionInput=${(e: any) => (this.editPrinter = e.target.value)}></ion-input>
         <ion-toggle data-testid="kitchen-stations-edit-active" .checked=${this.editActive} @ionChange=${(e: any) => (this.editActive = e.detail.checked)}>${t('ui.labelActive')}</ion-toggle>
+        ${this.editError ? html`<ok-inline-feedback data-testid="kitchen-stations-edit-error" tone="danger" icon="alert-circle-outline">${this.editError}</ok-inline-feedback>` : nothing}
         <ion-button data-testid="kitchen-stations-edit-submit" type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t('ui.saving') : t('ui.save')}</ion-button>
         <ion-button data-testid="kitchen-stations-edit-cancel" size="small" fill="outline" @click=${() => (this.editing = null)}>${t('ui.cancel')}</ion-button>
       </form>
@@ -363,6 +395,7 @@ export class ErpKitchenOrdersStations extends LitElement {
         <ion-select data-testid="kitchen-stations-routing-category" mode="md" fill="outline" interface="popover" label-placement="floating" label=${t('ui.labelCategory')} placeholder=${t('ui.placeholderOptional')} .value=${this.routeCategoryId} @ionChange=${(e: any) => (this.routeCategoryId = e.target.value ?? '')}>
           ${this.categoryOptions.map((c) => html`<ion-select-option value=${c.id}>${c.name}</ion-select-option>`)}
         </ion-select>
+        ${this.routingError ? html`<ok-inline-feedback data-testid="kitchen-stations-routing-error" tone="danger" icon="alert-circle-outline">${this.routingError}</ok-inline-feedback>` : nothing}
         <ion-button data-testid="kitchen-stations-routing-submit" type="submit" size="small" ?disabled=${this.saving || !this.routeStationId || (!this.routeProductId && !this.routeCategoryId)}>${this.saving ? t('ui.saving') : t('ui.saveRouting')}</ion-button>
       </form>
     </section>`;
@@ -377,7 +410,7 @@ export class ErpKitchenOrdersStations extends LitElement {
         ${this.renderEditPanel()}
         ${this.renderRoutingPanel()}
         ${this.formMsg ? html`<p class="ok" data-testid="kitchen-stations-saved">${this.formMsg}</p>` : nothing}
-        ${this.formError ? html`<ok-inline-feedback data-testid="kitchen-stations-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : nothing}
+        ${this.pageError ? html`<ok-inline-feedback data-testid="kitchen-stations-error" tone="danger" icon="alert-circle-outline">${this.pageError}</ok-inline-feedback>` : nothing}
         ${this.ctrl?.error ? html`<ok-inline-feedback data-testid="kitchen-stations-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : nothing}
         <ok-data-table testid="kitchen-stations-table" .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => stationName(r)} .cardIcon=${() => 'flame-outline'} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .searchPlaceholder=${t('ui.searchStations')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyStations')} .actions=${this.rowActions} .rowClickable=${true} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @rowClick=${(e: CustomEvent<{ row: Record<string, unknown> }>) => this.onRowAction({ detail: { actionId: 'edit', row: e.detail.row } } as CustomEvent<{ actionId: string; row: Record<string, unknown> }>)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @pageSizeChange=${(e: CustomEvent<number>) => this.ctrl.setPageSize(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}>
           <!-- Alta de estación: se proyecta SIEMPRE (aunque el panel esté cerrado); si se renderizara
@@ -385,6 +418,9 @@ export class ErpKitchenOrdersStations extends LitElement {
           <form slot="create" class="create-form" data-testid="kitchen-stations-create-form" @submit=${(e: Event) => this.createStation(e)}>
             <ion-input data-testid="kitchen-stations-create-name" mode="md" fill="outline" label-placement="floating" label=${t('ui.labelName')} placeholder=${t('ui.placeholderStationName')} .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
             <ion-input data-testid="kitchen-stations-create-printer" mode="md" fill="outline" label-placement="floating" label=${t('ui.labelPrinter')} placeholder=${t('ui.placeholderPrinterOptional')} .value=${this.newPrinter} @ionInput=${(e: any) => (this.newPrinter = e.target.value)}></ion-input>
+            <!-- pm#513: the refusal travels WITH the form — under 834 px the panel is a full-screen
+                 sheet and a notice on the page underneath it is never seen. -->
+            ${this.createError ? html`<ok-inline-feedback data-testid="kitchen-stations-create-error" tone="danger" icon="alert-circle-outline">${this.createError}</ok-inline-feedback>` : nothing}
             <ion-button data-testid="kitchen-stations-create-submit" type="submit" ?disabled=${this.saving || !this.newName}>${this.saving ? t('ui.saving') : t('ui.addStation')}</ion-button>
           </form>
         </ok-data-table>
