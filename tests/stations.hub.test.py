@@ -270,6 +270,27 @@ def test_a_station_with_routing_says_why_it_is_not_deleted(hub: Hub) -> None:
     hub.check_true("…and it is still on the list", station in live_station_ids(hub))
 
 
+def test_a_station_that_is_already_gone_says_so(hub: Hub) -> None:
+    print(
+        "\n6 · deleting a station that no longer exists says it is gone, not «in use» (kitchen#126)"
+    )
+    tag = unique("gone")
+    station = create_station(hub, name=f"Horno {tag}")
+    hub.run("kitchen.stations.delete", {"station_id": station})
+    hub.refused(
+        "deleting the same station a second time",
+        "kitchen.stations.delete",
+        {"station_id": station},
+        "kitchen.station_unavailable",
+    )
+    hub.refused(
+        "deleting a station that never existed",
+        "kitchen.stations.delete",
+        {"station_id": f"st-{tag}"},
+        "kitchen.station_unavailable",
+    )
+
+
 def main() -> int:
     hub = Hub("stations.hub")
     print(
@@ -280,6 +301,7 @@ def main() -> int:
     test_a_station_with_no_destination_prints_and_shows(hub)
     test_a_deleted_station_frees_its_name(hub)
     test_a_station_with_routing_says_why_it_is_not_deleted(hub)
+    test_a_station_that_is_already_gone_says_so(hub)
     return hub.finish(
         "a station's destination routes the ticket, and history never rewrites itself, against the real kernel"
     )

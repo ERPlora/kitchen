@@ -1160,7 +1160,10 @@ pub fn delete_station_pure(input: Value) -> Result<Output, String> {
     if station_id.is_empty() {
         return Err("missing_station_id".to_string());
     }
-    // Guardas (sin routings activos, sin líneas en curso) en el WHERE de la intención.
+    // kitchen#126: the soft delete keeps its guards (no active routings, no lines in progress) in
+    // its WHERE and 0 rows reads as `kitchen.station_in_use`. A station that no longer exists also
+    // gives 0 rows there, so a first intention proves it is alive under its own code
+    // (`kitchen.station_unavailable`); same transaction, the first one that fails names the reason.
     let mut p = Map::new();
     p.insert("station_id".into(), json!(station_id));
     let ev = Event::new(
@@ -1171,7 +1174,10 @@ pub fn delete_station_pure(input: Value) -> Result<Output, String> {
         }),
     );
     Ok(Output {
-        operations: vec![Operation::sql("kitchen._station_soft_delete", p)],
+        operations: vec![
+            Operation::sql("kitchen._station_ensure_live", p.clone()),
+            Operation::sql("kitchen._station_soft_delete", p),
+        ],
         events: vec![ev],
         ..Default::default()
     })
@@ -2684,5 +2690,36 @@ mod tests {
         assert_eq!(err.code, "kitchen.combo_without_components");
         assert!(out.operations.is_empty(), "nothing is written");
         assert!(out.events.is_empty(), "and no listener hears about a comanda that does not exist");
+    }
+
+    // kitchen#126: the soft delete keeps its guards in the WHERE and has no read before it, so 0 rows
+    // meant «in use» even when the station was already gone. A first intention proves the station is
+    // alive under its own code; both run in the same transaction and the first one that affects 0
+    // rows reverts it and names its code.
+    fn delete_station_input(station_id: &str) -> Value {
+        json!({
+            "payload": { "station_id": station_id },
+            "context": { "hub_id": "h1", "current_user_id": "u1", "now": "2026-09-28T10:00:00+00:00" }
+        })
+    }
+
+    #[test]
+    fn deleting_a_station_first_proves_it_is_still_there() {
+        let out = delete_station_pure(delete_station_input("st-1")).expect("delete intentions");
+        let commands: Vec<&str> = out.operations.iter().map(|o| o.command.as_str()).collect();
+        assert_eq!(
+            commands,
+            vec!["kitchen._station_ensure_live", "kitchen._station_soft_delete"],
+            "the liveness check goes FIRST: if it went second, a gone station would still say «in use»"
+        );
+        for op in &out.operations {
+            assert_eq!(op.params["station_id"], json!("st-1"), "{} targets the station asked for", op.command);
+        }
+    }
+
+    #[test]
+    fn deleting_without_a_station_is_refused_before_any_intention() {
+        let err = delete_station_pure(delete_station_input("")).expect_err("no station id");
+        assert_eq!(err, "missing_station_id");
     }
 }

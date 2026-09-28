@@ -21,6 +21,7 @@
 | `kitchen.order_unavailable` | The ticket does not exist in this business or was deleted | Refresh the list |
 | Ticket delete refused | It is not `pending` or `cancelled`, or it is tied to a sale | Cancel it instead; cooked or charged work is history |
 | `kitchen.station_in_use` | The station still has products or categories routed to it, or lines being prepared | Move the routings to another station and finish the work first |
+| `kitchen.station_unavailable` | The station does not exist in this business or was already deleted (for example, on another device) | Refresh the list |
 | `kitchen.station_name_taken` | Another LIVE station of this business already has that name (a deleted station does not hold its name) | Choose a different name |
 | Routing rejected | The target station is inactive or does not exist | Activate or create the station |
 | Invalid order type | Something other than `dine_in`, `takeaway`, `delivery` | Use one of the three |
