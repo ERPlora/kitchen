@@ -121,9 +121,12 @@ describe('creating an order from a later page brings the list back to its first 
     expect(calls.at(-1)?.offset, 'the reload asks the server for the first page').toBe(0);
   });
 
-  it('the search and the order the person chose stay as they were', async () => {
+  it('the search, the filters and the order the person chose stay as they were', async () => {
     const el = await mount();
     table(el).dispatchEvent(new CustomEvent('searchChange', { detail: 'K-00' }));
+    table(el).dispatchEvent(new CustomEvent('filterChange', { detail: { col: 'status', value: 'pending' } }));
+    // Not the default (created_at desc): a create that put the default sort back would pass otherwise.
+    table(el).dispatchEvent(new CustomEvent('sortChange', { detail: { sort: 'total', dir: 'asc' } }));
     await settle(el);
     await goToPage(el, 1);
 
@@ -131,7 +134,9 @@ describe('creating an order from a later page brings the list back to its first 
 
     const last = calls.at(-1)!;
     expect(last.search, 'the search box is not emptied behind the person').toBe('K-00');
-    expect([last.sort, last.dir]).toEqual(['created_at', 'desc']);
+    expect(last.filters, 'the column filters are not emptied behind the person').toEqual({ status: 'pending' });
+    expect([last.sort, last.dir], 'the sort the person picked is kept').toEqual(['total', 'asc']);
+    expect(last.offset).toBe(0);
     expect(table(el).page).toBe(0);
   });
 
