@@ -207,6 +207,40 @@ describe('creating an order from the panel', () => {
     expect($(el, 'kitchen-orders-form-error')?.textContent?.trim()).toBe('No se pudo crear la comanda');
   });
 
+  it('a retry that goes through leaves no refusal behind for the next time the panel opens', async () => {
+    const el = await mount();
+    refuse = REFUSAL;
+    await submit(el);
+    expect($(el, 'kitchen-orders-form-error')).not.toBeNull();
+    refuse = null;
+    await submit(el);
+    expect($(el, 'kitchen-orders-form-error')).toBeNull();
+  });
+
+  it('after a create, refused or not, the button is back to «Crear comanda» and can be pressed', async () => {
+    const el = await mount();
+    for (const outcome of [null, REFUSAL]) {
+      refuse = outcome;
+      await submit(el);
+      const button = $(el, 'kitchen-orders-submit')!;
+      expect(button.textContent?.trim(), String(outcome)).toBe('Crear comanda');
+      expect(button.hasAttribute('disabled'), String(outcome)).toBe(false);
+    }
+  });
+
+  it('typing in Notes after a refusal does not scroll the sheet back to the notice on every key', async () => {
+    const el = await mount();
+    refuse = REFUSAL;
+    await submit(el);
+    const shown = revealed.length;
+    expect(shown, 'the refusal is brought into view once').toBeGreaterThan(0);
+    for (const text of ['s', 'si', 'sin']) {
+      el.newNotes = text;
+      await settle(el);
+    }
+    expect(revealed.length).toBe(shown);
+  });
+
   it('a new create wipes the refusal an earlier row action left on the page', async () => {
     const el = await mount();
     refuse = REFUSAL;
