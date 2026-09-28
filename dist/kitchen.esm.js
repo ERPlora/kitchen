@@ -5860,7 +5860,10 @@ function stationName(s5) {
 var ErpKitchenOrdersStations = class extends i3 {
   constructor() {
     super(...arguments);
-    this.formError = "";
+    this.createError = "";
+    this.editError = "";
+    this.routingError = "";
+    this.pageError = "";
     this.formMsg = "";
     this.newName = "";
     this.newPrinter = "";
@@ -5890,6 +5893,7 @@ var ErpKitchenOrdersStations = class extends i3 {
        es ancho y va en fila. El alta, dentro del panel lateral de la tabla, va en columna. */
     .form { display:flex; gap:.75rem; flex-wrap:wrap; align-items:end; margin:.5rem 0 1rem; }
     .form ion-input, .form ion-select { flex:1 1 11rem; min-width:9rem; }
+    .form ok-inline-feedback { flex:1 1 100%; }
     .create-form { display:flex; flex-direction:column; gap:.7rem; }
     .create-form ion-button { align-self:flex-end; }
     .panel { border:1px solid var(--ion-border-color,#e7e2d6); border-radius: var(--ok-radius-sm, 10px); padding:.75rem 1rem; margin:0 0 1rem; background:var(--ok-surface-2, var(--ion-color-step-50, rgba(var(--ion-text-color-rgb, 24, 24, 27), 0.04))); }
@@ -5990,7 +5994,8 @@ var ErpKitchenOrdersStations = class extends i3 {
     ev.preventDefault();
     if (!this.newName.trim()) return;
     this.saving = true;
-    this.formError = "";
+    this.createError = "";
+    this.pageError = "";
     this.formMsg = "";
     try {
       await erplora5().command("kitchen.stations.create", {
@@ -6002,7 +6007,7 @@ var ErpKitchenOrdersStations = class extends i3 {
       this.dataTable()?.close();
       await this.reload();
     } catch (e6) {
-      this.formError = e6 instanceof Error ? e6.message : erplora5().t(CATALOG5, "ui.createStationError");
+      this.createError = e6 instanceof Error ? e6.message : erplora5().t(CATALOG5, "ui.createStationError");
     } finally {
       this.saving = false;
     }
@@ -6013,14 +6018,15 @@ var ErpKitchenOrdersStations = class extends i3 {
     this.editPrinter = st.printer_name ?? "";
     this.editColor = st.color ?? "";
     this.editActive = Boolean(Number(st.is_active));
-    this.formError = "";
+    this.editError = "";
     this.formMsg = "";
   }
   async saveEdit(ev) {
     ev.preventDefault();
     if (!this.editing) return;
     this.saving = true;
-    this.formError = "";
+    this.editError = "";
+    this.pageError = "";
     this.formMsg = "";
     try {
       await erplora5().command("kitchen.stations.update", {
@@ -6034,7 +6040,7 @@ var ErpKitchenOrdersStations = class extends i3 {
       this.editing = null;
       await this.reload();
     } catch (e6) {
-      this.formError = e6 instanceof Error ? e6.message : erplora5().t(CATALOG5, "ui.updateStationError");
+      this.editError = e6 instanceof Error ? e6.message : erplora5().t(CATALOG5, "ui.updateStationError");
     } finally {
       this.saving = false;
     }
@@ -6043,7 +6049,8 @@ var ErpKitchenOrdersStations = class extends i3 {
     ev.preventDefault();
     if (!this.routeStationId || !this.routeProductId && !this.routeCategoryId) return;
     this.saving = true;
-    this.formError = "";
+    this.routingError = "";
+    this.pageError = "";
     this.formMsg = "";
     try {
       await erplora5().command("kitchen.stations.set_routing", {
@@ -6056,7 +6063,7 @@ var ErpKitchenOrdersStations = class extends i3 {
       this.routeCategoryId = "";
       await this.reload();
     } catch (e6) {
-      this.formError = e6 instanceof Error ? e6.message : erplora5().t(CATALOG5, "ui.saveRoutingError");
+      this.routingError = e6 instanceof Error ? e6.message : erplora5().t(CATALOG5, "ui.saveRoutingError");
     } finally {
       this.saving = false;
     }
@@ -6069,19 +6076,33 @@ var ErpKitchenOrdersStations = class extends i3 {
     }
     if (ev.detail.actionId === "route") {
       this.routeStationId = station.id;
-      this.formError = "";
+      this.routingError = "";
       this.formMsg = "";
       return;
     }
     if (ev.detail.actionId !== "delete") return;
-    this.formError = "";
+    this.pageError = "";
     this.formMsg = "";
     try {
       await erplora5().command("kitchen.stations.delete", { station_id: station.id });
       await this.reload();
     } catch (e6) {
-      this.formError = e6 instanceof Error ? e6.message : erplora5().t(CATALOG5, "ui.deleteStationError");
+      this.pageError = e6 instanceof Error ? e6.message : erplora5().t(CATALOG5, "ui.deleteStationError");
     }
+  }
+  /** pm#513: each refusal appears above the button that was pressed — on a phone that can leave it
+   *  under the sheet or below the fold. Bring it into view when it appears, not again on every keystroke. */
+  updated(changed) {
+    super.updated(changed);
+    if (changed.has("createError") && this.createError) void this.revealRefusal('[data-testid="kitchen-stations-create-error"]');
+    if (changed.has("editError") && this.editError) void this.revealRefusal('[data-testid="kitchen-stations-edit-error"]');
+    if (changed.has("routingError") && this.routingError) void this.revealRefusal('[data-testid="kitchen-stations-routing-error"]');
+  }
+  /** ok-inline-feedback lays itself out in its own update: scrolled to before it, the box is empty. */
+  async revealRefusal(selector) {
+    const banner = this.renderRoot.querySelector(selector);
+    await banner?.updateComplete;
+    banner?.scrollIntoView?.({ block: "center" });
   }
   renderEditPanel() {
     if (!this.editing) return A;
@@ -6093,6 +6114,7 @@ var ErpKitchenOrdersStations = class extends i3 {
         <ion-input data-testid="kitchen-stations-edit-color" mode="md" fill="outline" label=${t7("ui.labelColor")} label-placement="floating" placeholder="#F97316" .value=${this.editColor} @ionInput=${(e6) => this.editColor = e6.target.value}></ion-input>
         <ion-input data-testid="kitchen-stations-edit-printer" mode="md" fill="outline" label=${t7("ui.labelPrinter")} label-placement="floating" .value=${this.editPrinter} @ionInput=${(e6) => this.editPrinter = e6.target.value}></ion-input>
         <ion-toggle data-testid="kitchen-stations-edit-active" .checked=${this.editActive} @ionChange=${(e6) => this.editActive = e6.detail.checked}>${t7("ui.labelActive")}</ion-toggle>
+        ${this.editError ? b2`<ok-inline-feedback data-testid="kitchen-stations-edit-error" tone="danger" icon="alert-circle-outline">${this.editError}</ok-inline-feedback>` : A}
         <ion-button data-testid="kitchen-stations-edit-submit" type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t7("ui.saving") : t7("ui.save")}</ion-button>
         <ion-button data-testid="kitchen-stations-edit-cancel" size="small" fill="outline" @click=${() => this.editing = null}>${t7("ui.cancel")}</ion-button>
       </form>
@@ -6113,6 +6135,7 @@ var ErpKitchenOrdersStations = class extends i3 {
         <ion-select data-testid="kitchen-stations-routing-category" mode="md" fill="outline" interface="popover" label-placement="floating" label=${t7("ui.labelCategory")} placeholder=${t7("ui.placeholderOptional")} .value=${this.routeCategoryId} @ionChange=${(e6) => this.routeCategoryId = e6.target.value ?? ""}>
           ${this.categoryOptions.map((c5) => b2`<ion-select-option value=${c5.id}>${c5.name}</ion-select-option>`)}
         </ion-select>
+        ${this.routingError ? b2`<ok-inline-feedback data-testid="kitchen-stations-routing-error" tone="danger" icon="alert-circle-outline">${this.routingError}</ok-inline-feedback>` : A}
         <ion-button data-testid="kitchen-stations-routing-submit" type="submit" size="small" ?disabled=${this.saving || !this.routeStationId || !this.routeProductId && !this.routeCategoryId}>${this.saving ? t7("ui.saving") : t7("ui.saveRouting")}</ion-button>
       </form>
     </section>`;
@@ -6126,7 +6149,7 @@ var ErpKitchenOrdersStations = class extends i3 {
         ${this.renderEditPanel()}
         ${this.renderRoutingPanel()}
         ${this.formMsg ? b2`<p class="ok" data-testid="kitchen-stations-saved">${this.formMsg}</p>` : A}
-        ${this.formError ? b2`<ok-inline-feedback data-testid="kitchen-stations-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
+        ${this.pageError ? b2`<ok-inline-feedback data-testid="kitchen-stations-error" tone="danger" icon="alert-circle-outline">${this.pageError}</ok-inline-feedback>` : A}
         ${this.ctrl?.error ? b2`<ok-inline-feedback data-testid="kitchen-stations-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
         <ok-data-table testid="kitchen-stations-table" .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => stationName(r6)} .cardIcon=${() => "flame-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchStations")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyStations")} .actions=${this.rowActions} .rowClickable=${true} @rowAction=${(e6) => this.onRowAction(e6)} @rowClick=${(e6) => this.onRowAction({ detail: { actionId: "edit", row: e6.detail.row } })} @pageChange=${(e6) => this.ctrl.setPage(e6.detail)} @pageSizeChange=${(e6) => this.ctrl.setPageSize(e6.detail)} @sortChange=${(e6) => this.ctrl.setSort(e6.detail.sort, e6.detail.dir)} @searchChange=${(e6) => this.ctrl.setSearch(e6.detail)} @filterChange=${(e6) => this.ctrl.setFilter(e6.detail.col, e6.detail.value)}>
           <!-- Alta de estación: se proyecta SIEMPRE (aunque el panel esté cerrado); si se renderizara
@@ -6134,6 +6157,9 @@ var ErpKitchenOrdersStations = class extends i3 {
           <form slot="create" class="create-form" data-testid="kitchen-stations-create-form" @submit=${(e6) => this.createStation(e6)}>
             <ion-input data-testid="kitchen-stations-create-name" mode="md" fill="outline" label-placement="floating" label=${t7("ui.labelName")} placeholder=${t7("ui.placeholderStationName")} .value=${this.newName} @ionInput=${(e6) => this.newName = e6.target.value}></ion-input>
             <ion-input data-testid="kitchen-stations-create-printer" mode="md" fill="outline" label-placement="floating" label=${t7("ui.labelPrinter")} placeholder=${t7("ui.placeholderPrinterOptional")} .value=${this.newPrinter} @ionInput=${(e6) => this.newPrinter = e6.target.value}></ion-input>
+            <!-- pm#513: the refusal travels WITH the form — under 834 px the panel is a full-screen
+                 sheet and a notice on the page underneath it is never seen. -->
+            ${this.createError ? b2`<ok-inline-feedback data-testid="kitchen-stations-create-error" tone="danger" icon="alert-circle-outline">${this.createError}</ok-inline-feedback>` : A}
             <ion-button data-testid="kitchen-stations-create-submit" type="submit" ?disabled=${this.saving || !this.newName}>${this.saving ? t7("ui.saving") : t7("ui.addStation")}</ion-button>
           </form>
         </ok-data-table>
@@ -6142,7 +6168,16 @@ var ErpKitchenOrdersStations = class extends i3 {
 };
 __decorateClass([
   r5()
-], ErpKitchenOrdersStations.prototype, "formError", 2);
+], ErpKitchenOrdersStations.prototype, "createError", 2);
+__decorateClass([
+  r5()
+], ErpKitchenOrdersStations.prototype, "editError", 2);
+__decorateClass([
+  r5()
+], ErpKitchenOrdersStations.prototype, "routingError", 2);
+__decorateClass([
+  r5()
+], ErpKitchenOrdersStations.prototype, "pageError", 2);
 __decorateClass([
   r5()
 ], ErpKitchenOrdersStations.prototype, "formMsg", 2);
