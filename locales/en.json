@@ -98,7 +98,8 @@
     "rowDelete": "Delete",
     "placeholderStationName": "e.g. Grill",
     "placeholderPrinterOptional": "(optional)",
-    "addStation": "Add",
+    "addStation": "Add station",
+    "createStation": "Create station",
     "createStationError": "Could not create station",
     "editStationTitle": "Edit station",
     "labelName": "Name",
@@ -175,6 +176,7 @@
     "kitchen.invalid_transition": "That kitchen order is no longer in the state this action requires. Refresh and try again.",
     "kitchen.order_unavailable": "That kitchen order is not available: it does not exist in this business or it has been deleted.",
     "kitchen.station_name_taken": "There is already a station with that name. Choose a different name.",
-    "kitchen.station_in_use": "This station cannot be deleted: products or categories are still routed to it, or it has lines being prepared. Move them to another station first."
+    "kitchen.station_in_use": "This station cannot be deleted: products or categories are still routed to it, or it has lines being prepared. Move them to another station first.",
+    "kitchen.station_unavailable": "That station is not available: it does not exist in this business or it has already been deleted. Refresh the list."
   }
 }
