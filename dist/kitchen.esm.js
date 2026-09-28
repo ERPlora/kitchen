@@ -2127,6 +2127,8 @@ var es_default = {
     routingSaved: "Enrutado guardado",
     saveRoutingError: "No se pudo guardar el enrutado",
     deleteStationError: "No se pudo eliminar la estaci\xF3n",
+    deleteStationTitle: "\xBFEliminar \xAB{name}\xBB?",
+    deleteStationMessage: "La estaci\xF3n sale de la lista y deja de recibir comandas. Las comandas ya enviadas la conservan en su historial.",
     searchStations: "Buscar estaci\xF3n\u2026",
     emptyStations: "Sin estaciones.",
     colLabel: "Destino",
@@ -2307,6 +2309,8 @@ var en_default = {
     routingSaved: "Routing saved",
     saveRoutingError: "Could not save routing",
     deleteStationError: "Could not delete station",
+    deleteStationTitle: "Delete \xAB{name}\xBB?",
+    deleteStationMessage: "The station leaves the list and stops receiving tickets. Tickets already sent keep it in their history.",
     searchStations: "Search station\u2026",
     emptyStations: "No stations.",
     colLabel: "Where",
@@ -6073,6 +6077,38 @@ var ErpKitchenOrdersStations = class extends i3 {
       return;
     }
     if (ev.detail.actionId !== "delete") return;
+    await this.confirmDelete(station);
+  }
+  /** kitchen#115: the trash can asks first, like every POS back office (Square, Toast, Lightspeed,
+   *  Odoo). A GLOBAL Ionic overlay appended to `document.body` (appointments#207, the void dialog of
+   *  sales): an inline `<ion-alert>` in this shadow root loses its styles when Ionic teleports it,
+   *  and its backdrop covers its own buttons the first time in a session (hub#2162). */
+  async confirmDelete(station) {
+    const t7 = (k2, p4) => erplora5().t(CATALOG5, k2, p4);
+    const alert = document.createElement("ion-alert");
+    alert.header = t7("ui.deleteStationTitle", { name: stationName(station) });
+    alert.message = t7("ui.deleteStationMessage");
+    alert.buttons = [
+      { text: t7("ui.cancel"), role: "cancel" },
+      {
+        text: t7("ui.rowDelete"),
+        role: "destructive",
+        handler: () => {
+          void this.deleteStation(station);
+        }
+      }
+    ];
+    alert.setAttribute("data-testid", "kitchen-stations-delete-confirm");
+    alert.addEventListener("ionAlertDidDismiss", () => setTimeout(() => alert.remove(), 0), { once: true });
+    document.body.appendChild(alert);
+    try {
+      if (typeof alert.present === "function") await alert.present();
+      else alert.isOpen = true;
+    } catch {
+      alert.remove();
+    }
+  }
+  async deleteStation(station) {
     this.pageError = "";
     this.formMsg = "";
     try {
