@@ -604,7 +604,10 @@ export class ErpKitchenDisplay extends LitElement {
   async connectedCallback() {
     super.connectedCallback();
     window.addEventListener('erplora:locale-changed', this.onLocaleChange);
-    await Promise.all([this.loadSettings(), this.load()]);
+    // kitchen#127 · everything `disconnectedCallback` stops is started HERE, before the first
+    // await: a board taken off the screen while its first feed is loading must find its clock and
+    // its subscriptions already there to stop. Started after the await, they ran on a board nobody
+    // sees for the rest of the shift (and a board moved while loading ended up with two of each).
     // Live refresh on every event that changes what the line looks like (no polling). Literal
     // names on purpose: the contract checker reads them (ADR-0127).
     try {
@@ -632,8 +635,9 @@ export class ErpKitchenDisplay extends LitElement {
     } catch {
       /* no SDK (preview) → no live reactivity */
     }
-    // The clock: elapsed time and the semaphore are derived here, every second, and never stop.
+    // The clock: elapsed time and the semaphore are derived here, every second, for as long as the board is on screen.
     this.clock = setInterval(() => (this.now = Date.now()), 1000);
+    await Promise.all([this.loadSettings(), this.load()]);
   }
 
   disconnectedCallback() {

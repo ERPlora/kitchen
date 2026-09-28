@@ -2666,7 +2666,6 @@ var ErpKitchenDisplay = class extends i3 {
   async connectedCallback() {
     super.connectedCallback();
     window.addEventListener("erplora:locale-changed", this.onLocaleChange);
-    await Promise.all([this.loadSettings(), this.load()]);
     try {
       const reload = () => this.load();
       const offs = [
@@ -2692,6 +2691,7 @@ var ErpKitchenDisplay = class extends i3 {
     } catch {
     }
     this.clock = setInterval(() => this.now = Date.now(), 1e3);
+    await Promise.all([this.loadSettings(), this.load()]);
   }
   disconnectedCallback() {
     window.removeEventListener("erplora:locale-changed", this.onLocaleChange);
