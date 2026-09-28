@@ -5511,6 +5511,8 @@ var ErpKitchenHistory = class extends i3 {
       {
         key: "order_number",
         header: t7("ui.colOrder"),
+        // kitchen#134: the same floor as «Comandas» — the default 5.5rem cut the number in the list view.
+        width: "minmax(8rem,1fr)",
         sortable: true,
         filterable: true,
         filterType: "text",
@@ -5669,7 +5671,10 @@ var ErpKitchenOrdersActive = class extends i3 {
   get columns() {
     const t7 = (k2) => erplora4().t(CATALOG4, k2);
     return [
-      { key: "order_number", header: t7("ui.colOrder"), sortable: true, filterable: true, filterType: "text" },
+      // kitchen#134: the default 5.5rem track cut «20260928-0012» (107px) to «20260928-00…» on a
+      // tablet, and the END is what tells one ticket from another. A LENGTH floor (not max-content:
+      // header and rows are separate grids) that holds the number with the counter past 9999.
+      { key: "order_number", header: t7("ui.colOrder"), width: "minmax(8rem,1fr)", sortable: true, filterable: true, filterType: "text" },
       // ADR-0141: a dónde va el plato. Es una ETIQUETA OPACA que manda quien dispara ("Mesa 4",
       // "Barra", "Recogida Ana"): cocina la imprime tal cual y no depende de `tables`.
       { key: "label", header: t7("ui.colLabel"), width: "140px", sortable: true, filterable: true, filterType: "text" },

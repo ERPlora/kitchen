@@ -141,7 +141,10 @@ export class ErpKitchenOrdersActive extends LitElement {
   private get columns(): DataTableColumn[] {
     const t = (k: string): string => erplora().t(CATALOG, k);
     return [
-    { key: 'order_number', header: t('ui.colOrder'), sortable: true, filterable: true, filterType: 'text' },
+    // kitchen#134: the default 5.5rem track cut «20260928-0012» (107px) to «20260928-00…» on a
+    // tablet, and the END is what tells one ticket from another. A LENGTH floor (not max-content:
+    // header and rows are separate grids) that holds the number with the counter past 9999.
+    { key: 'order_number', header: t('ui.colOrder'), width: 'minmax(8rem,1fr)', sortable: true, filterable: true, filterType: 'text' },
     // ADR-0141: a dónde va el plato. Es una ETIQUETA OPACA que manda quien dispara ("Mesa 4",
     // "Barra", "Recogida Ana"): cocina la imprime tal cual y no depende de `tables`.
     { key: 'label', header: t('ui.colLabel'), width: '140px', sortable: true, filterable: true, filterType: 'text' },

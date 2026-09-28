@@ -104,6 +104,8 @@ export class ErpKitchenHistory extends LitElement {
       {
         key: 'order_number',
         header: t('ui.colOrder'),
+        // kitchen#134: the same floor as «Comandas» — the default 5.5rem cut the number in the list view.
+        width: 'minmax(8rem,1fr)',
         sortable: true,
         filterable: true,
         filterType: 'text',
