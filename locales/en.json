@@ -81,6 +81,7 @@
     "placeholderType": "Type",
     "placeholderNotes": "Notes",
     "newOrder": "New order",
+    "createOrder": "Create order",
     "creatingOrder": "Creating…",
     "createOrderError": "Could not create order",
     "updateStatusError": "Could not update status",

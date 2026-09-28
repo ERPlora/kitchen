@@ -85,6 +85,10 @@ Requires `kitchen.view_order`.
 - **Search** by order number, customer or round number.
 - **Sort and filter** by number, status, order type, priority, table, sale, customer, waiter, round,
   notes, totals, and the fired / ready / served timestamps.
+- **+ New order** (toolbar of the list) opens the **New order** panel — full screen on a phone — to
+  open a ticket by hand: pick the **type** (it starts on the default order type of the settings) and
+  optional **notes**, then **Create order**. A refused create is shown inside the panel, above its
+  button; a refused state change of a row is shown above the list.
 
 Open a ticket to see its lines (`kitchen.orders.items`). Each line carries its own status, its seat
 number, its modifiers and **the destination of its station** — which is what the printing code needs
