@@ -6,11 +6,13 @@
 // tabs as «Comandas0» and «Listas0» (measured on hub:stable and hub:dev, ios and md) — a name
 // that changes with every ticket and never equals the word on screen.
 //
-// The name is pinned with `aria-label` on the `ion-segment-button`: Ionic's segment-button inherits
-// exactly that attribute onto its native `role="tab"` button (`inheritAttributes(el,
-// ['aria-label'])`, read once at load — so it must be the STATIC view name, never the counter).
-// happy-dom has no Ionic, so here the contract is the host attribute; the real tab name is
-// measured in the bench (hub:stable with this module mounted).
+// The counter is `aria-hidden`, so the name is the view word the tab paints. NOT `aria-label` on
+// the host: Ionic copies it onto its `role="tab"` button ONCE, at load (`inheritAttributes(el,
+// ['aria-label'])`, no watcher), while this screen repaints in place on `erplora:locale-changed` —
+// the tabs kept announcing «Comandas» under a visible «Tickets» after switching to English
+// (measured on hub:stable, rv-kitchen-137). happy-dom has no Ionic, so `ion-segment-button` is
+// stubbed below with exactly that load-once behaviour and the name is computed the way the browser
+// does for a tab: its aria-label, else its content minus aria-hidden subtrees.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import es from '../../../locales/es.json';
 import en from '../../../locales/en.json';
@@ -51,6 +53,37 @@ beforeEach(() => {
   };
 });
 
+// Ionic's segment-button, as far as the tab's name goes: at load it moves the host's aria-label
+// onto its native role="tab" button and never reads it again; the tab's content is the slot.
+class FakeSegmentButton extends HTMLElement {
+  connectedCallback() {
+    if (this.shadowRoot) return;
+    const inherited = this.getAttribute('aria-label');
+    this.removeAttribute('aria-label');
+    const tab = document.createElement('button');
+    tab.setAttribute('role', 'tab');
+    if (inherited !== null) tab.setAttribute('aria-label', inherited);
+    tab.appendChild(document.createElement('slot'));
+    this.attachShadow({ mode: 'open' }).appendChild(tab);
+  }
+}
+if (!customElements.get('ion-segment-button')) customElements.define('ion-segment-button', FakeSegmentButton);
+
+/** The tab's accessible name: its aria-label, else the text it slots in minus aria-hidden subtrees. */
+function tabName(host: HTMLElement): string {
+  const tab = host.shadowRoot?.querySelector('[role="tab"]');
+  expect(tab, 'ion-segment-button stub rendered its role=tab button').toBeTruthy();
+  const label = tab!.getAttribute('aria-label');
+  if (label) return label.trim();
+  const text = (n: Node): string =>
+    n.nodeType === Node.TEXT_NODE
+      ? (n.textContent ?? '')
+      : (n as Element).getAttribute?.('aria-hidden') === 'true'
+        ? ''
+        : [...n.childNodes].map(text).join('');
+  return [...host.childNodes].map(text).join('').trim();
+}
+
 type Host = HTMLElement & { shadowRoot: ShadowRoot; updateComplete: Promise<unknown> };
 
 async function mount(): Promise<Host> {
@@ -71,15 +104,31 @@ const VIEWS = [
 ] as const;
 
 describe.each(['es', 'en'] as const)('kitchen#116: the view switcher tabs are named by the view (%s)', (lang) => {
+  const word = (l: Locale, key: string) => (CATALOGS[l].ui as Record<string, string>)[key];
+
   it('each view tab carries the bare view name as its accessible name', async () => {
     locale = lang;
     const el = await mount();
     for (const v of VIEWS) {
       const button = el.shadowRoot.querySelector<HTMLElement>(`[data-testid="${v.testid}"]`);
       expect(button, v.testid).not.toBeNull();
-      const expected = (CATALOGS[lang].ui as Record<string, string>)[v.key];
-      expect(expected, `${lang}.ui.${v.key}`).toBeTruthy();
-      expect(button!.getAttribute('aria-label'), v.testid).toBe(expected);
+      expect(word(lang, v.key), `${lang}.ui.${v.key}`).toBeTruthy();
+      expect(tabName(button!), v.testid).toBe(word(lang, v.key));
+    }
+    el.remove();
+  });
+
+  it('a live language change renames the tabs with the words they now paint', async () => {
+    locale = lang;
+    const el = await mount();
+    const next: Locale = lang === 'es' ? 'en' : 'es';
+    locale = next;
+    window.dispatchEvent(new CustomEvent('erplora:locale-changed', { detail: { locale: next } }));
+    await el.updateComplete;
+    for (const v of VIEWS) {
+      const button = el.shadowRoot.querySelector<HTMLElement>(`[data-testid="${v.testid}"]`)!;
+      expect(word(next, v.key), `${next}.ui.${v.key}`).not.toBe(word(lang, v.key));
+      expect(tabName(button), `${v.testid} after switching to ${next}`).toBe(word(next, v.key));
     }
     el.remove();
   });
@@ -90,7 +139,7 @@ describe.each(['es', 'en'] as const)('kitchen#116: the view switcher tabs are na
     for (const v of VIEWS.filter((x) => x.count)) {
       const button = el.shadowRoot.querySelector<HTMLElement>(`[data-testid="${v.testid}"]`)!;
       expect(button.querySelector(`[data-count="${v.count}"]`)?.textContent?.trim(), v.testid).toBe('1');
-      expect(button.getAttribute('aria-label'), v.testid).toEqual(expect.stringMatching(/^\D+$/));
+      expect(tabName(button), v.testid).toBe(word(lang, v.key));
     }
     el.remove();
   });
