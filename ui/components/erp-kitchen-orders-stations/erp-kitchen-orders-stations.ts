@@ -374,6 +374,7 @@ export class ErpKitchenOrdersStations extends LitElement {
       else alert.isOpen = true;
     } catch {
       alert.remove();
+      this.pageError = t('ui.deleteStationError');
     }
   }
 

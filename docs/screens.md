@@ -148,7 +148,9 @@ Every ticket line is routed to its station **when the line is inserted**, in the
 
 ### Delete a station
 
-Refused while it still has routings or lines in progress. Requires `kitchen.manage_settings`.
+The trash can of a row asks first: a dialog names the station and offers **Cancel** or **Delete**.
+Cancelling (or tapping outside) deletes nothing. Refused while it still has routings or lines in
+progress; the reason shows above the list. Requires `kitchen.manage_settings`.
 
 ### See what is pending per station
 

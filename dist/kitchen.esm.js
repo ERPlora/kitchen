@@ -6106,6 +6106,7 @@ var ErpKitchenOrdersStations = class extends i3 {
       else alert.isOpen = true;
     } catch {
       alert.remove();
+      this.pageError = t7("ui.deleteStationError");
     }
   }
   async deleteStation(station) {

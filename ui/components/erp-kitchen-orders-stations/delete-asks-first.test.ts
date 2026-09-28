@@ -198,6 +198,24 @@ describe('kitchen#115 · deleting a station asks first', () => {
     expect(pageNotice(el)).toBeUndefined();
   });
 
+  it('if Ionic cannot show the question, the trash can is not mute: the page says so and nothing is deleted', async () => {
+    const el = await mount();
+    const create = document.createElement.bind(document);
+    const spy = vi.spyOn(document, 'createElement').mockImplementation(((tag: string, opts?: ElementCreationOptions) => {
+      const node = create(tag, opts);
+      if (tag === 'ion-alert') (node as AlertEl & { present: () => Promise<void> }).present = () => Promise.reject(new Error('overlay'));
+      return node;
+    }) as typeof document.createElement);
+    try {
+      await tapDelete(el);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(deletes()).toEqual([]);
+    expect(confirmAlert(), 'no half-built dialog is left behind').toBeNull();
+    expect(pageNotice(el)).toBe(es.ui.deleteStationError);
+  });
+
   it('the dialog has its sentence in en and es, and es is a translation', () => {
     for (const key of ['deleteStationTitle', 'deleteStationMessage'] as const) {
       expect(typeof en.ui[key] === 'string' && en.ui[key].trim(), `en ui.${key}`).toBeTruthy();
