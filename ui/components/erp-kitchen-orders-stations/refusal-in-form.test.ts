@@ -65,7 +65,7 @@ beforeEach(() => {
       commands.push(name);
       const wait = hold;
       if (wait) await wait;
-      if (refuse) throw new Error(refuse);
+      if (refuse !== null) throw new Error(refuse);
       return {};
     },
     on: () => () => {},
@@ -421,5 +421,42 @@ describe('pm#513 · stations: what goes wrong OUTSIDE the save stays on the page
     const el = await mount();
     expect(whereIs(el, REFUSAL)).toEqual(['page']);
     expect(inside(el, CREATE, 'kitchen-stations-create-error')).toBeNull();
+  });
+});
+
+// kitchen#120: a refusal that arrives WITHOUT words still says something. Every catch of this screen
+// read `e instanceof Error ? e.message : <default>`: an Error with an empty message is still an
+// Error, so the empty string won, the notice had nothing to paint and the person re-sent the form
+// five times. The default sentence of each place is the fallback for an empty message too.
+describe('kitchen#120 · a refusal without words falls back to the sentence of the place that was pressed', () => {
+  it('«New station»: the default create sentence, inside its form', async () => {
+    const el = await mount();
+    await refusedCreate(el, '');
+    expect(inside(el, CREATE, 'kitchen-stations-create-error')?.textContent?.trim()).toBe('ui.createStationError');
+  });
+
+  it('«Edit station»: the default update sentence, inside its form', async () => {
+    const el = await mount();
+    await refusedEdit(el, '');
+    expect(inside(el, EDIT, 'kitchen-stations-edit-error')?.textContent?.trim()).toBe('ui.updateStationError');
+  });
+
+  it('«Save routing»: the default routing sentence, inside its form', async () => {
+    const el = await mount();
+    await refusedRouting(el, '');
+    expect(inside(el, ROUTING, 'kitchen-stations-routing-error')?.textContent?.trim()).toBe('ui.saveRoutingError');
+  });
+
+  it('a row «Delete»: the default delete sentence, on the page', async () => {
+    const el = await mount();
+    refuse = '';
+    await deleteRow(el);
+    expect(whereIs(el, 'ui.deleteStationError')).toEqual(['page']);
+  });
+
+  it('a refusal WITH words keeps them (the SDK already put the module sentence in it)', async () => {
+    const el = await mount();
+    await refusedCreate(el, 'There is already a station with that name.');
+    expect(inside(el, CREATE, 'kitchen-stations-create-error')?.textContent?.trim()).toBe('There is already a station with that name.');
   });
 });
