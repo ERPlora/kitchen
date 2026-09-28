@@ -1,7 +1,7 @@
 // Contrato del CHIP+MODAL de comandas que kitchen inyecta en el TPV (slot `sales.pos.order_info`,
 // decisión Ioan 2026-07-19, 2ª ronda del debate). Composición por módulos, de lo básico a lo
 // complejo: sales solo parte su carrito en Pendiente/Enviado; el DETALLE de las comandas — número,
-// hora, ESTADO EN VIVO del KDS (En cola/Preparando/Lista/Servida) — es dato de kitchen
+// hora, ESTADO EN VIVO del KDS (Por preparar/En preparación/Lista/Servida, kitchen#112) — es dato de kitchen
 // (`source_order_id`) y lo pinta este filler:
 //
 //   - host → filler `erp:pos-state {order_id, …}` (mismo canal que el botón del footer).
@@ -79,8 +79,8 @@ describe('erp-kitchen-pos-comandas (chip+modal del TPV)', () => {
     const filas = [...el.shadowRoot!.querySelectorAll('.krow')];
     expect(filas, 'una fila por comanda, la más reciente primero').toHaveLength(2);
     expect(filas[0].textContent, 'número y estado del KDS').toContain('ui.comandaN 2');
-    expect(filas[0].textContent).toContain('ui.stPreparing');
-    expect(filas[1].textContent).toContain('ui.stReady');
+    expect(filas[0].textContent).toContain('ui.statusPreparing');
+    expect(filas[1].textContent).toContain('ui.statusReady');
   });
 
   it('un evento del KDS refresca EN VIVO: la comanda pasa a LISTA sin tocar nada', async () => {
@@ -97,6 +97,6 @@ describe('erp-kitchen-pos-comandas (chip+modal del TPV)', () => {
     (el.shadowRoot!.querySelector('.chip') as HTMLElement).click();
     await (el as unknown as { updateComplete: Promise<unknown> }).updateComplete;
     const primera = el.shadowRoot!.querySelector('.krow');
-    expect(primera?.textContent, 'el estado nuevo se ve sin recargar').toContain('ui.stReady');
+    expect(primera?.textContent, 'el estado nuevo se ve sin recargar').toContain('ui.statusReady');
   });
 });

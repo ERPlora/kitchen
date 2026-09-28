@@ -22,6 +22,8 @@ import esLocale from '../../../locales/es.json';
 import enLocale from '../../../locales/en.json';
 import type { PosState } from '../../lib/pos-fire.js';
 import { printRushNotice } from '../../lib/pass-print';
+// The status pill reads the orders list's catalogue: one order, one name on every screen (kitchen#112).
+import { STATUS_KEY, enumLabel } from '../../lib/enums';
 
 const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
 
@@ -84,16 +86,6 @@ function errorText(e: unknown): string {
   return t('ui.updateStatusError');
 }
 
-/** Estado del KDS → su clave i18n. Un estado nuevo cae al literal (nunca cadena vacía). */
-const STATUS_KEY: Record<string, string> = {
-  pending: 'ui.stQueued',
-  preparing: 'ui.stPreparing',
-  ready: 'ui.stReady',
-  served: 'ui.stServed',
-  paid: 'ui.stPaid',
-  cancelled: 'ui.stCancelled',
-};
-
 /** Rounds still on the line (kitchen#94's KDS twin, kitchen#76). */
 const COOKING = ['pending', 'preparing'];
 
@@ -150,6 +142,9 @@ export class ErpKitchenPosComandas extends LitElement {
     .kprio { margin-left: .35rem; font-size: .62rem; font-weight: 800; padding: .1rem .45rem;
       border-radius: var(--ok-radius-pill, 999px); background: var(--ion-color-danger, #eb445a); color: #fff; }
     .krow-h > * { white-space: nowrap; }
+    /* «En preparación» + «Urgente» do not fit one phone line: the pills wrap below, the flame keeps its size (kitchen#112). */
+    .krow-h { flex-wrap: wrap; row-gap: .25rem; }
+    .krow-h > ion-icon { flex-shrink: 0; }
     .krow-a { display: flex; justify-content: flex-end; padding: 0 .7rem .5rem; }
     .krush { min-height: 2.5rem; border: 1px solid var(--ion-color-danger, #eb445a);
       border-radius: var(--ok-radius-pill, 999px); background: transparent; color: var(--ion-color-danger, #eb445a);
@@ -311,7 +306,7 @@ export class ErpKitchenPosComandas extends LitElement {
                 <ion-icon name="flame" style="color: var(--ion-color-warning)"></ion-icon>
                 <span>${t('ui.comandaN', { n: String(c.round_number) })}</span>
                 <span class="ktime">· ${(c.fired_at ?? c.created_at ?? '').replace('T', ' ').slice(11, 16)}</span>
-                <span class="kstate" data-st=${c.status}>${t(STATUS_KEY[c.status] ?? c.status)}</span>
+                <span class="kstate" data-st=${c.status}>${enumLabel(STATUS_KEY, c.status)}</span>
                 ${rush ? html`<span class="kprio">${t('ui.priority_rush')}</span>` : nothing}
               </div>
               ${(this.items.get(c.id) ?? []).map((i) => html`

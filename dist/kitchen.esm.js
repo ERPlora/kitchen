@@ -2076,7 +2076,7 @@ var es_default = {
     colPriority: "Prioridad",
     colStatus: "Estado",
     colTotal: "Total",
-    statusPending: "Pendiente",
+    statusPending: "Por preparar",
     statusPreparing: "En preparaci\xF3n",
     statusReady: "Lista",
     statusServed: "Servida",
@@ -2137,12 +2137,6 @@ var es_default = {
     posComandas: "Comandas",
     posComandasTitle: "Comandas de la cuenta",
     comandaN: "Comanda {n}",
-    stQueued: "En cola",
-    stPreparing: "Preparando",
-    stReady: "Lista",
-    stServed: "Servida",
-    stPaid: "Pagada",
-    stCancelled: "Anulada",
     close: "Cerrar",
     historyTitle: "Historial de cocina",
     loadError: "No se pudo cargar la pantalla de cocina",
@@ -2260,7 +2254,7 @@ var en_default = {
     colPriority: "Priority",
     colStatus: "Status",
     colTotal: "Total",
-    statusPending: "Pending",
+    statusPending: "To prepare",
     statusPreparing: "Preparing",
     statusReady: "Ready",
     statusServed: "Served",
@@ -2321,12 +2315,6 @@ var en_default = {
     posComandas: "Tickets",
     posComandasTitle: "Order tickets",
     comandaN: "Order ticket {n}",
-    stQueued: "Queued",
-    stPreparing: "Preparing",
-    stReady: "Ready",
-    stServed: "Served",
-    stPaid: "Paid",
-    stCancelled: "Cancelled",
     close: "Close",
     historyTitle: "Kitchen history",
     loadError: "Could not load the kitchen display",
@@ -6254,14 +6242,6 @@ function errorText3(e6) {
   }
   return t5("ui.updateStatusError");
 }
-var STATUS_KEY2 = {
-  pending: "ui.stQueued",
-  preparing: "ui.stPreparing",
-  ready: "ui.stReady",
-  served: "ui.stServed",
-  paid: "ui.stPaid",
-  cancelled: "ui.stCancelled"
-};
 var COOKING2 = ["pending", "preparing"];
 function rushToggleable2(c5) {
   if (!COOKING2.includes(c5.status)) return false;
@@ -6330,6 +6310,9 @@ var ErpKitchenPosComandas = class extends i3 {
     .kprio { margin-left: .35rem; font-size: .62rem; font-weight: 800; padding: .1rem .45rem;
       border-radius: var(--ok-radius-pill, 999px); background: var(--ion-color-danger, #eb445a); color: #fff; }
     .krow-h > * { white-space: nowrap; }
+    /* «En preparación» + «Urgente» do not fit one phone line: the pills wrap below, the flame keeps its size (kitchen#112). */
+    .krow-h { flex-wrap: wrap; row-gap: .25rem; }
+    .krow-h > ion-icon { flex-shrink: 0; }
     .krow-a { display: flex; justify-content: flex-end; padding: 0 .7rem .5rem; }
     .krush { min-height: 2.5rem; border: 1px solid var(--ion-color-danger, #eb445a);
       border-radius: var(--ok-radius-pill, 999px); background: transparent; color: var(--ion-color-danger, #eb445a);
@@ -6473,7 +6456,7 @@ var ErpKitchenPosComandas = class extends i3 {
                 <ion-icon name="flame" style="color: var(--ion-color-warning)"></ion-icon>
                 <span>${t5("ui.comandaN", { n: String(c5.round_number) })}</span>
                 <span class="ktime">· ${(c5.fired_at ?? c5.created_at ?? "").replace("T", " ").slice(11, 16)}</span>
-                <span class="kstate" data-st=${c5.status}>${t5(STATUS_KEY2[c5.status] ?? c5.status)}</span>
+                <span class="kstate" data-st=${c5.status}>${enumLabel(STATUS_KEY, c5.status)}</span>
                 ${rush ? b2`<span class="kprio">${t5("ui.priority_rush")}</span>` : A}
               </div>
               ${(this.items.get(c5.id) ?? []).map((i7) => b2`
