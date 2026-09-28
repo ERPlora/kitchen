@@ -120,6 +120,8 @@
     "routingSaved": "Enrutado guardado",
     "saveRoutingError": "No se pudo guardar el enrutado",
     "deleteStationError": "No se pudo eliminar la estación",
+    "deleteStationTitle": "¿Eliminar «{name}»?",
+    "deleteStationMessage": "La estación sale de la lista y deja de recibir comandas. Las comandas ya enviadas la conservan en su historial.",
     "searchStations": "Buscar estación…",
     "emptyStations": "Sin estaciones.",
     "colLabel": "Destino",

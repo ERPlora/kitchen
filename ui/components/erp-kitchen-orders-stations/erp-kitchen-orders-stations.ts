@@ -58,6 +58,15 @@ function stationName(s: { name?: unknown; name_es?: unknown }): string {
   return String(s.name_es || s.name || '—');
 }
 
+/** The slice of Ionic's `<ion-alert>` the delete confirmation drives (kitchen#115). */
+type IonicAlertElement = HTMLElement & {
+  header: string;
+  message: string;
+  buttons: Array<{ text: string; role?: string; handler?: () => void }>;
+  isOpen?: boolean;
+  present?: () => Promise<void>;
+};
+
 export class ErpKitchenOrdersStations extends LitElement {
   static styles = css`
     :host { display:flex; flex-direction:column; height:100%; min-height:0; font-family: system-ui, sans-serif; color: var(--ion-text-color, #1c1b18); }
@@ -333,6 +342,43 @@ export class ErpKitchenOrdersStations extends LitElement {
       return;
     }
     if (ev.detail.actionId !== 'delete') return;
+    await this.confirmDelete(station);
+  }
+
+  /** kitchen#115: the trash can asks first, like every POS back office (Square, Toast, Lightspeed,
+   *  Odoo). A GLOBAL Ionic overlay appended to `document.body` (appointments#207, the void dialog of
+   *  sales): an inline `<ion-alert>` in this shadow root loses its styles when Ionic teleports it,
+   *  and its backdrop covers its own buttons the first time in a session (hub#2162). */
+  private async confirmDelete(station: Station): Promise<void> {
+    const t = (k: string, p?: Record<string, unknown>): string => erplora().t(CATALOG, k, p);
+    const alert = document.createElement('ion-alert') as IonicAlertElement;
+    alert.header = t('ui.deleteStationTitle', { name: stationName(station) });
+    alert.message = t('ui.deleteStationMessage');
+    alert.buttons = [
+      { text: t('ui.cancel'), role: 'cancel' },
+      {
+        text: t('ui.rowDelete'),
+        role: 'destructive',
+        handler: () => {
+          void this.deleteStation(station);
+        },
+      },
+    ];
+    alert.setAttribute('data-testid', 'kitchen-stations-delete-confirm');
+    // Ionic moves the teleported overlay back to its original parent right AFTER emitting
+    // ionAlertDidDismiss: remove it on the next task or a hidden alert is left on every delete.
+    alert.addEventListener('ionAlertDidDismiss', () => setTimeout(() => alert.remove(), 0), { once: true });
+    document.body.appendChild(alert);
+    try {
+      if (typeof alert.present === 'function') await alert.present();
+      else alert.isOpen = true;
+    } catch {
+      alert.remove();
+      this.pageError = t('ui.deleteStationError');
+    }
+  }
+
+  private async deleteStation(station: Station): Promise<void> {
     this.pageError = '';
     this.formMsg = '';
     try {

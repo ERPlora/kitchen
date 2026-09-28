@@ -158,6 +158,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // Unmount first: it stops each board's 1 s clock, which would otherwise repaint without the SDK.
+  document.body.innerHTML = '';
   delete (globalThis as Record<string, unknown>).AudioContext;
   delete (globalThis as Record<string, unknown>).erplora;
 });
@@ -268,5 +270,15 @@ describe('the chime obeys the volume and the tone of the hub (kitchen#72)', () =
     await ticketArrives(el);
     expect(waves, 'the tone control moved nothing').toContain('square');
     expect(waves).not.toContain('sine');
+  });
+});
+
+describe('test hygiene: a board never outlives its test', () => {
+  // The board repaints every second (its elapsed-time clock). A board left mounted after its test
+  // repaints once `afterEach` has taken the SDK away and throws «erplora SDK not initialised» as
+  // an unhandled rejection whenever the runner is slow — a red gate with every test green (the CI
+  // of kitchen#125, 9e9c026, attempt 1). Runs last on purpose: the file runs in order.
+  it('leaves no board mounted behind the tests above', () => {
+    expect(document.querySelectorAll('erp-kitchen-display')).toHaveLength(0);
   });
 });
