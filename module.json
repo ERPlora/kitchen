@@ -1,7 +1,7 @@
 {
   "id": "kitchen",
   "name": "Kitchen",
-  "version": "2.3.58",
+  "version": "2.3.60",
   "description": "Kitchen display system and production orders, tracked from received to ready.",
   "agent": {
     "description": "Single kitchen module: kitchen display system (KDS), production orders (create, track and transition status from firing to serving), stations with product/category routing, and an audit log of kitchen actions.",
@@ -744,6 +744,18 @@
       "sql": [
         "commands/category_route_set.sql"
       ]
+    },
+    "kitchen._station_ensure_live": {
+      "permission": "kitchen.manage_settings",
+      "sql": [
+        "commands/station_ensure_live.sql"
+      ],
+      "expect_rows": {
+        "op": "min",
+        "n": 1,
+        "error": "kitchen.station_unavailable",
+        "message": "That station is not available: it does not exist in this business or it has already been deleted. Refresh the list."
+      }
     },
     "kitchen._station_soft_delete": {
       "permission": "kitchen.manage_settings",

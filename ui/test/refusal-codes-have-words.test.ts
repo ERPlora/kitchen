@@ -20,8 +20,10 @@ for (const cmd of Object.values((manifest as { commands: Record<string, Command>
 }
 
 describe('every refusal code the manifest declares has a sentence in en and es', () => {
-  it('the refusals of the stations screen are declared (kitchen#120)', () => {
-    expect([...codes]).toEqual(expect.arrayContaining(['kitchen.station_name_taken', 'kitchen.station_in_use']));
+  it('the refusals of the stations screen are declared (kitchen#120, kitchen#126)', () => {
+    expect([...codes]).toEqual(
+      expect.arrayContaining(['kitchen.station_name_taken', 'kitchen.station_in_use', 'kitchen.station_unavailable']),
+    );
   });
 
   for (const [lang, catalog] of [['en', en], ['es', es]] as const) {

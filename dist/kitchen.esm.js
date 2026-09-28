@@ -2107,7 +2107,8 @@ var es_default = {
     rowDelete: "Eliminar",
     placeholderStationName: "p. ej. Plancha",
     placeholderPrinterOptional: "(opcional)",
-    addStation: "A\xF1adir",
+    addStation: "A\xF1adir estaci\xF3n",
+    createStation: "Crear estaci\xF3n",
     createStationError: "No se pudo crear la estaci\xF3n",
     editStationTitle: "Editar estaci\xF3n",
     labelName: "Nombre",
@@ -2184,7 +2185,8 @@ var es_default = {
     "kitchen.invalid_transition": "Esa comanda ya no est\xE1 en el estado que requiere esta acci\xF3n. Actualiza e int\xE9ntalo de nuevo.",
     "kitchen.order_unavailable": "Esa comanda no est\xE1 disponible: no existe en este negocio o se ha borrado.",
     "kitchen.station_name_taken": "Ya hay una estaci\xF3n con ese nombre. Elige otro nombre.",
-    "kitchen.station_in_use": "No se puede borrar esta estaci\xF3n: todav\xEDa tiene productos o categor\xEDas enrutados, o l\xEDneas en preparaci\xF3n. Mu\xE9velos antes a otra estaci\xF3n."
+    "kitchen.station_in_use": "No se puede borrar esta estaci\xF3n: todav\xEDa tiene productos o categor\xEDas enrutados, o l\xEDneas en preparaci\xF3n. Mu\xE9velos antes a otra estaci\xF3n.",
+    "kitchen.station_unavailable": "Esa estaci\xF3n no est\xE1 disponible: no existe en este negocio o ya se ha borrado. Actualiza la lista."
   }
 };
 
@@ -2290,7 +2292,8 @@ var en_default = {
     rowDelete: "Delete",
     placeholderStationName: "e.g. Grill",
     placeholderPrinterOptional: "(optional)",
-    addStation: "Add",
+    addStation: "Add station",
+    createStation: "Create station",
     createStationError: "Could not create station",
     editStationTitle: "Edit station",
     labelName: "Name",
@@ -2367,7 +2370,8 @@ var en_default = {
     "kitchen.invalid_transition": "That kitchen order is no longer in the state this action requires. Refresh and try again.",
     "kitchen.order_unavailable": "That kitchen order is not available: it does not exist in this business or it has been deleted.",
     "kitchen.station_name_taken": "There is already a station with that name. Choose a different name.",
-    "kitchen.station_in_use": "This station cannot be deleted: products or categories are still routed to it, or it has lines being prepared. Move them to another station first."
+    "kitchen.station_in_use": "This station cannot be deleted: products or categories are still routed to it, or it has lines being prepared. Move them to another station first.",
+    "kitchen.station_unavailable": "That station is not available: it does not exist in this business or it has already been deleted. Refresh the list."
   }
 };
 
@@ -6151,6 +6155,7 @@ var ErpKitchenOrdersStations = class extends i3 {
       await this.reload();
     } catch (e6) {
       this.pageError = e6 instanceof Error && e6.message ? e6.message : erplora5().t(CATALOG5, "ui.deleteStationError");
+      if (e6?.code === "kitchen.station_unavailable") await this.reload();
     }
   }
   /** pm#513: each refusal appears above the button that was pressed — on a phone that can leave it
@@ -6214,7 +6219,7 @@ var ErpKitchenOrdersStations = class extends i3 {
         ${this.formMsg ? b2`<p class="ok" data-testid="kitchen-stations-saved">${this.formMsg}</p>` : A}
         ${this.pageError ? b2`<ok-inline-feedback data-testid="kitchen-stations-error" tone="danger" icon="alert-circle-outline">${this.pageError}</ok-inline-feedback>` : A}
         ${this.ctrl?.error ? b2`<ok-inline-feedback data-testid="kitchen-stations-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
-        <ok-data-table testid="kitchen-stations-table" .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => stationName(r6)} .cardIcon=${() => "flame-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchStations")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyStations")} .actions=${this.rowActions} .rowClickable=${true} @rowAction=${(e6) => this.onRowAction(e6)} @rowClick=${(e6) => this.onRowAction({ detail: { actionId: "edit", row: e6.detail.row } })} @pageChange=${(e6) => this.ctrl.setPage(e6.detail)} @pageSizeChange=${(e6) => this.ctrl.setPageSize(e6.detail)} @sortChange=${(e6) => this.ctrl.setSort(e6.detail.sort, e6.detail.dir)} @searchChange=${(e6) => this.ctrl.setSearch(e6.detail)} @filterChange=${(e6) => this.ctrl.setFilter(e6.detail.col, e6.detail.value)}>
+        <ok-data-table testid="kitchen-stations-table" .serverSide=${true} .fill=${true} .addable=${true} .labels=${{ add: t7("ui.addStation") }} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => stationName(r6)} .cardIcon=${() => "flame-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t7("ui.searchStations")} .emptyMessage=${this.ctrl?.loading ? t7("ui.loading") : t7("ui.emptyStations")} .actions=${this.rowActions} .rowClickable=${true} @rowAction=${(e6) => this.onRowAction(e6)} @rowClick=${(e6) => this.onRowAction({ detail: { actionId: "edit", row: e6.detail.row } })} @pageChange=${(e6) => this.ctrl.setPage(e6.detail)} @pageSizeChange=${(e6) => this.ctrl.setPageSize(e6.detail)} @sortChange=${(e6) => this.ctrl.setSort(e6.detail.sort, e6.detail.dir)} @searchChange=${(e6) => this.ctrl.setSearch(e6.detail)} @filterChange=${(e6) => this.ctrl.setFilter(e6.detail.col, e6.detail.value)}>
           <!-- Alta de estación: se proyecta SIEMPRE (aunque el panel esté cerrado); si se renderizara
                solo con el panel abierto, el «+» de la barra abriría un panel vacío. -->
           <form slot="create" class="create-form" data-testid="kitchen-stations-create-form" @submit=${(e6) => this.createStation(e6)}>
@@ -6223,7 +6228,7 @@ var ErpKitchenOrdersStations = class extends i3 {
             <!-- pm#513: the refusal travels WITH the form — under 834 px the panel is a full-screen
                  sheet and a notice on the page underneath it is never seen. -->
             ${this.createError ? b2`<ok-inline-feedback data-testid="kitchen-stations-create-error" tone="danger" icon="alert-circle-outline">${this.createError}</ok-inline-feedback>` : A}
-            <ion-button data-testid="kitchen-stations-create-submit" type="submit" ?disabled=${this.saving || !this.newName}>${this.saving ? t7("ui.saving") : t7("ui.addStation")}</ion-button>
+            <ion-button data-testid="kitchen-stations-create-submit" type="submit" ?disabled=${this.saving || !this.newName}>${this.saving ? t7("ui.saving") : t7("ui.createStation")}</ion-button>
           </form>
         </ok-data-table>
       </div>`;

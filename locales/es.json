@@ -100,7 +100,8 @@
     "rowDelete": "Eliminar",
     "placeholderStationName": "p. ej. Plancha",
     "placeholderPrinterOptional": "(opcional)",
-    "addStation": "Añadir",
+    "addStation": "Añadir estación",
+    "createStation": "Crear estación",
     "createStationError": "No se pudo crear la estación",
     "editStationTitle": "Editar estación",
     "labelName": "Nombre",
@@ -177,6 +178,7 @@
     "kitchen.invalid_transition": "Esa comanda ya no está en el estado que requiere esta acción. Actualiza e inténtalo de nuevo.",
     "kitchen.order_unavailable": "Esa comanda no está disponible: no existe en este negocio o se ha borrado.",
     "kitchen.station_name_taken": "Ya hay una estación con ese nombre. Elige otro nombre.",
-    "kitchen.station_in_use": "No se puede borrar esta estación: todavía tiene productos o categorías enrutados, o líneas en preparación. Muévelos antes a otra estación."
+    "kitchen.station_in_use": "No se puede borrar esta estación: todavía tiene productos o categorías enrutados, o líneas en preparación. Muévelos antes a otra estación.",
+    "kitchen.station_unavailable": "Esa estación no está disponible: no existe en este negocio o ya se ha borrado. Actualiza la lista."
   }
 }
