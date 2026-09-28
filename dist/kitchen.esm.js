@@ -2179,7 +2179,9 @@ var es_default = {
   },
   errors: {
     "kitchen.invalid_transition": "Esa comanda ya no est\xE1 en el estado que requiere esta acci\xF3n. Actualiza e int\xE9ntalo de nuevo.",
-    "kitchen.order_unavailable": "Esa comanda no est\xE1 disponible: no existe en este negocio o se ha borrado."
+    "kitchen.order_unavailable": "Esa comanda no est\xE1 disponible: no existe en este negocio o se ha borrado.",
+    "kitchen.station_name_taken": "Ya hay una estaci\xF3n con ese nombre. Elige otro nombre.",
+    "kitchen.station_in_use": "No se puede borrar esta estaci\xF3n: todav\xEDa tiene productos o categor\xEDas enrutados, o l\xEDneas en preparaci\xF3n. Mu\xE9velos antes a otra estaci\xF3n."
   }
 };
 
@@ -2357,7 +2359,9 @@ var en_default = {
   },
   errors: {
     "kitchen.invalid_transition": "That kitchen order is no longer in the state this action requires. Refresh and try again.",
-    "kitchen.order_unavailable": "That kitchen order is not available: it does not exist in this business or it has been deleted."
+    "kitchen.order_unavailable": "That kitchen order is not available: it does not exist in this business or it has been deleted.",
+    "kitchen.station_name_taken": "There is already a station with that name. Choose a different name.",
+    "kitchen.station_in_use": "This station cannot be deleted: products or categories are still routed to it, or it has lines being prepared. Move them to another station first."
   }
 };
 
@@ -5995,7 +5999,7 @@ var ErpKitchenOrdersStations = class extends i3 {
       this.dataTable()?.close();
       await this.reload();
     } catch (e6) {
-      this.createError = e6 instanceof Error ? e6.message : erplora5().t(CATALOG5, "ui.createStationError");
+      this.createError = e6 instanceof Error && e6.message ? e6.message : erplora5().t(CATALOG5, "ui.createStationError");
     } finally {
       this.saving = false;
     }
@@ -6028,7 +6032,7 @@ var ErpKitchenOrdersStations = class extends i3 {
       this.editing = null;
       await this.reload();
     } catch (e6) {
-      this.editError = e6 instanceof Error ? e6.message : erplora5().t(CATALOG5, "ui.updateStationError");
+      this.editError = e6 instanceof Error && e6.message ? e6.message : erplora5().t(CATALOG5, "ui.updateStationError");
     } finally {
       this.saving = false;
     }
@@ -6051,7 +6055,7 @@ var ErpKitchenOrdersStations = class extends i3 {
       this.routeCategoryId = "";
       await this.reload();
     } catch (e6) {
-      this.routingError = e6 instanceof Error ? e6.message : erplora5().t(CATALOG5, "ui.saveRoutingError");
+      this.routingError = e6 instanceof Error && e6.message ? e6.message : erplora5().t(CATALOG5, "ui.saveRoutingError");
     } finally {
       this.saving = false;
     }
@@ -6075,7 +6079,7 @@ var ErpKitchenOrdersStations = class extends i3 {
       await erplora5().command("kitchen.stations.delete", { station_id: station.id });
       await this.reload();
     } catch (e6) {
-      this.pageError = e6 instanceof Error ? e6.message : erplora5().t(CATALOG5, "ui.deleteStationError");
+      this.pageError = e6 instanceof Error && e6.message ? e6.message : erplora5().t(CATALOG5, "ui.deleteStationError");
     }
   }
   /** pm#513: each refusal appears above the button that was pressed — on a phone that can leave it
