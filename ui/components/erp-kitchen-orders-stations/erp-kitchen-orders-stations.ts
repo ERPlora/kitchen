@@ -253,7 +253,7 @@ export class ErpKitchenOrdersStations extends LitElement {
       this.dataTable()?.close(); // si no, el panel se queda abierto tapando la estación recién creada
       await this.reload();
     } catch (e) {
-      this.createError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.createStationError');
+      this.createError = e instanceof Error && e.message ? e.message : erplora().t(CATALOG, 'ui.createStationError');
     } finally {
       this.saving = false;
     }
@@ -288,7 +288,7 @@ export class ErpKitchenOrdersStations extends LitElement {
       this.editing = null;
       await this.reload();
     } catch (e) {
-      this.editError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.updateStationError');
+      this.editError = e instanceof Error && e.message ? e.message : erplora().t(CATALOG, 'ui.updateStationError');
     } finally {
       this.saving = false;
     }
@@ -314,7 +314,7 @@ export class ErpKitchenOrdersStations extends LitElement {
       this.routeCategoryId = '';
       await this.reload();
     } catch (e) {
-      this.routingError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.saveRoutingError');
+      this.routingError = e instanceof Error && e.message ? e.message : erplora().t(CATALOG, 'ui.saveRoutingError');
     } finally {
       this.saving = false;
     }
@@ -339,7 +339,7 @@ export class ErpKitchenOrdersStations extends LitElement {
       await erplora().command('kitchen.stations.delete', { station_id: station.id });
       await this.reload();
     } catch (e) {
-      this.pageError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.deleteStationError');
+      this.pageError = e instanceof Error && e.message ? e.message : erplora().t(CATALOG, 'ui.deleteStationError');
     }
   }
 

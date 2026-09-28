@@ -1,5 +1,5 @@
--- Alta de estación de producción. Runtime inyecta :new_id, :hub_id, :current_user_id, :now.
--- (name único por hub: uq_kitchen_station_hub_name.)
+-- Creates a production station. The runtime injects :new_id, :hub_id, :current_user_id, :now.
+-- (name unique among the LIVE stations of a hub: uq_kitchen_station_hub_name_live, kitchen#120.)
 INSERT INTO kitchen_station
   (id, hub_id, name, name_es, description, color, icon, printer_name,
    destination, printer_role,
