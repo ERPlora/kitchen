@@ -61,7 +61,7 @@ module is inactive — and so does the whole kitchen surface in the POS.
 
 | Concept | Values |
 |---|---|
-| **Ticket status** | `pending`, `preparing`, `ready`, `served`, `paid`, `cancelled` |
+| **Ticket status** | `pending` (To prepare), `preparing`, `ready`, `served`, `cancelled` |
 | **Order type** | `dine_in`, `takeaway`, `delivery` |
 | **Priority** | `normal`, `rush`, `vip` |
 | **Station destination** | `display`, `printer`, `both` |

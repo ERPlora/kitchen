@@ -51,7 +51,7 @@ async function mount(): Promise<Mounted> {
 const statusColumn = (el: Mounted) => el.columns.find((c) => c.key === 'status')!;
 
 describe('the «Status» cell reads in the language of the hub (kitchen#108)', () => {
-  it('a pending order reads «Pendiente», not «pending»', async () => {
+  it('a pending order reads «Por preparar», not «pending» (kitchen#112)', async () => {
     const col = statusColumn(await mount());
     expect(col.format, 'the status column paints the raw internal value').toBeTypeOf('function');
     expect(col.format!({ status: 'pending' })).toBe(es.statusPending);
@@ -65,10 +65,10 @@ describe('the «Status» cell reads in the language of the hub (kitchen#108)', (
     expect(col.format?.({ status: 'cancelled' })).toBe(es.statusCancelled);
   });
 
-  it('in English it reads «Pending» — nothing is hardcoded', async () => {
+  it('in English it reads «To prepare» — nothing is hardcoded (kitchen#112)', async () => {
     shellSpeaking('en');
     const col = statusColumn(await mount());
-    expect(col.format?.({ status: 'pending' })).toBe('Pending');
+    expect(col.format?.({ status: 'pending' })).toBe('To prepare');
   });
 
   it('a state the catalogue does not know is printed as is, never blank', async () => {
