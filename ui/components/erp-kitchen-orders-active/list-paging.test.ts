@@ -1,3 +1,6 @@
+// Paging of the Comandas list: back to page 1 after a create (kitchen#133) and the rows-per-page
+// picker (kitchen#135).
+//
 // kitchen#133 — with more than one page of orders, creating one from page 2 left the list on page 2.
 //
 // The list reads newest first (`created_at desc`), so the order just created is the first row of
@@ -84,6 +87,26 @@ async function createOrder(el: Wc): Promise<void> {
   await settle(el);
 }
 
+// kitchen#135 — the rows-per-page picker of the table said «25» and the list kept 50: the screen
+// never listened to `pageSizeChange`.
+describe('the rows-per-page picker changes the list', () => {
+  for (const size of [25, 100]) {
+    it(`picking ${size} reloads ${size} rows per page from the first page`, async () => {
+      const el = await mount();
+      orders = Array.from({ length: 160 }, (_, i) => order(160 - i));
+      await goToPage(el, 1);
+
+      table(el).dispatchEvent(new CustomEvent('pageSizeChange', { detail: size }));
+      await settle(el);
+
+      expect([calls.at(-1)?.offset, calls.at(-1)?.limit]).toEqual([0, size]);
+      expect(table(el).pageSize, 'the picker and the footer count with the new size').toBe(size);
+      expect(table(el).page).toBe(0);
+      expect(numbers(el)).toHaveLength(size);
+    });
+  }
+});
+
 describe('creating an order from a later page brings the list back to its first page', () => {
   it('from page 2, the new order is the first row the person sees, on page 1', async () => {
     const el = await mount();
@@ -110,6 +133,18 @@ describe('creating an order from a later page brings the list back to its first 
     expect(last.search, 'the search box is not emptied behind the person').toBe('K-00');
     expect([last.sort, last.dir]).toEqual(['created_at', 'desc']);
     expect(table(el).page).toBe(0);
+  });
+
+  it('after picking 25 rows per page, the create reloads the first 25 (the size is kept)', async () => {
+    const el = await mount();
+    table(el).dispatchEvent(new CustomEvent('pageSizeChange', { detail: 25 }));
+    await settle(el);
+    await goToPage(el, 1);
+
+    await createOrder(el);
+
+    expect([calls.at(-1)?.offset, calls.at(-1)?.limit]).toEqual([0, 25]);
+    expect(numbers(el)).toHaveLength(25);
   });
 
   it('a refused create keeps the person on the page they were on', async () => {
