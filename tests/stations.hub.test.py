@@ -214,6 +214,62 @@ def test_a_station_with_no_destination_prints_and_shows(hub: Hub) -> None:
     hub.check("…through the kitchen printer role", pase.get("printer_role"), "kitchen")
 
 
+def live_station_ids(hub: Hub) -> set:
+    return {s.get("id") for s in hub.query("kitchen.stations.list", {"limit": 500})}
+
+
+def test_a_deleted_station_frees_its_name(hub: Hub) -> None:
+    print(
+        "\n4 · a deleted station's name can be used again; a live one refuses with the module's code (kitchen#120)"
+    )
+    tag = unique("reuse")
+    first = create_station(hub, name=f"Barra {tag}")
+    hub.run("kitchen.stations.delete", {"station_id": first})
+    hub.check_true(
+        "the deleted station leaves the list", first not in live_station_ids(hub)
+    )
+
+    status, body = hub.command("kitchen.stations.create", {"name": f"Barra {tag}"})
+    hub.check_true(
+        "the name of a DELETED station can be created again",
+        status == 200 and (body or {}).get("ok"),
+        f"HTTP {status}: {body}",
+    )
+
+    hub.refused(
+        "a second LIVE station with the same name",
+        "kitchen.stations.create",
+        {"name": f"Barra {tag}"},
+        "kitchen.station_name_taken",
+    )
+    other = create_station(hub, name=f"Plancha {tag}")
+    hub.refused(
+        "renaming a station onto a LIVE name",
+        "kitchen.stations.update",
+        {"station_id": other, "name": f"Barra {tag}"},
+        "kitchen.station_name_taken",
+    )
+
+
+def test_a_station_with_routing_says_why_it_is_not_deleted(hub: Hub) -> None:
+    print(
+        "\n5 · deleting a station that still has routing is REFUSED with a reason, not a silent 200 (kitchen#120)"
+    )
+    tag = unique("inuse")
+    station = create_station(hub, name=f"Freidora {tag}")
+    hub.run(
+        "kitchen.stations.set_routing",
+        {"station_id": station, "category_id": f"cat-{tag}", "product_id": ""},
+    )
+    hub.refused(
+        "a station with routing is not deleted",
+        "kitchen.stations.delete",
+        {"station_id": station},
+        "kitchen.station_in_use",
+    )
+    hub.check_true("…and it is still on the list", station in live_station_ids(hub))
+
+
 def main() -> int:
     hub = Hub("stations.hub")
     print(
@@ -222,6 +278,8 @@ def main() -> int:
     test_each_station_says_where_its_ticket_comes_out(hub)
     test_an_old_round_reprints_where_it_actually_went(hub)
     test_a_station_with_no_destination_prints_and_shows(hub)
+    test_a_deleted_station_frees_its_name(hub)
+    test_a_station_with_routing_says_why_it_is_not_deleted(hub)
     return hub.finish(
         "a station's destination routes the ticket, and history never rewrites itself, against the real kernel"
     )

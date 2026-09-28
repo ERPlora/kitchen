@@ -135,7 +135,8 @@
         "kind": "backfill",
         "since": "2.3.33"
       },
-      "migrations/postgres/011_rush_count.sql"
+      "migrations/postgres/011_rush_count.sql",
+      "migrations/postgres/012_station_name_ignores_deleted.sql"
     ]
   },
   "queries": {
@@ -601,6 +602,9 @@
       "sql": [
         "commands/station_create.sql"
       ],
+      "on_unique": {
+        "uq_kitchen_station_hub_name_live": "kitchen.station_name_taken"
+      },
       "schema": "schemas/station_create.json",
       "emit": [
         "kitchen.station.created"
@@ -615,6 +619,9 @@
       "sql": [
         "commands/station_update.sql"
       ],
+      "on_unique": {
+        "uq_kitchen_station_hub_name_live": "kitchen.station_name_taken"
+      },
       "schema": "schemas/station_update.json",
       "emit": [
         "kitchen.station.updated"
@@ -742,7 +749,13 @@
       "permission": "kitchen.manage_settings",
       "sql": [
         "commands/station_delete.sql"
-      ]
+      ],
+      "expect_rows": {
+        "op": "min",
+        "n": 1,
+        "error": "kitchen.station_in_use",
+        "message": "This station cannot be deleted: products or categories are still routed to it, or it has lines being prepared. Move them to another station first."
+      }
     },
     "kitchen._order_soft_delete": {
       "permission": "kitchen.delete_order",
