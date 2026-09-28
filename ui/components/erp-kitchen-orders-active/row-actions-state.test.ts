@@ -39,7 +39,7 @@ beforeEach(() => {
 type Host = HTMLElement & {
   updateComplete: Promise<unknown>;
   rowActions: { id: string; disabled?: (row: Record<string, unknown>) => boolean }[];
-  formError: string;
+  pageError: string;
   onRowAction(ev: CustomEvent<{ actionId: string; row: Record<string, unknown> }>): Promise<void>;
 };
 
@@ -83,7 +83,7 @@ describe('a stale client that hits a refused transition sees why and gets the fr
       throw new DomainErr('kitchen.invalid_transition', 'server fallback (english)');
     };
     await el.onRowAction(new CustomEvent('rowAction', { detail: { actionId: 'mark_ready', row: { id: 'k1', status: 'served' } } }));
-    expect(el.formError).toBe('Esa comanda ya no está en el estado que requiere esta acción. Actualiza e inténtalo de nuevo.');
+    expect(el.pageError).toBe('Esa comanda ya no está en el estado que requiere esta acción. Actualiza e inténtalo de nuevo.');
     expect(loads, 'the list is reloaded so the row shows its real state').toBeGreaterThan(before);
   });
 
@@ -93,6 +93,6 @@ describe('a stale client that hits a refused transition sees why and gets the fr
       throw new Error('boom');
     };
     await el.onRowAction(new CustomEvent('rowAction', { detail: { actionId: 'fire', row: { id: 'k1', status: 'pending' } } }));
-    expect(el.formError).toBe('boom');
+    expect(el.pageError).toBe('boom');
   });
 });

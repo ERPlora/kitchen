@@ -82,6 +82,7 @@
     "placeholderType": "Tipo",
     "placeholderNotes": "Notas",
     "newOrder": "Nueva comanda",
+    "createOrder": "Crear comanda",
     "creatingOrder": "Creando…",
     "createOrderError": "No se pudo crear la comanda",
     "updateStatusError": "No se pudo actualizar el estado",
