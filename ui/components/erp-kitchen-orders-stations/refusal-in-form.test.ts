@@ -20,6 +20,7 @@
 //     that does not load. No form is involved then, and a notice inside a closed panel is just as
 //     invisible (rv-appointments-227).
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { dataTableShowsLoadError } from '@erplora/module-sdk';
 
 const STATIONS = [
   { id: 'st1', name: 'Bar', name_es: 'Barra', color: '#F97316', icon: 'flame', printer_name: 'COCINA-1', is_active: 1 },
@@ -431,7 +432,14 @@ describe('pm#513 · stations: what goes wrong OUTSIDE the save stays on the page
   it('a list that does not load is shown on the page, not in a form', async () => {
     loadFails = true;
     const el = await mount();
-    expect(whereIs(el, REFUSAL)).toEqual(['page']);
+    // pm#533: an OutfitKit whose table paints the load error itself gets the reason there, and the
+    // page adds no notice of its own; an older one keeps the notice on the page.
+    if (dataTableShowsLoadError()) {
+      expect((el.shadowRoot.querySelector('ok-data-table') as unknown as { error?: string }).error).toBe(REFUSAL);
+      expect(whereIs(el, REFUSAL)).toEqual([]);
+    } else {
+      expect(whereIs(el, REFUSAL)).toEqual(['page']);
+    }
     expect(inside(el, CREATE, 'kitchen-stations-create-error')).toBeNull();
   });
 });
