@@ -1,0 +1,94 @@
+# WORKFLOW — Cocina · El cierre de la cuenta y los otros módulos
+
+Prefijo: KITCHEN
+
+Lo que Cocina hace cuando otro módulo le avisa (una cuenta cobrada, dos clientes unidos) y lo que
+no hace porque nadie le avisa (una cuenta eliminada o unida, un plato anulado). Cocina solo escucha
+tres avisos de fuera: ronda enviada, cuenta cerrada y fichas de cliente unidas.
+
+## Flujos
+
+### KITCHEN-F27 Cerrar las rondas al cobrar la cuenta entera
+Estado: parcial — en «pide y paga» (barra, mostrador) cobrar cancela la ronda que el TPV acaba de enviar (kitchen#145, leído en el código, sin reproducir); lo mismo le pasa a lo que se esté cocinando cuando una mesa paga antes de terminar; y en una cuenta dividida, cobrar la original cierra sus rondas aunque parte de sus platos se pasaran a la otra cuenta
+Actor: sistema
+Pantalla: ninguna
+Pasos:
+1. El cajero cobra la cuenta entera en el TPV; un cobro parcial no cuenta. Si había artículos sin enviar, el TPV los envía antes de cobrar, como una ronda más.
+2. Ventas avisa de que la cuenta se cerró.
+3. Cocina toma las rondas de esa cuenta: las Listas pasan a Servidas; las Por preparar y En preparación pasan a Canceladas con todos sus platos; las Servidas y las Canceladas no se tocan.
+4. Las tarjetas desaparecen de la pantalla de cocina y del «Resumen».
+5. En «pide y paga», el hub entrega los avisos en el orden en que se crearon: primero nace la ronda recién enviada, «Por preparar», y justo después el cierre de la cuenta la cancela. Su papel sale igual, porque la comanda se imprime al nacer, pero su tarjeta desaparece de la pantalla de cocina.
+Entra: de Ventas, la cuenta cerrada (avisa: order.completed), que sale una sola vez, con el cobro final.
+Sale: cada ronda Servida o Cancelada (avisa: kitchen.order.served o kitchen.order.cancelled) y su entrada en el Historial, sin motivo. Nada vuelve al TPV: no se avisa de que se ha cancelado comida. Así se decidió para el servicio en mesa (kitchen#61, kitchen#79): una mesa que ha pagado y se ha ido no debe seguir en la pantalla con el reloj corriendo. Solo se tocan las rondas de la cuenta cobrada; las comandas creadas a mano no se cierran nunca al cobrar.
+Si falla: si una ronda cambia de estado justo entre que se lee y se escribe, el cierre se rechaza entero y el aviso se reintenta; un aviso repetido de la misma cuenta no cambia nada.
+Implicados: pendiente
+Pendiente de enlazar: sales — SALES-F01 avisa de que la cuenta se cerró al cobrarla entera
+Pendiente de enlazar: sales — SALES-F20 envía lo pendiente antes de cobrar, que es la ronda que este cierre cancela
+Pendiente de enlazar: sales — SALES-F22 un cobro parcial no cierra la cuenta ni sus rondas
+Pendiente de enlazar: sales — SALES-F23 al dividir, las líneas pasan a la cuenta nueva con su ronda de cocina
+Pendiente de enlazar: REC_RESTAURANTE — cobrar y cerrar la mesa en el día del restaurante
+QA: R-09, R-10, qa-hub-restaurant §7.10
+
+### KITCHEN-F28 Retirar las rondas de una cuenta eliminada o unida a otra
+Estado: no hecho — Cocina no se entera de que una cuenta se elimina ni de que se une a otra: las rondas enviadas desde ella siguen en la pantalla de cocina, y como el cobro solo cierra las rondas de la cuenta cobrada, las de la cuenta eliminada o absorbida no se cierran nunca solas
+Actor: sistema
+Pantalla: ninguna
+Pasos:
+1. Un responsable elimina una cuenta abierta que ya envió rondas (SALES-F18), o se juntan dos mesas y una cuenta absorbe a la otra (SALES-F24).
+2. Hoy, las rondas de esa cuenta siguen en la pantalla de cocina con su reloj y en el TPV ya no hay cuenta desde la que verlas; al cobrar la cuenta que queda tampoco se cierran.
+3. Hoy se quitan a mano desde Cocina: «Servida» o «Cancelar» (KITCHEN-F13, KITCHEN-F22). Lo que falta es que Cocina reciba el aviso y las retire o las pase a la cuenta que queda (ver «Dudas abiertas»).
+Entra: nada. Ventas avisa de la cuenta eliminada (sales.order.voided) y Cocina no escucha ese aviso; al juntar cuentas no avisa a nadie.
+Sale: nada; las rondas quedan vivas y salen en la revisión del cierre de caja como sin servir (KITCHEN-F31).
+Si falla: nadie lo dice; se ve en la pantalla de cocina y en el cierre de caja.
+Implicados: pendiente
+Pendiente de enlazar: sales — SALES-F18 elimina una cuenta abierta y sus rondas siguen en la pantalla de Cocina
+Pendiente de enlazar: sales — SALES-F24 junta dos cuentas y las rondas de la absorbida no se cierran al cobrar la que queda
+Pendiente de enlazar: tables — juntar dos mesas ocupadas
+QA: R-07, qa-hub-restaurant §7.09, qa-hub-restaurant §7.13
+
+### KITCHEN-F29 Anular un plato ya enviado con aviso a cocina
+Estado: no hecho — en el TPV una línea enviada no se puede quitar ni cambiar (pedir que se quite, por el asistente o la API, contesta bien sin quitar nada), y Cocina no tiene orden para anular un solo plato ni escucha la retirada de una línea: el plato se sigue cocinando y se cobra
+Actor: responsable
+Pantalla: Ventas: Vender
+Pasos:
+1. En el TPV, sobre una línea ya enviada, el responsable la anula con un motivo (no existe).
+2. En la pantalla de cocina, ese plato sale tachado como anulado y su estación recibe un vale de anulación en papel (no existe).
+3. Hoy solo se puede cancelar la ronda entera desde Cocina (KITCHEN-F22), que no cambia la cuenta, o avisar de palabra.
+Entra: la línea anulada y su motivo, de Ventas.
+Sale: el plato anulado en cocina y el vale en papel por la función de su estación.
+Si falla: igual que la comanda en papel (KITCHEN-F08).
+Implicados: pendiente
+Pendiente de enlazar: sales — SALES-F20 una línea enviada queda bloqueada y no se anula con aviso a cocina
+Pendiente de enlazar: sales — SALES-F27 pedir que se quite una línea ya enviada no la quita y avisa igual
+Pendiente de enlazar: REC_RESTAURANTE — anular un plato enviado en el día del restaurante
+QA: R-11, qa-hub-restaurant §7.08, qa-hub-restaurant §7.13
+
+### KITCHEN-F30 Pasar las comandas de un cliente unido a otro
+Estado: hecho
+Actor: sistema
+Pantalla: ninguna
+Pasos:
+1. En Clientes se unen dos fichas de la misma persona (CUSTOMERS-F13).
+2. Cocina pasa a la ficha que queda todas las comandas de la ficha absorbida, en cualquier estado y también las retiradas, solo en este hub.
+3. Nada más cambia en la comanda.
+Entra: de Clientes, las fichas unidas (avisa: customer.merged): la que queda y la absorbida.
+Sale: nada visible: ninguna pantalla de Cocina enseña el cliente, y las rondas del TPV no lo llevan (solo las comandas antiguas o creadas por la API). No avisa a nadie.
+Si falla: un aviso repetido no cambia nada; sin comandas de ese cliente no hace nada. Sin Clientes instalado el aviso no llega nunca.
+Implicados: pendiente
+Pendiente de enlazar: customers — CUSTOMERS-F13 une dos fichas y avisa a los módulos que guardan el cliente
+QA: ninguno
+
+### KITCHEN-F31 Dar a Caja las comandas que siguen en marcha
+Estado: hecho
+Actor: sistema
+Pantalla: ninguna
+Pasos:
+1. Al abrir el cierre de caja, Caja pregunta a Cocina qué comandas siguen en marcha.
+2. Cocina devuelve las comandas Por preparar, En preparación y Listas con su etiqueta, su número y sus platos, las mismas que pinta la pantalla de cocina.
+3. Caja avisa de las comandas sin servir antes de cerrar (CASH_REGISTER-F08).
+Entra: la consulta de Caja, con el permiso de ver comandas de quien cierra.
+Sale: la lista; no cambia nada.
+Si falla: si Cocina no está o no responde, Caja dice que la revisión puede estar incompleta.
+Implicados: pendiente
+Pendiente de enlazar: cash_register — CASH_REGISTER-F08 revisa lo que queda pendiente antes de cerrar con la lista de comandas vivas de la pantalla de cocina
+QA: R-10, qa-hub-restaurant §7.14
