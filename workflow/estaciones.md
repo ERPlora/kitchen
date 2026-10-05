@@ -20,8 +20,7 @@ Pasos:
 Entra: el nombre que escribe el administrador.
 Sale: la estación, activa, con destino pantalla y papel y función de impresora «Cocina» (avisa: kitchen.station.created). El texto de «Impresora» se guarda y se enseña en la tabla, pero nadie lo lee al imprimir. Por el asistente o la API se pueden dar además el nombre en español, el destino y la función de impresora.
 Si falla: el rechazo sale dentro del panel, encima de su botón. Si ya hay una estación viva con ese nombre, se rechaza (el nombre de una estación eliminada vuelve a quedar libre). Un perfil que no es administrador ve el formulario y recibe el rechazo de permiso al guardar.
-Implicados: pendiente
-Pendiente de enlazar: printing — PRINTING-F04 da a una impresora del dispositivo la función «Cocina» o «Barra» por la que sale cada estación
+Implicados: PRINTING-F04, REC_RESTAURANTE-F02
 QA: R-05, qa-hub-restaurant §7.08, qa-hub-restaurant §7.16
 
 ### KITCHEN-F02 Editar, renombrar o desactivar una estación
@@ -66,7 +65,5 @@ Pasos:
 Entra: la estación y los productos y categorías de Inventario.
 Sale: el producto o la categoría quedan mandados a esa estación, sustituyendo el enrutado anterior (avisa: kitchen.routing.changed). Solo afecta a las rondas que se envíen después. Al enviar, cada plato va a: la estación de su producto; si no tiene, la de su categoría principal (la que manda el TPV); si no, «Sin estación», que se ve en la pantalla y sale por la impresora de cocina.
 Si falla: un rechazo sale dentro del formulario. Si Inventario no responde, los desplegables salen vacíos y el panel no sirve, pero la pantalla sigue. Si la estación elegida está inactiva, no se guarda nada y aun así sale «Enrutado guardado».
-Implicados: pendiente
-Pendiente de enlazar: inventory — las listas de productos y categorías que se eligen en el enrutado
-Pendiente de enlazar: sales — SALES-F20 envía con cada plato la categoría principal del producto, que es la que enruta
+Implicados: INVENTORY-F06, INVENTORY-F07, INVENTORY-F08, INVENTORY-F27, SALES-F20, REC_RESTAURANTE-F02
 QA: R-05, qa-hub-restaurant §7.08

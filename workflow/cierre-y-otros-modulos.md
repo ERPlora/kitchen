@@ -21,12 +21,7 @@ Pasos:
 Entra: de Ventas, la cuenta cerrada (avisa: order.completed), que sale una sola vez, con el cobro final.
 Sale: cada ronda Servida o Cancelada (avisa: kitchen.order.served o kitchen.order.cancelled) y su entrada en el Historial, sin motivo. Nada vuelve al TPV: no se avisa de que se ha cancelado comida. Así se decidió para el servicio en mesa (kitchen#61, kitchen#79): una mesa que ha pagado y se ha ido no debe seguir en la pantalla con el reloj corriendo. Solo se tocan las rondas de la cuenta cobrada; las comandas creadas a mano no se cierran nunca al cobrar.
 Si falla: si una ronda cambia de estado justo entre que se lee y se escribe, el cierre se rechaza entero y el aviso se reintenta; un aviso repetido de la misma cuenta no cambia nada.
-Implicados: pendiente
-Pendiente de enlazar: sales — SALES-F01 avisa de que la cuenta se cerró al cobrarla entera
-Pendiente de enlazar: sales — SALES-F20 envía lo pendiente antes de cobrar, que es la ronda que este cierre cancela
-Pendiente de enlazar: sales — SALES-F22 un cobro parcial no cierra la cuenta ni sus rondas
-Pendiente de enlazar: sales — SALES-F23 al dividir, las líneas pasan a la cuenta nueva con su ronda de cocina
-Pendiente de enlazar: REC_RESTAURANTE — cobrar y cerrar la mesa en el día del restaurante
+Implicados: SALES-F01, SALES-F20, SALES-F22, SALES-F23, REC_RESTAURANTE-F11, REC_RESTAURANTE-F17
 QA: R-09, R-10, qa-hub-restaurant §7.10
 
 ### KITCHEN-F28 Retirar las rondas de una cuenta eliminada o unida a otra
@@ -40,10 +35,7 @@ Pasos:
 Entra: nada. Ventas avisa de la cuenta eliminada (sales.order.voided) y Cocina no escucha ese aviso; al juntar cuentas no avisa a nadie.
 Sale: nada; las rondas quedan vivas y salen en la revisión del cierre de caja como sin servir (KITCHEN-F31).
 Si falla: nadie lo dice; se ve en la pantalla de cocina y en el cierre de caja.
-Implicados: pendiente
-Pendiente de enlazar: sales — SALES-F18 elimina una cuenta abierta y sus rondas siguen en la pantalla de Cocina
-Pendiente de enlazar: sales — SALES-F24 junta dos cuentas y las rondas de la absorbida no se cierran al cobrar la que queda
-Pendiente de enlazar: tables — juntar dos mesas ocupadas
+Implicados: SALES-F18, SALES-F24, REC_RESTAURANTE-F10, REC_RESTAURANTE-F14
 QA: R-07, qa-hub-restaurant §7.09, qa-hub-restaurant §7.13
 
 ### KITCHEN-F29 Anular un plato ya enviado con aviso a cocina
@@ -57,10 +49,7 @@ Pasos:
 Entra: la línea anulada y su motivo, de Ventas.
 Sale: el plato anulado en cocina y el vale en papel por la función de su estación.
 Si falla: igual que la comanda en papel (KITCHEN-F08).
-Implicados: pendiente
-Pendiente de enlazar: sales — SALES-F20 una línea enviada queda bloqueada y no se anula con aviso a cocina
-Pendiente de enlazar: sales — SALES-F27 pedir que se quite una línea ya enviada no la quita y avisa igual
-Pendiente de enlazar: REC_RESTAURANTE — anular un plato enviado en el día del restaurante
+Implicados: SALES-F20, REC_RESTAURANTE-F14
 QA: R-11, qa-hub-restaurant §7.08, qa-hub-restaurant §7.13
 
 ### KITCHEN-F30 Pasar las comandas de un cliente unido a otro
@@ -74,8 +63,7 @@ Pasos:
 Entra: de Clientes, las fichas unidas (avisa: customer.merged): la que queda y la absorbida.
 Sale: nada visible: ninguna pantalla de Cocina enseña el cliente, y las rondas del TPV no lo llevan (solo las comandas antiguas o creadas por la API). No avisa a nadie.
 Si falla: un aviso repetido no cambia nada; sin comandas de ese cliente no hace nada. Sin Clientes instalado el aviso no llega nunca.
-Implicados: pendiente
-Pendiente de enlazar: customers — CUSTOMERS-F13 une dos fichas y avisa a los módulos que guardan el cliente
+Implicados: CUSTOMERS-F13
 QA: ninguno
 
 ### KITCHEN-F31 Dar a Caja las comandas que siguen en marcha
@@ -89,6 +77,5 @@ Pasos:
 Entra: la consulta de Caja, con el permiso de ver comandas de quien cierra.
 Sale: la lista; no cambia nada.
 Si falla: si Cocina no está o no responde, Caja dice que la revisión puede estar incompleta.
-Implicados: pendiente
-Pendiente de enlazar: cash_register — CASH_REGISTER-F08 revisa lo que queda pendiente antes de cerrar con la lista de comandas vivas de la pantalla de cocina
+Implicados: CASH_REGISTER-F08, REC_RESTAURANTE-F16
 QA: R-10, qa-hub-restaurant §7.14

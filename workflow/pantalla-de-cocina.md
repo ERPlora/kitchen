@@ -21,10 +21,8 @@ Pasos:
 Entra: las comandas Por preparar, En preparación y Listas con sus platos; los ajustes de la pantalla; los nombres vivos de las estaciones; los nombres de las personas del hub y, si está instalado, del Equipo.
 Sale: nada; la pantalla solo enseña.
 Si falla: «No se pudo cargar la pantalla de cocina» (o el motivo) encima del tablero. Si no cargan las personas, la tarjeta no pone camarero (nunca un código). Si no cargan las estaciones, sale el nombre con que se envió cada plato. Sin el permiso de cambiar comandas (cajero) la pantalla es de solo mirar: sin botones y los platos no responden. La estación elegida no se recuerda: al volver a abrir la pantalla sale «Todas».
-Implicados: pendiente
-Pendiente de enlazar: staff — STAFF-F09 da el nombre del miembro del equipo que envió la ronda
+Implicados: STAFF-F09, REC_RESTAURANTE-F07
 Pendiente de enlazar: hub — la lista de personas del hub y el modo pantalla completa del shell
-Pendiente de enlazar: REC_RESTAURANTE — cocina y pase en el día del restaurante
 QA: R-05, BD-08 (discrepa), qa-hub-restaurant §7.08, qa-hub-restaurant §7.17
 
 ### KITCHEN-F11 Marcar platos listos
@@ -39,9 +37,8 @@ Pasos:
 Entra: los platos de la tarjeta que se ven en la pantalla.
 Sale: cada plato queda listo (avisa: kitchen.item.bumped), la comanda empieza (kitchen.order.fired) o queda lista (kitchen.order.ready); el Historial apunta «Línea lista», «Lanzadas» y «Listas (bump)»; el TPV ve la ronda como «Lista»; con el pase encendido sale en papel (KITCHEN-F17).
 Si falla: si la comanda cambió en otra pantalla, sale «Esa comanda ya no está en el estado que requiere esta acción. Actualiza e inténtalo de nuevo.» y el tablero se recarga. Un plato de una comanda Servida o Cancelada no se mueve.
-Implicados: pendiente
+Implicados: REC_RESTAURANTE-F07
 Pendiente de enlazar: flows — una comanda lista puede disparar un flujo
-Pendiente de enlazar: REC_RESTAURANTE — cocina y pase en el día del restaurante
 QA: R-05, BD-08, qa-hub-restaurant §7.08
 
 ### KITCHEN-F12 Recuperar lo marcado por error
@@ -69,8 +66,7 @@ Pasos:
 Entra: la comanda Lista.
 Sale: la comanda Servida (avisa: kitchen.order.served) y «Servidas» en el Historial. Marcarla no es obligatorio: al cobrar la cuenta entera, las Listas pasan solas a Servidas (KITCHEN-F27).
 Si falla: solo una comanda Lista se puede entregar; el cajero no tiene el botón.
-Implicados: pendiente
-Pendiente de enlazar: REC_RESTAURANTE — servir en el día del restaurante
+Implicados: REC_RESTAURANTE-F08
 QA: R-06, qa-hub-restaurant §7.09
 
 ### KITCHEN-F14 Marcar urgente una ronda desde la pantalla de cocina

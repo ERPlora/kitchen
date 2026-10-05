@@ -32,7 +32,7 @@ Pasos:
 Entra: la comanda Por preparar, En preparación o Lista.
 Sale: la comanda cancelada (avisa: kitchen.order.cancelled) y «Canceladas» en el Historial, con el motivo en Notas si se dio (en la comanda se guarda con el prefijo fijo en inglés `Cancelled: `). Ventas no se entera: la cuenta sigue con esos platos enviados y se cobran.
 Si falla: una comanda Servida o ya Cancelada no se cancela (botón apagado; si la fila estaba vieja, el mensaje de estado y la recarga). Empleado y cajero no tienen el botón.
-Implicados: ninguno
+Implicados: REC_RESTAURANTE-F14
 QA: qa-hub-restaurant §7.13
 
 ### KITCHEN-F23 Crear una comanda a mano

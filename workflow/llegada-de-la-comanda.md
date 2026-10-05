@@ -19,12 +19,9 @@ Pasos:
 Entra: de Ventas, la ronda enviada (avisa: order.fired): el pedido, la etiqueta, el canal, el camarero, la prioridad y los platos con su nombre, cantidad, precio, categoría, nota y suplementos.
 Sale: la comanda «Por preparar» con sus platos (avisa: kitchen.order.created, que oyen el hub para imprimirla y, en la app instalada, para el aviso del sistema «Nueva comanda · Mesa 4», y Flujos como disparador) y su primera entrada «Recibidas» en el Historial. El tipo sale del canal («En sala», «Para llevar», «A domicilio»; uno desconocido, «En sala»); una prioridad desconocida queda en normal; sin camarero nombrado, el camarero es quien envió.
 Si falla: una ronda vacía no la envía Ventas (SALES-F20). Una ronda que solo trae servicios sí la envía Ventas, y el TPV dice «Enviado a cocina»; Cocina quita los servicios, se queda sin nada que cocinar y la rechaza, el aviso se reintenta (hasta 8 veces) y acaba entre los eventos caídos del hub sin que el TPV lo sepa (leído en el código, sin ejecutar). Una ronda de más de 255 platos se rechaza entera, con el mismo final. Ningún rechazo de aquí se ve en el TPV. Si Cocina estaba desactivada al enviar, no nace ninguna comanda y nadie avisa.
-Implicados: pendiente
-Pendiente de enlazar: sales — SALES-F20 envía la ronda a cocina y deja los platos marcados como enviados
-Pendiente de enlazar: tables — el nombre de la mesa que llega como etiqueta de la comanda
+Implicados: SALES-F20, REC_RESTAURANTE-F07, REC_RESTAURANTE-F17
 Pendiente de enlazar: hub — el aviso del sistema «Nueva comanda» al llegar una comanda, que abre Cocina al tocarlo
 Pendiente de enlazar: flows — una comanda nueva puede disparar un flujo
-Pendiente de enlazar: REC_RESTAURANTE — tomar nota y mandar la ronda a cocina en el día del restaurante
 QA: R-04, R-05, BD-08, qa-hub-restaurant §7.08
 
 ### KITCHEN-F06 Un menú del día en la comanda
@@ -39,9 +36,7 @@ Pasos:
 Entra: de Ventas, la línea del menú.
 Sale: los platos de la comanda; cuando el menú viene desglosado, sus platos van a 0 € y el precio del menú se cuenta una sola vez en el total de la comanda. El papel imprime la cabecera del menú encima de sus platos (KITCHEN-F08).
 Si falla: un menú que llega desglosado pero sin ningún plato elegido se rechaza entero (no se abre una tarjeta en blanco).
-Implicados: pendiente
-Pendiente de enlazar: sales — SALES-F12 vende el menú con sus elecciones y hoy no las manda a cocina al enviar
-Pendiente de enlazar: combos — los menús y el nombre de cocina de cada uno
+Implicados: COMBOS-F11, SALES-F12, SALES-F20, REC_RESTAURANTE-F07
 QA: R-04, qa-hub-restaurant §7.08
 
 ### KITCHEN-F07 Suplementos y notas de cada plato
@@ -55,9 +50,7 @@ Pasos:
 Entra: de Ventas, los suplementos de cada línea con su nombre de cocina (si no tiene, el nombre normal) y la nota del camarero, a la que Ventas suma el motivo de la invitación si la línea va invitada.
 Sale: los suplementos y la nota quedan congelados en el plato: cambiar el catálogo después no cambia esta comanda.
 Si falla: una alergia solo existe como texto de la nota: no se resalta ni se distingue de otra nota. Una nota de la comanda entera no llega desde el TPV (solo existe en las comandas creadas a mano). Después de enviar, la nota ya no se puede cambiar en el TPV.
-Implicados: pendiente
-Pendiente de enlazar: sales — SALES-F13 pone la nota en la línea, que viaja a la comanda
-Pendiente de enlazar: modifiers — el nombre de cocina de cada suplemento
+Implicados: MODIFIERS-F08, SALES-F13, REC_RESTAURANTE-F07
 QA: R-04, qa-hub-restaurant §7.07, qa-hub-restaurant §7.08
 
 ### KITCHEN-F08 La comanda sale en papel en cada estación
@@ -71,9 +64,7 @@ Pasos:
 Entra: los platos de la comanda con el destino y la función de impresora congelados al enviar, y su cabecera.
 Sale: una hoja por función, una sola vez aunque haya varios TPV abiertos; si la comanda no la envió ningún TPV (API, flujo), va a la cola del hub y la saca el dispositivo que tenga esa función.
 Si falla: nunca bloquea al camarero. Si la impresora no la toma, el TPV que la envió enseña, por ejemplo, «No se imprimió la comanda de cocina de Mesa 4. Revisa la impresora y avisa en cocina: la comanda está en la pantalla de cocina.»; si nadie tiene esa función dada de alta, «La comanda de cocina de Mesa 4 está en espera: aún no hay ninguna impresora dada de alta para esa estación. Da una de alta y saldrá sola.». No hay reimpresión (KITCHEN-F09).
-Implicados: pendiente
-Pendiente de enlazar: printing — PRINTING-F10 imprime la comanda en cocina y barra
-Pendiente de enlazar: printing — PRINTING-F04 da a cada impresora su función
+Implicados: PRINTING-F04, PRINTING-F10, REC_RESTAURANTE-F07
 Pendiente de enlazar: hub — el shell imprime la comanda al nacer, solo en el TPV que la envió
 QA: R-05, qa-hub-restaurant §7.08, qa-hub-restaurant §7.16
 
@@ -87,6 +78,5 @@ Pasos:
 Entra: la comanda ya enviada.
 Sale: una hoja nueva por función, sin crear ronda ni comanda.
 Si falla: igual que KITCHEN-F08.
-Implicados: pendiente
-Pendiente de enlazar: printing — PRINTING-F11 reimprimir una comanda
+Implicados: PRINTING-F11
 QA: qa-hub-restaurant §7.16
