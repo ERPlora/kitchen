@@ -128,7 +128,8 @@ Error: «No se pudieron cargar los ajustes.».
 ### Comandas de la cuenta
 En el TPV (**Ventas → Vender**), con una cuenta que ya envió algo a cocina, Cocina pone el botón
 «Comandas · N» en la cabecera de lo enviado. Al tocarlo se abre la hoja «Comandas de la cuenta»: una
-tarjeta por ronda, la más reciente primero, con «Comanda N», la hora de envío, el estado («Por
+tarjeta por ronda, la más reciente primero, con «Comanda N», una hora (la de llegada a cocina o,
+desde que cocina la empieza, la de inicio; en UTC, 1 o 2 horas por detrás en España), el estado («Por
 preparar», «En preparación», «Lista», «Servida», «Cancelada»), la marca «Urgente» si la tiene, sus
 platos («2× Croquetas») y, mientras se cocina, «Marcar urgente» / «Quitar urgente». Se cierra con ✕
 o tocando fuera. Sin rondas enviadas, el botón no aparece. Un rechazo sale arriba de la hoja; si el
@@ -149,7 +150,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | KITCHEN-F02 | Editar, renombrar o desactivar una estación | parcial | [workflow/estaciones.md](workflow/estaciones.md) |
 | KITCHEN-F03 | Eliminar una estación | hecho | [workflow/estaciones.md](workflow/estaciones.md) |
 | KITCHEN-F04 | Mandar productos y categorías a una estación | parcial | [workflow/estaciones.md](workflow/estaciones.md) |
-| KITCHEN-F05 | Recibir la ronda que envía el TPV | hecho | [workflow/llegada-de-la-comanda.md](workflow/llegada-de-la-comanda.md) |
+| KITCHEN-F05 | Recibir la ronda que envía el TPV | parcial | [workflow/llegada-de-la-comanda.md](workflow/llegada-de-la-comanda.md) |
 | KITCHEN-F06 | Un menú del día en la comanda | parcial | [workflow/llegada-de-la-comanda.md](workflow/llegada-de-la-comanda.md) |
 | KITCHEN-F07 | Suplementos y notas de cada plato | hecho | [workflow/llegada-de-la-comanda.md](workflow/llegada-de-la-comanda.md) |
 | KITCHEN-F08 | La comanda sale en papel en cada estación | hecho | [workflow/llegada-de-la-comanda.md](workflow/llegada-de-la-comanda.md) |
@@ -163,7 +164,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | KITCHEN-F16 | Sonar al entrar una comanda | hecho | [workflow/pantalla-de-cocina.md](workflow/pantalla-de-cocina.md) |
 | KITCHEN-F17 | Imprimir el pase al marcar lista | hecho | [workflow/pantalla-de-cocina.md](workflow/pantalla-de-cocina.md) |
 | KITCHEN-F18 | Enviar la ronda desde el TPV, normal o urgente | hecho | [workflow/tpv.md](workflow/tpv.md) |
-| KITCHEN-F19 | Seguir las comandas de la cuenta desde el TPV | hecho | [workflow/tpv.md](workflow/tpv.md) |
+| KITCHEN-F19 | Seguir las comandas de la cuenta desde el TPV | parcial | [workflow/tpv.md](workflow/tpv.md) |
 | KITCHEN-F20 | Marcar urgente una ronda desde el TPV | hecho | [workflow/tpv.md](workflow/tpv.md) |
 | KITCHEN-F21 | Mover una comanda desde la lista de Comandas | parcial | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
 | KITCHEN-F22 | Cancelar una comanda | parcial | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
@@ -181,7 +182,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 
 | Elemento | Estado | Flujo |
 |---|---|---|
-| La comanda nace al enviar, antes de cobrar; cada envío es una ronda numerada | hecho (con Ventas) | F05, F18 |
+| La comanda nace al enviar, antes de cobrar; cada envío es una ronda numerada | parcial: una ronda de solo servicios se da por enviada y Cocina la rechaza sin aviso | F05, F18 |
 | Tarjeta por comanda con mesa, camarero, ronda, número y reloj | hecho | F10 |
 | Estaciones con filtro y vista de pase (todas) | hecho | F10 |
 | Reloj y semáforo de dos tiempos desde que llega la comanda | parcial: el reloj vuelve a cero cuando cocina toca la comanda por primera vez | F10 |
@@ -200,8 +201,8 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | Alérgenos resaltados | no hecho: solo como nota libre (ver «Dudas abiertas») | F07 |
 | Estación con destino pantalla, papel o ambos y su impresora | parcial: solo por el asistente o la API | F01, F02 |
 | Enrutado por producto y por categoría | parcial: no se ve ni se quita | F04 |
-| Estado de cada ronda visible en el TPV | hecho | F19 |
-| Cerrar en cocina lo de una cuenta cobrada | parcial: cancela lo que aún se cocina (kitchen#145) | F27 |
+| Estado de cada ronda visible en el TPV | parcial: la hora no es la de envío y sale en UTC | F19 |
+| Cerrar en cocina lo de una cuenta cobrada | parcial: cancela lo que aún se cocina, o deja viva la ronda si los avisos llegan en otro orden (kitchen#145) | F27 |
 | Anular un plato enviado con aviso a cocina | no hecho | F29 |
 | Cuenta anulada o unida: cocina se entera | no hecho | F28 |
 | Cancelar una comanda con motivo | parcial: sin motivo ni confirmación en pantalla | F22 |
@@ -239,11 +240,12 @@ los platos y la cabecera de cada comanda para imprimirla (KITCHEN-F08); a Flujos
   API; el flujo del TPV ya no las escribe. `customer_id` se re-apunta al unir fichas (KITCHEN-F30).
 - `kitchen_order.waiter_id` (quién envió la ronda), `kitchen_order_log.performed_by_id` y las columnas
   `created_by` / `updated_by` de todas las tablas: identificadores de personas del hub o del equipo.
-- `kitchen_order.notes` (incluye el motivo de una cancelación) y `kitchen_order_item.notes`: texto
-  libre del camarero; puede contener alergias, que son datos de salud. `kitchen_order_log.notes`:
-  motivo de cancelación.
-- Viajan en avisos: `kitchen.order.created` lleva la etiqueta y el camarero; el papel lleva la
-  etiqueta y el nombre del camarero.
+- `kitchen_order.notes` (incluye el motivo de una cancelación, guardado con el prefijo fijo en
+  inglés `Cancelled: `) y `kitchen_order_item.notes`: texto libre del camarero; puede contener
+  alergias, que son datos de salud. `kitchen_order_log.notes`: motivo de cancelación.
+- Viajan en avisos: todos los avisos de cocina (`kitchen.order.*`, `kitchen.item.*`) llevan quién hizo
+  la acción; `kitchen.order.created` lleva además la etiqueta y el camarero, y
+  `kitchen.order.cancelled` el motivo. El papel lleva la etiqueta y el nombre del camarero.
 - Cocina no escucha el borrado ni la anonimización de un cliente (`customer.deleted`,
   `customer.anonymized`): la etiqueta y las notas de sus comandas se quedan como estaban.
 
@@ -253,17 +255,20 @@ los platos y la cabecera de cada comanda para imprimirla (KITCHEN-F08); a Flujos
   se apunta contra una comanda del mismo hub, y la unión de clientes solo re-apunta comandas de ese
   hub.
 - **El estado de la comanda sigue su camino**: Por preparar → En preparación → Lista → Servida;
-  Recuperar devuelve una lista a En preparación; Cancelar vale desde las tres primeras; Servida y
+  «Lista» se puede marcar también directamente desde Por preparar («Lista» en la lista de Comandas, o
+  marcar de golpe todos sus platos); Recuperar devuelve una lista a En preparación; Cancelar vale
+  desde las tres primeras; Servida y
   Cancelada no se mueven más. Lo que se sale del camino se rechaza sin escribir nada ni avisar a
   nadie, y si la comanda cambió entre que se leyó y se escribió, también se rechaza.
 - **Los platos solo se mueven mientras la comanda está en marcha**; un plato de otra comanda se
   rechaza, y una orden que no movería ningún plato también.
 - **Permisos por acción**: ver (todos los perfiles), enviar y crear (cajero, empleado, responsable),
   marcar listo, recuperar, lanzar y marcar urgente (empleado, responsable), entregar (empleado,
-  responsable), cancelar y borrar (responsable), ajustes (responsable por la API; el formulario,
-  administrador), estaciones y enrutado (administrador). El administrador lo tiene todo.
+  responsable), cancelar y borrar (responsable), ajustes (responsable), estaciones y enrutado
+  (administrador). El administrador lo tiene todo.
 - **Una ronda sin nada que cocinar no abre comanda**, y un menú enviado sin platos elegidos tampoco;
-  las líneas de servicio no se cocinan.
+  las líneas de servicio no se cocinan. El rechazo no vuelve al TPV: una ronda de solo servicios
+  acaba entre los eventos caídos del hub (KITCHEN-F05).
 - **Una prioridad o un canal desconocidos en la ronda caen a normal y a «En sala»**: nunca se pierde
   una ronda por una palabra.
 - **Lo que se envió, se queda como se envió**: la estación, su destino, su función de impresora, el
@@ -353,7 +358,7 @@ Se resuelven con `market-decision`; no las decide el worker.
   no les da nombre.
 - Un rechazo `kitchen.item_unavailable` en la pantalla de cocina sale con el mensaje del servidor en
   inglés: `locales/es.json` no lo traduce.
-- La hoja «Comandas de la cuenta» corta la hora del texto guardado sin pasarla a la hora local: sin
-  confirmar en pantalla si sale desplazada.
+- La hoja «Comandas de la cuenta» no enseña la hora de envío sino la de llegada a cocina o la de
+  inicio, cortada del texto guardado en UTC: en España sale 1 o 2 horas por detrás (KITCHEN-F19).
 - La orden pública de crear una comanda desde una venta cobrada se describe al asistente como
   «automática»: no la dispara ningún aviso.

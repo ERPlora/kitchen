@@ -83,8 +83,8 @@ Pasos:
 3. Las estaciones que imprimen y aún tienen platos de esa ronda por hacer reciben un aviso corto en papel: la cabecera de la comanda con `!! URGENTE !!` y sin platos, para no cocinar dos veces.
 4. «Quitar urgente» lo deshace y no imprime nada. Una ronda VIP no ofrece el botón.
 Entra: la comanda que se cocina.
-Sale: la ronda urgente (avisa: kitchen.order.updated). Cada paso a urgente da un aviso nuevo (marcar, quitar y volver a marcar imprime otra vez); con varias pantallas abiertas sale un aviso por impresora. El cambio no queda en el Historial.
-Si falla: un rechazo sale encima del tablero. Si el aviso no se imprime, «No se ha podido imprimir el aviso de urgencia. Avisa a cocina de viva voz y revisa su impresora.» se queda hasta que otro aviso salga bien.
+Sale: la ronda urgente (avisa: kitchen.order.updated). Cada paso a urgente da un aviso nuevo (marcar, quitar y volver a marcar imprime otra vez); con varias pantallas abiertas sale un solo aviso por impresora cuando imprimen a través de la cola del hub; si varias pantallas tienen su propia impresora con esa función, cada una puede sacar el suyo (sin confirmar en un hub). El cambio no queda en el Historial.
+Si falla: un rechazo sale encima del tablero. Que solo se ofrezca en rondas que se cocinan, normales o urgentes, lo pone la pantalla: el servidor no mira el estado, y por el asistente o la API se puede marcar urgente una ronda servida o cancelada. Si el aviso no se imprime, «No se ha podido imprimir el aviso de urgencia. Avisa a cocina de viva voz y revisa su impresora.» se queda hasta que otro aviso salga bien.
 Implicados: pendiente
 Pendiente de enlazar: hub — la puerta de impresión y la cola que sacan el aviso por la función de cada estación
 QA: qa-hub-restaurant §7.08
@@ -126,8 +126,8 @@ Pasos:
 1. Con «Imprimir el pase al marcar listo» encendido (apagado de fábrica), cada vez que una comanda pasa a Lista desde cualquier pantalla, sale el pase: la hoja que acompaña a la comida.
 2. Sale una hoja por función de impresora con los platos de la comanda (los de estaciones solo de pantalla, no), con la etiqueta, el número, la ronda y el camarero.
 Entra: la comanda que pasa a Lista, sus platos con su destino y su función de impresora.
-Sale: una hoja por función; aunque haya varias pantallas de cocina abiertas, una sola.
-Si falla: lo imprime la pantalla de cocina: si no hay ninguna abierta en ningún dispositivo, no sale. Si no sale, la pantalla enseña «No se ha podido imprimir el pase. Revisa la impresora de la estación.» hasta que otro pase salga bien. Una comanda recuperada y vuelta a marcar lista repite la clave del primer pase y la cola lo descarta como repetido (leído en el código, sin ejecutar).
+Sale: una hoja por función; con varias pantallas de cocina abiertas, una sola cuando imprimen a través de la cola del hub; si varias pantallas tienen su propia impresora con esa función, cada una puede sacar la suya (sin confirmar en un hub).
+Si falla: lo imprime la pantalla de cocina: si no hay ninguna abierta en ningún dispositivo, no sale. Si no sale, la pantalla enseña «No se ha podido imprimir el pase. Revisa la impresora de la estación.» hasta que otro pase salga bien. Una comanda recuperada y vuelta a marcar lista repite la clave del primer pase y la cola del hub lo descarta como repetido; por la impresora propia del dispositivo sale igual (leído en el código, sin ejecutar).
 Implicados: pendiente
 Pendiente de enlazar: hub — la puerta de impresión y la cola que sacan el pase por la función de cada estación
 QA: qa-hub-restaurant §7.08

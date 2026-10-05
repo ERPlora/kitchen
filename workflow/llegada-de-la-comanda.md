@@ -8,17 +8,17 @@ comanda nace al **enviar**, no al cobrar.
 ## Flujos
 
 ### KITCHEN-F05 Recibir la ronda que envía el TPV
-Estado: hecho
+Estado: parcial — una ronda que solo trae servicios se da por enviada en el TPV («Enviado a cocina») pero Cocina la rechaza y acaba entre los eventos caídos del hub, sin que nadie en sala ni en cocina se entere (leído en el código, sin ejecutar)
 Actor: sistema
 Pantalla: ninguna
 Pasos:
 1. El camarero pulsa «Enviar comanda» en el TPV (KITCHEN-F18); también lo hace el TPV solo, antes de cobrar una cuenta con platos sin enviar.
-2. Cocina abre una comanda nueva con el número del día (`AAAAMMDD-NNNN`), la ronda de ese pedido (la primera es la 1 y cada envío suma una), la etiqueta que manda el TPV («Mesa 4», «Barra»; si llega vacía, la de la ronda anterior del mismo pedido), el camarero y la prioridad.
+2. Cocina abre una comanda nueva con el número del día (`AAAAMMDD-NNNN`, con el día en hora UTC: entre medianoche y la 1 o las 2 en España lleva la fecha del día anterior y sigue su contador), la ronda de ese pedido (la primera es la 1 y cada envío suma una), la etiqueta que manda el TPV («Mesa 4», «Barra»; si llega vacía, la de la ronda anterior del mismo pedido), el camarero y la prioridad.
 3. Cada línea cocinable es un plato de la comanda, en el orden en que se eligió, mandado a su estación (KITCHEN-F04). Las líneas de servicio no se cocinan.
 4. La comanda aparece en la pantalla de cocina «Por preparar» (KITCHEN-F10), suena (KITCHEN-F16), sale en papel (KITCHEN-F08) y en el TPV el botón «Comandas · N» cuenta una más (KITCHEN-F19).
 Entra: de Ventas, la ronda enviada (avisa: order.fired): el pedido, la etiqueta, el canal, el camarero, la prioridad y los platos con su nombre, cantidad, precio, categoría, nota y suplementos.
 Sale: la comanda «Por preparar» con sus platos (avisa: kitchen.order.created, que oyen el hub para imprimirla y, en la app instalada, para el aviso del sistema «Nueva comanda · Mesa 4», y Flujos como disparador) y su primera entrada «Recibidas» en el Historial. El tipo sale del canal («En sala», «Para llevar», «A domicilio»; uno desconocido, «En sala»); una prioridad desconocida queda en normal; sin camarero nombrado, el camarero es quien envió.
-Si falla: una ronda sin nada que cocinar (vacía, o solo servicios) no abre comanda; Ventas ya no la envía (SALES-F20). Una ronda de más de 255 platos se rechaza entera. Un rechazo aquí no se ve en el TPV: el aviso se reintenta y, si sigue fallando, queda entre los eventos caídos del hub. Si Cocina estaba desactivada al enviar, no nace ninguna comanda y nadie avisa.
+Si falla: una ronda vacía no la envía Ventas (SALES-F20). Una ronda que solo trae servicios sí la envía Ventas, y el TPV dice «Enviado a cocina»; Cocina quita los servicios, se queda sin nada que cocinar y la rechaza, el aviso se reintenta (hasta 8 veces) y acaba entre los eventos caídos del hub sin que el TPV lo sepa (leído en el código, sin ejecutar). Una ronda de más de 255 platos se rechaza entera, con el mismo final. Ningún rechazo de aquí se ve en el TPV. Si Cocina estaba desactivada al enviar, no nace ninguna comanda y nadie avisa.
 Implicados: pendiente
 Pendiente de enlazar: sales — SALES-F20 envía la ronda a cocina y deja los platos marcados como enviados
 Pendiente de enlazar: tables — el nombre de la mesa que llega como etiqueta de la comanda
@@ -28,12 +28,12 @@ Pendiente de enlazar: REC_RESTAURANTE — tomar nota y mandar la ronda a cocina 
 QA: R-04, R-05, BD-08, qa-hub-restaurant §7.08
 
 ### KITCHEN-F06 Un menú del día en la comanda
-Estado: parcial — desde el TPV un menú llega a cocina como una sola línea con el nombre del menú, sin los platos elegidos, y va a una sola estación: Venta no manda los platos del menú (leído en el código de los dos módulos, sin ejecutar). Cocina ya sabe repartirlos y agruparlos si se los mandan
+Estado: parcial — desde el TPV un menú llega a cocina como una sola línea con el nombre del menú, sin los platos elegidos, y sale en «Sin estación» salvo que el propio menú esté enrutado como producto: Venta no manda los platos del menú (leído en el código de los dos módulos, sin ejecutar). Cocina ya sabe repartirlos y agruparlos si se los mandan
 Actor: empleado
 Pantalla: Pantalla
 Pasos:
 1. El camarero añade un menú con sus elecciones en el TPV (SALES-F12) y envía la ronda.
-2. Hoy, en la pantalla de cocina sale una línea con el nombre del menú y su cantidad, en la estación de ese producto o de su categoría, o en «Sin estación».
+2. Hoy, en la pantalla de cocina sale una línea con el nombre del menú y su cantidad, en «Sin estación» (la línea del menú no lleva categoría), salvo que el propio menú esté enrutado como producto.
 3. Cuando una ronda trae los platos del menú, cada plato va a la estación de su propio producto, con la cantidad multiplicada por la de menús; en cada estación sale la cabecera del menú (su nombre de cocina, o «Menú») con «N platos» y sus platos sangrados debajo.
 4. Tocar la cabecera del menú marca listos los platos de ese menú que hay en pantalla, y nada más; el menú se tacha cuando se marcan todos.
 Entra: de Ventas, la línea del menú.
@@ -67,7 +67,7 @@ Pantalla: ninguna
 Pasos:
 1. Al nacer la comanda (KITCHEN-F05), el hub del dispositivo que la envió reparte sus platos por la función de impresora de su estación («Cocina», «Barra»); lo que va a una estación solo de pantalla no se imprime, y un plato sin estación sale por «Cocina».
 2. Sale una hoja por función con la etiqueta, el número, la ronda (desde la segunda), el camarero, la hora, cada plato con su cantidad, suplementos y nota, y la cabecera del menú si la hay.
-3. Si la ronda va urgente, la hoja lleva el aviso `!! URGENTE !!` bajo la cabecera.
+3. Si la ronda va urgente, la hoja termina con `!! URGENTE !!`, debajo de los platos.
 Entra: los platos de la comanda con el destino y la función de impresora congelados al enviar, y su cabecera.
 Sale: una hoja por función, una sola vez aunque haya varios TPV abiertos; si la comanda no la envió ningún TPV (API, flujo), va a la cola del hub y la saca el dispositivo que tenga esa función.
 Si falla: nunca bloquea al camarero. Si la impresora no la toma, el TPV que la envió enseña, por ejemplo, «No se imprimió la comanda de cocina de Mesa 4. Revisa la impresora y avisa en cocina: la comanda está en la pantalla de cocina.»; si nadie tiene esa función dada de alta, «La comanda de cocina de Mesa 4 está en espera: aún no hay ninguna impresora dada de alta para esa estación. Da una de alta y saldrá sola.». No hay reimpresión (KITCHEN-F09).

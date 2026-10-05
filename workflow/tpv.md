@@ -19,23 +19,23 @@ Pasos:
 4. La urgencia se apaga sola al enviar y al cambiar de cuenta: vale para una sola ronda.
 Entra: lo que cuenta Ventas de la cuenta abierta: cuántos artículos faltan por enviar.
 Sale: la petición de envío a Ventas, con la prioridad urgente si se armó; el botón no envía platos por su cuenta. Una ronda que nace urgente lleva `!! URGENTE !!` en su papel y no recibe aviso aparte.
-Si falla: lo dice Ventas («No se pudo enviar a cocina») y los artículos siguen pendientes. Sin Cocina activa, el botón no aparece en el TPV (según `architecture/modules/kitchen.md`, hay que salir y volver a entrar al TPV tras activarla o desactivarla; sin confirmar en el hub).
+Si falla: lo dice Ventas («No se pudo enviar a cocina») y los artículos siguen pendientes; la urgencia armada se apaga igual al pulsar, así que hay que volver a armarla. Sin Cocina activa, el botón no aparece en el TPV, y el TPV solo descubre Cocina al abrirse: tras activarla o desactivarla hay que salir y volver a entrar (leído en el código de Ventas).
 Implicados: pendiente
 Pendiente de enlazar: sales — SALES-F20 parte la cuenta en pendiente y enviado, envía la ronda y la marca enviada
 QA: R-05, R-06, qa-hub-restaurant §7.08
 
 ### KITCHEN-F19 Seguir las comandas de la cuenta desde el TPV
-Estado: hecho
+Estado: parcial — la hora de cada ronda no es la de envío sino la de llegada a cocina o, desde que cocina la toca, la de inicio, y sale en hora UTC: en España, 1 o 2 horas por detrás (leído en el código, sin ejecutar)
 Actor: cajero, empleado, responsable
 Pantalla: Comandas de la cuenta
 Pasos:
 1. En el TPV, con una cuenta que ya envió algo, toca «Comandas · N» en la cabecera de lo enviado.
-2. Se abre «Comandas de la cuenta»: una tarjeta por ronda, la más reciente primero, con «Comanda N», la hora, su estado y sus platos.
+2. Se abre «Comandas de la cuenta»: una tarjeta por ronda, la más reciente primero, con «Comanda N», una hora (la de llegada a cocina; desde que cocina la empieza, la de inicio; en UTC), su estado y sus platos.
 3. El estado cambia solo cuando cocina mueve la ronda («Por preparar», «En preparación», «Lista», «Servida», «Cancelada»), sin tocar nada.
 4. Cierra con ✕ o tocando fuera.
 Entra: las comandas de Cocina de esa cuenta y sus platos.
 Sale: nada; solo enseña.
-Si falla: si la lista no carga, el botón no aparece; si los platos de una ronda no cargan, la tarjeta sale sin platos. La hora se corta del texto guardado, sin pasarla a la hora local (sin confirmar en pantalla si sale desplazada).
+Si falla: si la lista no carga, el botón no aparece; si los platos de una ronda no cargan, la tarjeta sale sin platos. La hora se corta del texto guardado, que está en UTC, sin pasarla a la hora local: en España sale 1 o 2 horas por detrás.
 Implicados: pendiente
 Pendiente de enlazar: sales — SALES-F20 deja en la cabecera de lo enviado el hueco donde Cocina pone «Comandas · N»
 QA: qa-hub-restaurant §7.08
@@ -48,10 +48,10 @@ Pasos:
 1. Cuando la mesa pide prisa, abre «Comandas de la cuenta» (KITCHEN-F19).
 2. En una ronda que aún se cocina, pulsa «Marcar urgente»: la ronda lleva «Urgente».
 3. En la pantalla de cocina salta al principio y suena (KITCHEN-F14); las estaciones que imprimen y aún tienen platos de esa ronda reciben el aviso corto `!! URGENTE !!` sin platos.
-4. «Quitar urgente» lo deshace y no imprime nada. Las rondas Listas, Servidas, Canceladas o VIP no ofrecen el botón.
+4. «Quitar urgente» lo deshace y no imprime nada. El botón solo sale en rondas Por preparar o En preparación, normales o urgentes; las Listas, Servidas, Canceladas o VIP no lo ofrecen. Esa restricción la pone la pantalla, no el servidor.
 Entra: la ronda elegida.
-Sale: la ronda urgente (avisa: kitchen.order.updated) y el aviso en papel; con una pantalla de cocina abierta también, sigue saliendo un aviso por impresora.
-Si falla: el rechazo sale arriba de la hoja (p. ej. «Esa comanda ya no está en el estado que requiere esta acción. Actualiza e inténtalo de nuevo.») y la ronda se recarga. Si el aviso no se imprime, «No se ha podido imprimir el aviso de urgencia. Avisa a cocina de viva voz y revisa su impresora.». El cajero no tiene el botón.
+Sale: la ronda urgente (avisa: kitchen.order.updated) y el aviso en papel; con una pantalla de cocina abierta también, sale un solo aviso por impresora cuando imprimen a través de la cola del hub (con impresora propia en cada dispositivo, sin confirmar en un hub).
+Si falla: el rechazo sale arriba de la hoja («No se pudo actualizar el estado», o el motivo traducido si lo hay) y la ronda se recarga. El servidor no comprueba el estado de la ronda: una ronda que cocina acaba de marcar lista o servida en otra pantalla se marca urgente igual. Si el aviso no se imprime, «No se ha podido imprimir el aviso de urgencia. Avisa a cocina de viva voz y revisa su impresora.». El cajero no tiene el botón.
 Implicados: pendiente
 Pendiente de enlazar: hub — la puerta de impresión y la cola que sacan el aviso por la función de cada estación
 QA: qa-hub-restaurant §7.08

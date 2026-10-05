@@ -30,7 +30,7 @@ Pasos:
 2. Sin pregunta previa, la comanda y todos sus platos pasan a «Cancelada».
 3. Desaparece de la pantalla de cocina y del «Resumen»; en el TPV la ronda sale «Cancelada».
 Entra: la comanda Por preparar, En preparación o Lista.
-Sale: la comanda cancelada (avisa: kitchen.order.cancelled) y «Canceladas» en el Historial, con el motivo en Notas si se dio. Ventas no se entera: la cuenta sigue con esos platos enviados y se cobran.
+Sale: la comanda cancelada (avisa: kitchen.order.cancelled) y «Canceladas» en el Historial, con el motivo en Notas si se dio (en la comanda se guarda con el prefijo fijo en inglés `Cancelled: `). Ventas no se entera: la cuenta sigue con esos platos enviados y se cobran.
 Si falla: una comanda Servida o ya Cancelada no se cancela (botón apagado; si la fila estaba vieja, el mensaje de estado y la recarga). Empleado y cajero no tienen el botón.
 Implicados: ninguno
 QA: qa-hub-restaurant §7.13
@@ -72,7 +72,7 @@ Pasos:
 1. Abre **Cocina → Historial**.
 2. Cada fila dice qué pasó (Acción), en qué comanda (su número), sus Notas y Cuándo, lo último primero.
 3. Busca por número de comanda o por notas; filtra por acción o por fechas.
-4. La lista se actualiza sola con cada cambio de cocina.
+4. La lista se recarga sola con cada cambio de cocina; como la entrada la apunta Cocina justo después, la última acción puede no salir hasta la siguiente recarga (sin confirmar).
 Entra: las entradas que Cocina apunta sola tras cada cambio: llegada, empezar, plato listo o recuperado, lista, recuperada, servida y cancelada (también las que cierra el cobro, KITCHEN-F27).
 Sale: nada; solo enseña. Apuntar algo a mano solo se puede por la API, con el permiso del responsable.
 Si falla: el error de la tabla con reintento; sin entradas, «Sin actividad reciente en cocina.».

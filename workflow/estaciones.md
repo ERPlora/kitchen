@@ -34,7 +34,7 @@ Pasos:
 3. Pulsa «Guardar» («Cancelar» cierra sin guardar).
 4. Sale «Estación actualizada» y la tabla se refresca.
 Entra: la estación elegida y lo que cambie el administrador.
-Sale: la estación cambiada (avisa: kitchen.station.updated). Desactivarla hace que los platos nuevos que iban a ella busquen la estación de su categoría y, si no hay, salgan «Sin estación»; las rondas ya enviadas no cambian de estación. Renombrar cambia el nombre que ve la pantalla de cocina también en las rondas ya enviadas (las pinta con el nombre vivo de la estación).
+Sale: la estación cambiada (avisa: kitchen.station.updated). Desactivarla hace que los platos nuevos que iban a ella busquen la estación de su categoría y, si no hay, salgan «Sin estación»; las rondas ya enviadas no cambian de estación. Renombrar cambia el nombre que ven las tarjetas de la pantalla de cocina también en las rondas ya enviadas (las pinta con el nombre vivo de la estación); en «Resumen», las rondas ya enviadas siguen con el nombre antiguo.
 Si falla: el rechazo sale dentro del formulario. Un nombre repetido entre estaciones vivas se rechaza. Guardar una estación que otro dispositivo acaba de eliminar contesta bien y no cambia nada.
 Implicados: ninguno
 QA: R-05, qa-hub-restaurant §7.08
