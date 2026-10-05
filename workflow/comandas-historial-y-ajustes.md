@@ -80,7 +80,7 @@ Implicados: ninguno
 QA: ninguno
 
 ### KITCHEN-F26 Ajustar la pantalla de cocina
-Estado: parcial — solo un administrador puede guardarlos desde la pantalla (el responsable tiene el permiso, pero el formulario del hub se lo enseña de solo lectura), y las opciones de «Tono del sonido» y «Tipo de comanda por defecto» salen con su valor interno en inglés
+Estado: parcial — solo un administrador puede guardarlos desde la pantalla (el responsable tiene el permiso, pero el formulario del hub se lo enseña de solo lectura), aunque sí puede cambiarlos por el asistente; y las opciones de «Tono del sonido» y «Tipo de comanda por defecto» salen con su valor interno en inglés porque a la traducción del propio módulo (`locales/es.json`) le faltan sus nombres (`settings.fields.<clave>.options`), que el formulario del hub ya lee
 Actor: administrador
 Pantalla: Ajustes
 Pasos:
