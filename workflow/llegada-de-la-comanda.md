@@ -19,9 +19,8 @@ Pasos:
 Entra: de Ventas, la ronda enviada (avisa: order.fired): el pedido, la etiqueta, el canal, el camarero, la prioridad y los platos con su nombre, cantidad, precio, categoría, nota y suplementos.
 Sale: la comanda «Por preparar» con sus platos (avisa: kitchen.order.created, que oyen el hub para imprimirla y, en la app instalada, para el aviso del sistema «Nueva comanda · Mesa 4», y Flujos como disparador) y su primera entrada «Recibidas» en el Historial. El tipo sale del canal («En sala», «Para llevar», «A domicilio»; uno desconocido, «En sala»); una prioridad desconocida queda en normal; sin camarero nombrado, el camarero es quien envió.
 Si falla: una ronda vacía no la envía Ventas (SALES-F20). Una ronda que solo trae servicios sí la envía Ventas, y el TPV dice «Enviado a cocina»; Cocina quita los servicios, se queda sin nada que cocinar y la rechaza, el aviso se reintenta (hasta 8 veces) y acaba entre los eventos caídos del hub sin que el TPV lo sepa (leído en el código, sin ejecutar). Una ronda de más de 255 platos se rechaza entera, con el mismo final. Ningún rechazo de aquí se ve en el TPV. Si Cocina estaba desactivada al enviar, no nace ninguna comanda y nadie avisa.
-Implicados: SALES-F20, REC_RESTAURANTE-F07, REC_RESTAURANTE-F17
+Implicados: FLOWS-F13, SALES-F20, REC_RESTAURANTE-F07, REC_RESTAURANTE-F17
 Pendiente de enlazar: hub — el aviso del sistema «Nueva comanda» al llegar una comanda, que abre Cocina al tocarlo
-Pendiente de enlazar: flows — una comanda nueva puede disparar un flujo
 QA: R-04, R-05, BD-08, qa-hub-restaurant §7.08
 
 ### KITCHEN-F06 Un menú del día en la comanda

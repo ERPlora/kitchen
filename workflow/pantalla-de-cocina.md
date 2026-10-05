@@ -37,8 +37,7 @@ Pasos:
 Entra: los platos de la tarjeta que se ven en la pantalla.
 Sale: cada plato queda listo (avisa: kitchen.item.bumped), la comanda empieza (kitchen.order.fired) o queda lista (kitchen.order.ready); el Historial apunta «Línea lista», «Lanzadas» y «Listas (bump)»; el TPV ve la ronda como «Lista»; con el pase encendido sale en papel (KITCHEN-F17).
 Si falla: si la comanda cambió en otra pantalla, sale «Esa comanda ya no está en el estado que requiere esta acción. Actualiza e inténtalo de nuevo.» y el tablero se recarga. Un plato de una comanda Servida o Cancelada no se mueve.
-Implicados: REC_RESTAURANTE-F07
-Pendiente de enlazar: flows — una comanda lista puede disparar un flujo
+Implicados: FLOWS-F13, REC_RESTAURANTE-F07
 QA: R-05, BD-08, qa-hub-restaurant §7.08
 
 ### KITCHEN-F12 Recuperar lo marcado por error
