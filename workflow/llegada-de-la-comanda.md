@@ -13,7 +13,7 @@ Actor: sistema
 Pantalla: ninguna
 Pasos:
 1. El camarero pulsa «Enviar comanda» en el TPV (KITCHEN-F18); también lo hace el TPV solo, antes de cobrar una cuenta con platos sin enviar.
-2. Cocina abre una comanda nueva con el número del día (`AAAAMMDD-NNNN`, con el día en hora UTC: entre medianoche y la 1 o las 2 en España lleva la fecha del día anterior y sigue su contador), la ronda de ese pedido (la primera es la 1 y cada envío suma una), la etiqueta que manda el TPV («Mesa 4», «Barra»; si llega vacía, la de la ronda anterior del mismo pedido), el camarero y la prioridad.
+2. Cocina abre una comanda nueva con el número del día (`AAAAMMDD-NNNN`, con el día en hora UTC: entre medianoche y la 1 o las 2 en España lleva la fecha del día anterior y sigue su contador), la ronda de ese pedido (la primera es la 1 y cada envío suma una), la etiqueta que manda el TPV («Mesa 4»; sin mesa, el TPV la manda vacía con el canal «para llevar», y la tarjeta sale «Para llevar»; si llega vacía, la de la ronda anterior del mismo pedido), el camarero y la prioridad.
 3. Cada línea cocinable es un plato de la comanda, en el orden en que se eligió, mandado a su estación (KITCHEN-F04). Las líneas de servicio no se cocinan.
 4. La comanda aparece en la pantalla de cocina «Por preparar» (KITCHEN-F10), suena (KITCHEN-F16), sale en papel (KITCHEN-F08) y en el TPV el botón «Comandas · N» cuenta una más (KITCHEN-F19).
 Entra: de Ventas, la ronda enviada (avisa: order.fired): el pedido, la etiqueta, el canal, el camarero, la prioridad y los platos con su nombre, cantidad, precio, categoría, nota y suplementos.
@@ -53,7 +53,7 @@ Implicados: MODIFIERS-F08, SALES-F13, REC_RESTAURANTE-F07
 QA: R-04, qa-hub-restaurant §7.07, qa-hub-restaurant §7.08
 
 ### KITCHEN-F08 La comanda sale en papel en cada estación
-Estado: hecho
+Estado: parcial — si la impresora de red del dispositivo está apagada o sin papel, la comanda se pierde sin ningún aviso: el hub la da por impresa en cuanto la encola en el dispositivo y el TPV no enseña nada (PRINTING-F10, leído en el código, sin ejecutar); y una bebida o un plato sin estación, o en una estación creada en pantalla, sale por «Cocina», nunca por «Barra» (KITCHEN-F01)
 Actor: sistema
 Pantalla: ninguna
 Pasos:
@@ -62,8 +62,8 @@ Pasos:
 3. Si la ronda va urgente, la hoja termina con `!! URGENTE !!`, debajo de los platos.
 Entra: los platos de la comanda con el destino y la función de impresora congelados al enviar, y su cabecera.
 Sale: una hoja por función, una sola vez aunque haya varios TPV abiertos; si la comanda no la envió ningún TPV (API, flujo), va a la cola del hub y la saca el dispositivo que tenga esa función.
-Si falla: nunca bloquea al camarero. Si la impresora no la toma, el TPV que la envió enseña, por ejemplo, «No se imprimió la comanda de cocina de Mesa 4. Revisa la impresora y avisa en cocina: la comanda está en la pantalla de cocina.»; si nadie tiene esa función dada de alta, «La comanda de cocina de Mesa 4 está en espera: aún no hay ninguna impresora dada de alta para esa estación. Da una de alta y saldrá sola.». No hay reimpresión (KITCHEN-F09).
-Implicados: PRINTING-F04, PRINTING-F10, REC_RESTAURANTE-F07
+Si falla: nunca bloquea al camarero. Si el envío a la impresora falla en el propio navegador, el TPV que la envió enseña, por ejemplo, «No se imprimió la comanda de cocina de Mesa 4. Revisa la impresora y avisa en cocina: la comanda está en la pantalla de cocina.»; con una impresora de red apagada o sin papel no sale ese aviso, porque el hub ya la dio por impresa (PRINTING-F10); si nadie tiene esa función dada de alta, «La comanda de cocina de Mesa 4 está en espera: aún no hay ninguna impresora dada de alta para esa estación. Da una de alta y saldrá sola.». No hay reimpresión (KITCHEN-F09).
+Implicados: PRINTING-F04, PRINTING-F10, REC_RESTAURANTE-F02, REC_RESTAURANTE-F07, REC_RESTAURANTE-F17
 Pendiente de enlazar: hub — el shell imprime la comanda al nacer, solo en el TPV que la envió
 QA: R-05, qa-hub-restaurant §7.08, qa-hub-restaurant §7.16
 

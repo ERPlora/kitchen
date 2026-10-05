@@ -18,7 +18,7 @@ ronda y puede meterle prisa. Lo usan el **empleado** de cocina o de sala (marca 
 entrega, marca urgente), el **cajero** (envía rondas desde el TPV y ve su estado), el
 **responsable** (además cancela comandas) y el **administrador** (crea estaciones, decide qué
 producto va a cada una y guarda los ajustes). No sabe qué es una mesa ni un cliente: solo recibe
-una etiqueta («Mesa 4», «Barra») que pinta e imprime tal cual.
+una etiqueta («Mesa 4»; sin mesa, la tarjeta sale «Para llevar») que pinta e imprime tal cual.
 
 ## Referencia adoptada
 
@@ -153,7 +153,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | KITCHEN-F05 | Recibir la ronda que envía el TPV | parcial | [workflow/llegada-de-la-comanda.md](workflow/llegada-de-la-comanda.md) |
 | KITCHEN-F06 | Un menú del día en la comanda | parcial | [workflow/llegada-de-la-comanda.md](workflow/llegada-de-la-comanda.md) |
 | KITCHEN-F07 | Suplementos y notas de cada plato | hecho | [workflow/llegada-de-la-comanda.md](workflow/llegada-de-la-comanda.md) |
-| KITCHEN-F08 | La comanda sale en papel en cada estación | hecho | [workflow/llegada-de-la-comanda.md](workflow/llegada-de-la-comanda.md) |
+| KITCHEN-F08 | La comanda sale en papel en cada estación | parcial | [workflow/llegada-de-la-comanda.md](workflow/llegada-de-la-comanda.md) |
 | KITCHEN-F09 | Reimprimir una comanda | no hecho | [workflow/llegada-de-la-comanda.md](workflow/llegada-de-la-comanda.md) |
 | KITCHEN-F10 | Ver el tablero de cocina | parcial | [workflow/pantalla-de-cocina.md](workflow/pantalla-de-cocina.md) |
 | KITCHEN-F11 | Marcar platos listos | hecho | [workflow/pantalla-de-cocina.md](workflow/pantalla-de-cocina.md) |
@@ -194,7 +194,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | Resumen de lo que queda por cocinar | hecho | F15 |
 | Sonido al entrar, con volumen y tono | hecho | F16, F26 |
 | Pase en papel al marcar listo | hecho | F17 |
-| Comanda en papel por estación al enviar | hecho (la imprime el hub) | F08 |
+| Comanda en papel por estación al enviar | parcial: la imprime el hub; con la impresora de red apagada se pierde sin aviso | F08 |
 | Reimprimir una comanda | no hecho | F09 |
 | Menú agrupado, cada plato a su estación | parcial: Cocina lo sabe pintar, pero Venta no le manda los platos del menú | F06 |
 | Suplementos y notas en pantalla y en papel | hecho | F07 |

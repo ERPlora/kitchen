@@ -21,7 +21,7 @@ Pasos:
 Entra: de Ventas, la cuenta cerrada (avisa: order.completed), que sale una sola vez, con el cobro final.
 Sale: cada ronda Servida o Cancelada (avisa: kitchen.order.served o kitchen.order.cancelled) y su entrada en el Historial, sin motivo. Nada vuelve al TPV: no se avisa de que se ha cancelado comida. Así se decidió para el servicio en mesa (kitchen#61, kitchen#79): una mesa que ha pagado y se ha ido no debe seguir en la pantalla con el reloj corriendo. Solo se tocan las rondas de la cuenta cobrada; las comandas creadas a mano no se cierran nunca al cobrar.
 Si falla: si una ronda cambia de estado justo entre que se lee y se escribe, el cierre se rechaza entero y el aviso se reintenta; un aviso repetido de la misma cuenta no cambia nada.
-Implicados: SALES-F01, SALES-F20, SALES-F22, SALES-F23, REC_RESTAURANTE-F11, REC_RESTAURANTE-F17
+Implicados: SALES-F01, SALES-F20, SALES-F22, SALES-F23, REC_RESTAURANTE-F10, REC_RESTAURANTE-F11, REC_RESTAURANTE-F17
 QA: R-09, R-10, qa-hub-restaurant §7.10
 
 ### KITCHEN-F28 Retirar las rondas de una cuenta eliminada o unida a otra
