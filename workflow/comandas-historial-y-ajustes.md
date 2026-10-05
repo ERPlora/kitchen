@@ -91,6 +91,5 @@ Pasos:
 Entra: los valores del formulario.
 Sale: los ajustes del hub (el primer guardado crea la fila) (avisa: kitchen.settings.updated). Mueven el reloj y el semáforo (KITCHEN-F10), el sonido (KITCHEN-F16) y el pase (KITCHEN-F17); el tipo por defecto solo abre «Nueva comanda» (KITCHEN-F23), no cambia las rondas del TPV.
 Si falla: «No se pudieron guardar los ajustes.» y el motivo bajo el formulario. Minutos fuera de 1–120 o volumen fuera de 0–100 se rechazan; un aviso ámbar igual o mayor que el rojo también (texto exacto sin confirmar). Si una pantalla de cocina no puede leer los ajustes, usa los de fábrica.
-Implicados: pendiente
-Pendiente de enlazar: hub — el formulario genérico de Ajustes del shell, que solo deja guardar al administrador
+Implicados: HUB-F33, HUB_SHELL-F43, HUB_SHELL-F44
 QA: qa-hub-restaurant §7.08

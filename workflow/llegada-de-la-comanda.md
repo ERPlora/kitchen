@@ -19,8 +19,7 @@ Pasos:
 Entra: de Ventas, la ronda enviada (avisa: order.fired): el pedido, la etiqueta, el canal, el camarero, la prioridad y los platos con su nombre, cantidad, precio, categoría, nota y suplementos.
 Sale: la comanda «Por preparar» con sus platos (avisa: kitchen.order.created, que oyen el hub para imprimirla y, en la app instalada, para el aviso del sistema «Nueva comanda · Mesa 4» —que solo sale si los avisos del dispositivo no están denegados; en Android con la pantalla apagada, solo si la app está a la escucha; sale en todos los dispositivos con el hub abierto, también en el que envió la ronda; y llega por el canal en vivo del hub, que no guarda nada y admite 16 conexiones por hub, así que la pantalla 17.ª no lo recibe (hub#2501)—, y Flujos como disparador) y su primera entrada «Recibidas» en el Historial. El tipo sale del canal («En sala», «Para llevar», «A domicilio»; uno desconocido, «En sala»); una prioridad desconocida queda en normal; sin camarero nombrado, el camarero es quien envió.
 Si falla: una ronda vacía no la envía Ventas (SALES-F20). Una ronda que solo trae servicios sí la envía Ventas, y el TPV dice «Enviado a cocina»; Cocina quita los servicios, se queda sin nada que cocinar y la rechaza, el aviso se reintenta (hasta 8 veces) y acaba entre los eventos caídos del hub sin que el TPV lo sepa (leído en el código, sin ejecutar). Una ronda de más de 255 platos se rechaza entera, con el mismo final. Ningún rechazo de aquí se ve en el TPV. Si Cocina estaba desactivada al enviar, no nace ninguna comanda y nadie avisa.
-Implicados: FLOWS-F13, SALES-F20, REC_RESTAURANTE-F07, REC_RESTAURANTE-F17
-Pendiente de enlazar: hub — el aviso del sistema «Nueva comanda» al llegar una comanda, que abre Cocina al tocarlo
+Implicados: FLOWS-F13, SALES-F20, REC_RESTAURANTE-F07, REC_RESTAURANTE-F17, HUB_APP-F24, HUB_APP-F25, HUB_SHELL-F65, HUB_SHELL-F67
 QA: R-04, R-05, BD-08, qa-hub-restaurant §7.08
 
 ### KITCHEN-F06 Un menú del día en la comanda
@@ -63,8 +62,7 @@ Pasos:
 Entra: los platos de la comanda con el destino y la función de impresora congelados al enviar, y su cabecera.
 Sale: una hoja por función, una sola vez aunque haya varios TPV abiertos; si la comanda no la envió ningún TPV (API, flujo), va a la cola del hub y la saca el dispositivo que tenga esa función, solo si hay al menos una pantalla del hub abierta y conectada cuando nace (es ella la que la encola); si no hay ninguna, no sale ni se avisa (hub#2501).
 Si falla: nunca bloquea al camarero. Si el envío a la impresora falla en el propio navegador, el TPV que la envió enseña, por ejemplo, «No se imprimió la comanda de cocina de Mesa 4. Revisa la impresora y avisa en cocina: la comanda está en la pantalla de cocina.»; con una impresora de red apagada o sin papel no sale ese aviso, porque el dispositivo la da por entregada (el hub ni la conoce si salió directa) (PRINTING-F10); si nadie tiene esa función dada de alta, «La comanda de cocina de Mesa 4 está en espera: aún no hay ninguna impresora dada de alta para esa estación. Da una de alta y saldrá sola.». No hay reimpresión (KITCHEN-F09).
-Implicados: PRINTING-F04, PRINTING-F10, REC_RESTAURANTE-F02, REC_RESTAURANTE-F07, REC_RESTAURANTE-F17
-Pendiente de enlazar: hub — el shell imprime la comanda al nacer, solo en el TPV que la envió
+Implicados: PRINTING-F04, PRINTING-F10, REC_RESTAURANTE-F02, REC_RESTAURANTE-F07, REC_RESTAURANTE-F17, HUB-F190, HUB_APP-F19, HUB_PERIPHERALS-F10, HUB_SHELL-F72
 QA: R-05, qa-hub-restaurant §7.08, qa-hub-restaurant §7.16
 
 ### KITCHEN-F09 Reimprimir una comanda
