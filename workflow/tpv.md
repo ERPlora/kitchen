@@ -50,6 +50,5 @@ Pasos:
 Entra: la ronda elegida.
 Sale: la ronda urgente (avisa: kitchen.order.updated) y el aviso en papel; con una pantalla de cocina abierta también, sale un solo aviso por impresora cuando imprimen a través de la cola del hub (con impresora propia en cada dispositivo, sin confirmar en un hub).
 Si falla: el rechazo sale arriba de la hoja («No se pudo actualizar el estado», o el motivo traducido si lo hay) y la ronda se recarga. El servidor no comprueba el estado de la ronda: una ronda que cocina acaba de marcar lista o servida en otra pantalla se marca urgente igual. Si el aviso no se imprime, «No se ha podido imprimir el aviso de urgencia. Avisa a cocina de viva voz y revisa su impresora.». El cajero no tiene el botón.
-Implicados: REC_RESTAURANTE-F08
-Pendiente de enlazar: hub — la puerta de impresión y la cola que sacan el aviso por la función de cada estación
+Implicados: REC_RESTAURANTE-F08, HUB-F190, HUB-F192, HUB-F193, HUB_SHELL-F77
 QA: qa-hub-restaurant §7.08
