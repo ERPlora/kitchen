@@ -9,11 +9,11 @@ menu comes out on the grill — and in Square the combo prints as a RUN-ON PARAG
 moderator confirming there is no way to get it out as a list.
 
 These tests enter through the listener command (`kitchen.orders.create_from_order`) instead of
-through `sales.order.fire` ON PURPOSE: the combo expansion on the `sales` side is ERPlora/sales#152
-and does not exist yet, but kitchen's half of the contract already does, and what has to be proven
-here is that the compiled WASM, the runtime's binder and `_insert_item.sql` actually agree with
-each other — which neither the handler's own unit tests nor the module's Postgres battery can say
-on their own.
+through `sales.order.fire` ON PURPOSE: the `sales` half (the fired set menu carrying the chosen
+dishes, ERPlora/sales#522) is proven by sales' own `combo_fire.hub.test.py`; what has to be proven
+here is kitchen's half on its own — that the compiled WASM, the runtime's binder and
+`_insert_item.sql` actually agree with each other — which neither the handler's own unit tests nor
+the module's Postgres battery can say on their own.
 
   1. A menu at a closed price is ONE line at checkout, but its components are what the kitchen
      cooks: each one has to land on the station of ITS OWN article — never the neighbouring dish's
