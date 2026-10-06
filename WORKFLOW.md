@@ -196,7 +196,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | Pase en papel al marcar listo | hecho | F17 |
 | Comanda en papel por estación al enviar | parcial: la imprime el hub; con la impresora de red apagada se pierde sin aviso | F08 |
 | Reimprimir una comanda | no hecho | F09 |
-| Menú agrupado, cada plato a su estación | parcial: Cocina lo sabe pintar, pero Venta no le manda los platos del menú | F06 |
+| Menú agrupado, cada plato a su estación | parcial: hecho con los platos elegidos; un menú sin nada elegido llega como una línea (sales#535) | F06 |
 | Suplementos y notas en pantalla y en papel | hecho | F07 |
 | Alérgenos resaltados | no hecho: solo como nota libre (ver «Dudas abiertas») | F07 |
 | Estación con destino pantalla, papel o ambos y su impresora | parcial: solo por el asistente o la API | F01, F02 |
@@ -350,8 +350,6 @@ Se resuelven con `market-decision`; no las decide el worker.
 - `docs/screens.md` dice que la tarjeta envejece desde que la comanda se envió: cuenta desde que llega y vuelve a cero cuando cocina la toca por primera vez
   (KITCHEN-F10, leído en el código, sin ejecutar). BD-08 espera «el semáforo refleja el tiempo
   real», por eso va marcado `(discrepa)`.
-- kitchen#57 (cerrada) da por hecho que cada plato de un menú llega a su estación: Cocina lo hace si
-  le llegan los platos, pero Venta envía el menú como una sola línea (KITCHEN-F06).
 - En Ajustes, las opciones de «Tono del sonido» y de «Tipo de comanda por defecto» salen con su valor
   interno en inglés (`chime`, `bell`, `buzzer`, `dine_in`, `takeaway`, `delivery`): `locales/es.json`
   no les da nombre.
