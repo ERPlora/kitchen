@@ -9,7 +9,7 @@ tres avisos de fuera: ronda enviada, cuenta cerrada y fichas de cliente unidas.
 ## Flujos
 
 ### KITCHEN-F27 Cerrar las rondas al cobrar la cuenta entera
-Estado: hecho
+Estado: parcial — en un local que trabaja solo con papel (nadie marca nada en la pantalla de cocina), lo cobrado que no estaba Lista no se cierra nunca: se queda en la pantalla de cocina y en «Comandas sin servir» del cierre de caja, y crece cada día (ERPlora/kitchen#153)
 Actor: sistema
 Pantalla: ninguna
 Pasos:
