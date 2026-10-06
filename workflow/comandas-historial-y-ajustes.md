@@ -73,7 +73,7 @@ Pasos:
 2. Cada fila dice qué pasó (Acción), en qué comanda (su número), sus Notas y Cuándo, lo último primero.
 3. Busca por número de comanda o por notas; filtra por acción o por fechas.
 4. La lista se recarga sola con cada cambio de cocina; como la entrada la apunta Cocina justo después, la última acción puede no salir hasta la siguiente recarga (sin confirmar).
-Entra: las entradas que Cocina apunta sola tras cada cambio: llegada, empezar, plato listo o recuperado, lista, recuperada, servida y cancelada (también las que cierra el cobro, KITCHEN-F27).
+Entra: las entradas que Cocina apunta sola tras cada cambio: llegada, empezar, plato listo o recuperado, lista, recuperada, servida y cancelada (también las «Servidas» que apunta el cobro, KITCHEN-F27).
 Sale: nada; solo enseña. Apuntar algo a mano solo se puede por la API, con el permiso del responsable.
 Si falla: el error de la tabla con reintento; sin entradas, «Sin actividad reciente en cocina.».
 Implicados: ninguno

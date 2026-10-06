@@ -9,18 +9,19 @@ tres avisos de fuera: ronda enviada, cuenta cerrada y fichas de cliente unidas.
 ## Flujos
 
 ### KITCHEN-F27 Cerrar las rondas al cobrar la cuenta entera
-Estado: parcial — en «pide y paga» (barra, mostrador) cobrar cancela, en el camino normal, la ronda que el TPV acaba de enviar, y si los avisos llegan en otro orden la deja viva para siempre (kitchen#145, leído en el código, sin reproducir); lo mismo le pasa a lo que se esté cocinando cuando una mesa paga antes de terminar; y en una cuenta dividida, cobrar la original cierra sus rondas aunque parte de sus platos se pasaran a la otra cuenta
+Estado: hecho
 Actor: sistema
 Pantalla: ninguna
 Pasos:
 1. El cajero cobra la cuenta entera en el TPV; un cobro parcial no cuenta. Si había artículos sin enviar, el TPV los envía antes de cobrar, como una ronda más.
 2. Ventas avisa de que la cuenta se cerró.
-3. Cocina toma las rondas de esa cuenta: las Listas pasan a Servidas; las Por preparar y En preparación pasan a Canceladas con todos sus platos; las Servidas y las Canceladas no se tocan.
-4. Las tarjetas desaparecen de la pantalla de cocina y del «Resumen».
-5. En «pide y paga», en el camino normal el hub entrega primero la ronda recién enviada, que nace «Por preparar», y justo después el cierre de la cuenta, que la cancela: su papel sale igual, porque la comanda se imprime al nacer, pero su tarjeta desaparece de la pantalla de cocina. El orden no está garantizado: si la entrega de la ronda a Cocina falla y se aplaza, o si hay dos instancias del hub a la vez (durante una actualización), el cierre puede llegar antes, no encuentra la ronda y no hace nada; la ronda nace después y se queda viva en la pantalla de cocina para siempre (todo leído en el código, sin ejecutar).
+3. Cocina toma las rondas de esa cuenta: las Listas pasan a Servidas y salen de la pantalla de cocina. Las Por preparar y En preparación **no se tocan**: cobrar no para la cocina (como Toast, Square y Lightspeed); siguen en la pantalla y en el «Resumen» hasta que el pase las marca Servidas (KITCHEN-F13). Las Servidas y las Canceladas no se tocan.
+4. En «pide y paga» (barra, mostrador), la ronda que el TPV envía en el mismo gesto del cobro llega a cocina «Por preparar» y se cocina; da igual en qué orden lleguen los dos avisos: si el cierre llega antes que la ronda, no encuentra nada que cerrar y la ronda nace después igual que siempre.
+5. Si una mesa paga antes de terminar, lo que se está cocinando sigue en la pantalla. Si esa comida ya no se debe hacer (el cliente se fue), un responsable la cancela a mano (KITCHEN-F22).
+6. En una cuenta dividida, cobrar la original no toca lo que se cocina, tampoco las rondas de los platos que pasaron a la cuenta nueva; sus rondas Listas sí pasan a Servidas.
 Entra: de Ventas, la cuenta cerrada (avisa: order.completed), que sale una sola vez, con el cobro final.
-Sale: cada ronda Servida o Cancelada (avisa: kitchen.order.served o kitchen.order.cancelled) y su entrada en el Historial, sin motivo. Nada vuelve al TPV: no se avisa de que se ha cancelado comida. Así se decidió para el servicio en mesa (kitchen#61, kitchen#79): una mesa que ha pagado y se ha ido no debe seguir en la pantalla con el reloj corriendo. Solo se tocan las rondas de la cuenta cobrada; las comandas creadas a mano no se cierran nunca al cobrar.
-Si falla: si una ronda cambia de estado justo entre que se lee y se escribe, el cierre se rechaza entero y el aviso se reintenta; un aviso repetido de la misma cuenta no cambia nada.
+Sale: cada ronda Lista pasa a Servida (avisa: kitchen.order.served) con su entrada en el Historial. Nada vuelve al TPV. Solo se tocan las rondas de la cuenta cobrada; las comandas creadas a mano no se cierran nunca al cobrar. Lo que sigue en marcha sale en la revisión del cierre de caja (KITCHEN-F31).
+Si falla: si una ronda Lista se recupera justo entre que se lee y se escribe, el cierre se rechaza entero y el aviso se reintenta; un aviso repetido de la misma cuenta no cambia nada.
 Implicados: SALES-F01, SALES-F20, SALES-F22, SALES-F23, REC_RESTAURANTE-F10, REC_RESTAURANTE-F11, REC_RESTAURANTE-F17
 QA: R-09, R-10, qa-hub-restaurant §7.10
 

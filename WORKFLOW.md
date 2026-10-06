@@ -172,7 +172,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | KITCHEN-F24 | Borrar una comanda | parcial | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
 | KITCHEN-F25 | Consultar el historial de cocina | parcial | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
 | KITCHEN-F26 | Ajustar la pantalla de cocina | parcial | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
-| KITCHEN-F27 | Cerrar las rondas al cobrar la cuenta entera | parcial | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
+| KITCHEN-F27 | Cerrar las rondas al cobrar la cuenta entera | hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 | KITCHEN-F28 | Retirar las rondas de una cuenta eliminada o unida a otra | no hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 | KITCHEN-F29 | Anular un plato ya enviado con aviso a cocina | no hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 | KITCHEN-F30 | Pasar las comandas de un cliente unido a otro | hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
@@ -202,7 +202,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | Estación con destino pantalla, papel o ambos y su impresora | parcial: solo por el asistente o la API | F01, F02 |
 | Enrutado por producto y por categoría | parcial: no se ve ni se quita | F04 |
 | Estado de cada ronda visible en el TPV | parcial: la hora no es la de envío y sale en UTC | F19 |
-| Cerrar en cocina lo de una cuenta cobrada | parcial: cancela lo que aún se cocina, o deja viva la ronda si los avisos llegan en otro orden (kitchen#145) | F27 |
+| Cerrar en cocina lo de una cuenta cobrada, sin parar lo que se cocina | hecho (kitchen#145) | F27 |
 | Anular un plato enviado con aviso a cocina | no hecho | F29 |
 | Cuenta anulada o unida: cocina se entera | no hecho | F28 |
 | Cancelar una comanda con motivo | parcial: sin motivo ni confirmación en pantalla | F22 |
@@ -275,7 +275,8 @@ los platos y la cabecera de cada comanda para imprimirla (KITCHEN-F08); a Flujos
   nombre del menú y los suplementos se congelan en cada plato; cambiar el destino o el enrutado de
   una estación hoy no cambia a dónde fueron ni por dónde salen las rondas de ayer (el nombre que
   pinta la pantalla sí es el vivo de la estación).
-- **Cobrar una cuenta solo toca las rondas de esa cuenta.**
+- **Cobrar una cuenta solo toca las rondas de esa cuenta, y nunca cancela lo que se cocina**: solo
+  da por servidas sus rondas Listas (kitchen#145).
 - **Estaciones**: el nombre no se repite entre las estaciones vivas del hub; no se borra una estación
   con productos o categorías enrutados ni con platos por hacer.
 - **Una comanda solo se borra si está Por preparar o Cancelada y no va ligada a una venta** (si no,
@@ -306,8 +307,6 @@ los platos y la cabecera de cada comanda para imprimirla (KITCHEN-F08); a Flujos
 
 Se resuelven con `market-decision`; no las decide el worker.
 
-- **Qué hacer con lo que se cocina cuando la cuenta se paga** (kitchen#145): hoy se cancela. La
-  propuesta de la issue es que el pago no cancele y que salga de la pantalla al servirse.
 - **Las rondas de una cuenta eliminada o unida a otra** (KITCHEN-F28): ¿se cancelan, o pasan a la
   cuenta que queda?
 - **Una estación que ya terminó su parte**: hoy su tarjeta se queda en su pantalla, tachada, hasta

@@ -10,6 +10,15 @@ moment the waiter sends it — an hour before anyone pays.
 It used to come from the completed sale, which meant food left for the kitchen when the customer was
 already finishing. If you remember that behaviour, it is gone.
 
+## Paying the check does not stop the cooking
+
+When the whole check is paid, a ticket already marked ready counts as served and leaves the screen.
+A ticket still waiting or being cooked **stays on the line** until the kitchen marks it served — the
+customer paid for that food. This is what makes "order and pay" at the bar work: the till sends the
+round and charges it in the same gesture, and the round still reaches the cook. A part payment of a
+split check changes nothing in the kitchen. Food that must not be made any more is cancelled by
+hand from **Kitchen → Commands**.
+
 ## Every fire is a new round
 
 Pressing send again does not resend the whole check. It sends **only the lines never fired before**,

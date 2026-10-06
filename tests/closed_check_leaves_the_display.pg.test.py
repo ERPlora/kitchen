@@ -1,22 +1,25 @@
 #!/usr/bin/env python3
-"""A closed check disappears from the KDS — the EFFECT half (kitchen#61).
+"""A closed check takes its bumped round off the KDS — the EFFECT half (kitchen#61, kitchen#145).
 
-The symptom the issue reports is not «a column is null»: it is that `/m/kitchen/display` keeps
-painting «Mesa S1» with the clock running minutes after that table paid and was released. The feed
-of that screen is `queries/orders_display.sql`, so this battery asserts against THAT query, on a
-real Postgres built from this module's own migrations, before and after applying what the handler
-emits for `order.completed` — its operations, verbatim, with the parameters it binds.
+The symptom kitchen#61 reported is not «a column is null»: it is that `/m/kitchen/display` kept
+painting «Mesa S1» minutes after that table paid and was released. The feed of that screen is
+`queries/orders_display.sql`, so this battery asserts against THAT query, on a real Postgres built
+from this module's own migrations, before and after applying what the handler emits for
+`order.completed` — its operations, with the parameters it binds.
 
-  * BEFORE: the two rounds of the paid order are on the feed (the zombies). This is the positive
-    control: without it a green run would prove nothing but that the query returns little.
-  * AFTER:  they are gone, the round of the table STILL EATING is untouched, and the round of
-    another hub with the same `source_order_id` never moved (pm#146 — a hub cannot clear its
-    neighbour's line).
-  * The lines of a cancelled round stop cooking too, or the station grid and All-Day keep counting
-    food nobody is going to make.
+  * BEFORE: the two rounds of the paid order are on the feed. This is the positive control: without
+    it a green run would prove nothing but that the query returns little.
+  * AFTER:  the bumped round is served and gone; the round still cooking STAYS on the feed with its
+    line (kitchen#145: paying does not stop the cooking, the handler emits nothing for it); the
+    round of the table still eating is untouched, and the round of another hub with the same
+    `source_order_id` never moved (pm#146 — a hub cannot clear its neighbour's line).
   * A REDELIVERY (the outbox retries) matches zero rows instead of dragging an already-served round
     somewhere else: `_set_order_status` is pinned to `require_status`, the state the handler
     decided against (kitchen#11).
+  * THE WAY OUT for food that is not to be made any more (the guest left): a manager cancels the
+    round the payment left cooking (`kitchen.orders.cancel`). It leaves the feed and drags its
+    lines with it, and only its own — a cancelled ticket that left its lines cooking would keep
+    them on the station grid and in All-Day.
 
   Uses the `erplora-test-pg-5433` container (override: KITCHEN_TEST_PG_CONTAINER).
 """
@@ -212,6 +215,7 @@ def set_status(
 
 
 def cascade(db: ScratchDb, ticket_id: str) -> int:
+    """`kitchen._cascade_item_status` with the parameters `kitchen.orders.cancel` binds."""
     return db.run(
         bind(
             CASCADE_SQL,
@@ -229,6 +233,16 @@ def cascade(db: ScratchDb, ticket_id: str) -> int:
     )
 
 
+def line_statuses(db: ScratchDb) -> dict:
+    """`{ticket: status of its line}` for the hub under test."""
+    return {
+        r["order_id"]: r["status"]
+        for r in db.rows(
+            f"SELECT order_id, status FROM kitchen_order_item WHERE hub_id = {literal(HUB)}"
+        )
+    }
+
+
 def on_the_line(db: ScratchDb, hub: str) -> set:
     """The tickets `queries/orders_display.sql` paints for this hub — the KDS feed itself."""
     return {r["order_id"] for r in db.rows(bind(DISPLAY_SQL, {"hub_id": hub}))}
@@ -244,7 +258,7 @@ def main() -> int:
     db = ScratchDb("kitchen_closed_check")
     try:
         db.create()
-        # The paid check: round 1 bumped and waiting to be handed over, round 2 never finished.
+        # The paid check: round 1 bumped and waiting to be handed over, round 2 still cooking.
         seed_round(db, HUB, "k-ready", PAID_ORDER, "ready", round_number=1)
         seed_round(db, HUB, "k-pending", PAID_ORDER, "pending", round_number=2)
         # The table next to it, still eating.
@@ -259,19 +273,15 @@ def main() -> int:
                 f"the rounds of the paid check were not on the KDS to begin with: {before}"
             )
 
-        # What the handler emits for `order.completed`, verbatim.
+        # What the handler emits for `order.completed`: only the bumped round moves (kitchen#145).
         if set_status(db, "k-ready", "served", "ready", "set") != 1:
             fail("the bumped round was not marked served")
-        if set_status(db, "k-pending", "cancelled", "pending", "keep") != 1:
-            fail("the round still cooking was not cancelled")
-        if cascade(db, "k-pending") != 1:
-            fail("the lines of the cancelled round kept cooking")
 
         after = on_the_line(db, HUB)
-        if after != {"k-other-order"}:
+        if after != {"k-pending", "k-other-order"}:
             fail(
-                f"the KDS still paints {sorted(after - {'k-other-order'})} after the check closed "
-                f"(and it must still paint the table that is still eating): {sorted(after)}"
+                "after the check closed the KDS must paint the round still cooking and the table "
+                f"still eating, and nothing else: {sorted(after)}"
             )
 
         rows = {
@@ -282,8 +292,8 @@ def main() -> int:
             fail(
                 f"the bumped round did not land as served with its timestamp: {rows['k-ready']}"
             )
-        if rows["k-pending"]["status"] != "cancelled":
-            fail(f"the unfinished round did not land as cancelled: {rows['k-pending']}")
+        if rows["k-pending"]["status"] != "pending":
+            fail(f"the round still cooking was moved by the payment: {rows['k-pending']}")
         if rows["k-other-hub"]["status"] != "pending":
             fail(
                 "a check closing in one business moved another business' round — "
@@ -292,22 +302,35 @@ def main() -> int:
         if rows["k-other-order"]["status"] != "pending":
             fail(f"the table still eating lost its round: {rows['k-other-order']}")
 
-        lines = {
-            r["order_id"]: r["status"]
-            for r in db.rows(
-                f"SELECT order_id, status FROM kitchen_order_item WHERE hub_id = {literal(HUB)}"
-            )
-        }
-        if lines.get("k-pending") != "cancelled":
-            fail(f"the line of the cancelled round is still {lines.get('k-pending')!r}")
+        lines = line_statuses(db)
+        if lines.get("k-pending") != "pending":
+            fail(f"the line of the round still cooking is now {lines.get('k-pending')!r}")
         if lines.get("k-other-order") != "pending":
-            fail("the cascade reached the lines of a ticket that was not closing")
+            fail("the close reached the lines of a ticket that was not closing")
 
         # The outbox retries: the same delivery must match nothing the second time.
         if set_status(db, "k-ready", "served", "ready", "set") != 0:
             fail(
                 "a redelivered close moved an already-served round: the guard is not pinned"
             )
+
+        # The guest left and that food is not to be made: a manager cancels the round the payment
+        # left cooking. What `kitchen.orders.cancel` emits, with the parameters it binds.
+        if set_status(db, "k-pending", "cancelled", "pending", "keep") != 1:
+            fail("the round left cooking could not be cancelled by hand")
+        if cascade(db, "k-pending") != 1:
+            fail("the lines of the cancelled round kept cooking")
+        gone = on_the_line(db, HUB)
+        if gone != {"k-other-order"}:
+            fail(
+                "once cancelled by hand the round must leave the KDS, and the table still eating "
+                f"must stay: {sorted(gone)}"
+            )
+        lines = line_statuses(db)
+        if lines.get("k-pending") != "cancelled":
+            fail(f"the line of the cancelled round is still {lines.get('k-pending')!r}")
+        if lines.get("k-other-order") != "pending":
+            fail("the cascade reached the lines of a ticket that was not cancelled")
     finally:
         db.drop()
 
@@ -316,7 +339,7 @@ def main() -> int:
             print(f"✗ {msg}")
         print(f"\nFAILED ({len(failures)}).")
         return 1
-    print("✓ a closed check takes its rounds off the KDS, and only its own")
+    print("✓ a closed check takes its bumped round off the KDS, keeps the rest cooking, and only its own")
     return 0
 
 
