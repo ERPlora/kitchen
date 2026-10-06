@@ -593,7 +593,7 @@
         "function": "close_orders_from_order"
       },
       "ai": {
-        "description": "Takes the rounds of a CLOSED ORDER off the line (event `order.completed`, ADR-0146): a round already bumped becomes served, one still cooking becomes cancelled, and both leave the KDS. Never hangs off `sale.completed`, which also fires on a partial leg of a split bill where the guests are still seated."
+        "description": "Closes the bumped rounds of a CLOSED ORDER (event `order.completed`, ADR-0146): a round already bumped becomes served and leaves the KDS; a round still waiting or cooking keeps cooking until the kitchen serves it, because paying does not stop the cooking (kitchen#145). Never hangs off `sale.completed`, which also fires on a partial leg of a split bill where the guests are still seated."
       }
     },
     "kitchen.stations.create": {

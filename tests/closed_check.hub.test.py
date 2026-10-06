@@ -10,16 +10,22 @@ filtered), the `required` read aborts the command with `read_unavailable`, and e
 ended in the dead-letter after 7 attempts while the rounds of a paid table kept cooking on the KDS
 (banco-pre, 09/09 and 13/09).
 
-Only a running hub resolves `reads`, so this is where the chain is proven end to end:
+Only a running hub resolves `reads`, so this is where the chain is proven end to end.
 
-  1. The full charge of an order (`sales.complete_sale` with its `order_id`) reaches kitchen: the
-     round the pass already bumped becomes `served`, the one still in the queue becomes
-     `cancelled` — both leave the line.
-  2. The round of ANOTHER table that is still eating is untouched — one table paying must never
-     clear the whole line. Two filters stand in the way: the manifest's read (`f_source_order_id`)
-     and the handler, which re-checks `source_order_id` on every round it is handed. Measured on
-     23/09 against the real kernel: dropping ONE of them leaves this green (the other still holds);
-     dropping BOTH turns it red with `got {1: 'cancelled'}`.
+kitchen#145 changed WHAT the charge does to the rounds: paying is not a reason to stop cooking
+(Toast, Square, Lightspeed). Only the round the pass already bumped is closed (`served`); a round
+still in the queue or on the stove keeps cooking and leaves the KDS when it is served. Every case
+below was a cancelled round before kitchen#145:
+
+  1. A table that pays before it finished: the bumped round becomes `served`, the one on the stove
+     stays `preparing` and the one fired in the same gesture as the charge stays `pending`. The
+     round of ANOTHER table still eating is untouched — two filters stand in the way: the
+     manifest's read (`f_source_order_id`) and the handler, which re-checks `source_order_id` on
+     every round it is handed.
+  2. The bar («pide y paga»): the till fires the round and charges at once. The round reaches the
+     cook — and, in the other delivery order (the close lands before the round exists), it is born
+     in the queue and still leaves the line once it is served.
+  3. A split check: charging the original keeps the round whose dishes moved to the new check.
 
 Usage: `erplora test <dir> --against-hub [dev|stable|sha256:…]` (module-toolkit#110). Never on its
 own: without a runtime it fails, it does not skip.
@@ -67,8 +73,33 @@ def wait_for(hub: Hub, order_id: str, want: dict, timeout: float = 10.0) -> dict
     return seen
 
 
-def test_charging_the_check_in_full_clears_its_rounds(hub: Hub, cash: str) -> None:
-    print("\n1 · charging the check in FULL takes its rounds off the line (kitchen#79)")
+def charge(hub: Hub, cash: str, order_id: str) -> None:
+    """The full charge of `order_id`, the call the till makes: it emits `order.completed`."""
+    hub.run(
+        "sales.complete_sale",
+        {
+            "idempotency_key": f"hub-battery-close-{uuid.uuid4().hex[:8]}",
+            "payment_method_id": cash,
+            "order_id": order_id,
+            "amount_tendered": 250,
+            "tax_included": True,
+            "items": [dict(CANA, tax_rate=21.0)],
+        },
+    )
+
+
+def settle(hub: Hub) -> None:
+    """Waits until every event emitted so far reached kitchen: the outbox delivers in creation
+    order, so once the round of a probe order fired NOW exists, the `order.completed` emitted
+    before it was handled too. Without it, «still pending» would also be true of a close that
+    simply had not landed yet."""
+    probe = open_order(hub, [CANA])
+    fire(hub, probe, label=unique("probe"))
+    wait_for_tickets(hub, probe, 1)
+
+
+def test_a_table_that_pays_early_keeps_what_is_cooking(hub: Hub, cash: str) -> None:
+    print("\n1 · a table pays before it finished: only the bumped round leaves (kitchen#145)")
     paid = open_order(hub, [CANA])
     fire(hub, paid, label=unique("mesa-paid"))
     first = wait_for_tickets(hub, paid, 1)[0]
@@ -77,34 +108,31 @@ def test_charging_the_check_in_full_clears_its_rounds(hub: Hub, cash: str) -> No
         {"order_id": first["id"], "action_name": "mark_ready"},
     )
     fire(hub, paid, label=unique("mesa-paid"))
-    wait_for_tickets(hub, paid, 2)
+    second = next(
+        t for t in wait_for_tickets(hub, paid, 2) if t.get("round_number") == 2
+    )
+    hub.run(
+        "kitchen.orders.set_status", {"order_id": second["id"], "action_name": "fire"}
+    )
 
     eating = open_order(hub, [CANA])
     fire(hub, eating, label=unique("mesa-eating"))
     wait_for_tickets(hub, eating, 1)
 
     hub.check(
-        "before the charge both rounds of the paid check are on the line (positive control)",
+        "before the charge the two rounds of the paid check are on the line (positive control)",
         statuses(hub, paid),
-        {1: "ready", 2: "pending"},
+        {1: "ready", 2: "preparing"},
     )
 
-    hub.run(
-        "sales.complete_sale",
-        {
-            "idempotency_key": f"hub-battery-close-{uuid.uuid4().hex[:8]}",
-            "payment_method_id": cash,
-            "order_id": paid,
-            "amount_tendered": 250,
-            "tax_included": True,
-            "items": [dict(CANA, tax_rate=21.0)],
-        },
-    )
+    # The last round is fired and charged in the same gesture, as the till does.
+    fire(hub, paid, label=unique("mesa-paid"))
+    charge(hub, cash, paid)
 
     hub.check(
-        "the bumped round is served and the queued one cancelled: both leave the KDS",
-        wait_for(hub, paid, {1: "served", 2: "cancelled"}),
-        {1: "served", 2: "cancelled"},
+        "the bumped round is served; the one on the stove and the one just fired keep cooking",
+        wait_for(hub, paid, {1: "served", 2: "preparing", 3: "pending"}),
+        {1: "served", 2: "preparing", 3: "pending"},
     )
     hub.check(
         "the round of the table still eating is untouched",
@@ -113,15 +141,67 @@ def test_charging_the_check_in_full_clears_its_rounds(hub: Hub, cash: str) -> No
     )
 
 
+def test_pay_and_go_reaches_the_cook(hub: Hub, cash: str) -> None:
+    print("\n2 · the bar fires and charges at once: the round reaches the cook (kitchen#145)")
+    bar = open_order(hub, [CANA])
+    fire(hub, bar, label=unique("barra"), channel="takeaway")
+    charge(hub, cash, bar)
+    settle(hub)
+    hub.check(
+        "the round fired with the charge is still waiting for the cook",
+        statuses(hub, bar),
+        {1: "pending"},
+    )
+
+    print("   · the other delivery order: the close lands before the round exists")
+    late = open_order(hub, [CANA])
+    hub.run("kitchen.orders.close_from_order", {"order_id": late})
+    fire(hub, late, label=unique("barra"), channel="takeaway")
+    ticket = wait_for_tickets(hub, late, 1)[0]
+    hub.check("the late round is born in the queue", ticket.get("status"), "pending")
+    hub.run(
+        "kitchen.orders.set_status",
+        {"order_id": ticket["id"], "action_name": "mark_ready"},
+    )
+    hub.run("kitchen.orders.mark_served", {"order_id": ticket["id"]})
+    hub.check(
+        "and leaves the line when it is served, not never",
+        statuses(hub, late),
+        {1: "served"},
+    )
+
+
+def test_a_split_check_keeps_the_round_of_the_moved_dishes(hub: Hub, cash: str) -> None:
+    print("\n3 · a split check: charging the original keeps the moved dishes cooking (kitchen#145)")
+    original = open_order(hub, [CANA, dict(CANA, product_name="Tapa")])
+    fire(hub, original, label=unique("mesa-split"))
+    wait_for_tickets(hub, original, 1)
+    lines = hub.query("sales.order.lines", {"order_id": original})
+    moved = [line["id"] for line in lines if line.get("product_name") == "Tapa"]
+    hub.check_true("the dish to move is on the check", len(moved) == 1, lines)
+    hub.run("sales.order.split", {"order_id": original, "line_ids": moved})
+
+    charge(hub, cash, original)
+    settle(hub)
+    hub.check(
+        "the round with the dishes that moved to the new check is still cooking",
+        statuses(hub, original),
+        {1: "pending"},
+    )
+
+
 def main() -> int:
     hub = Hub("closed_check.hub")
     print(
-        f"Hub battery · closed check (kitchen#79) · {hub_harness.BASE} · hub {hub.hub_id} · user {hub.user}"
+        f"Hub battery · closed check (kitchen#79, kitchen#145) · {hub_harness.BASE} · hub {hub.hub_id} · user {hub.user}"
     )
-    test_charging_the_check_in_full_clears_its_rounds(hub, cash_method_id(hub))
+    cash = cash_method_id(hub)
+    test_a_table_that_pays_early_keeps_what_is_cooking(hub, cash)
+    test_pay_and_go_reaches_the_cook(hub, cash)
+    test_a_split_check_keeps_the_round_of_the_moved_dishes(hub, cash)
     return hub.finish(
-        "a check charged in full takes its own rounds off the line, and only its own, against the "
-        "real kernel"
+        "a check charged in full serves its bumped rounds and keeps cooking the rest, and touches "
+        "only its own, against the real kernel"
     )
 
 

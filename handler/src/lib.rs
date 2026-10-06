@@ -748,16 +748,17 @@ fn transition_pure(input: &Value, action: &str) -> Result<Output, String> {
 // es el que esperan los satélites»); `tables._session_close_by_order` already hangs off it. Kitchen
 // joins the same seam, so it still knows nothing about tables, customers or money (ADR-0141).
 //
-// WHAT EACH ROUND BECOMES. Not one blanket status, because the two cases are different facts and
-// the state machine of kitchen#11 is authoritative for both:
+// WHAT EACH ROUND BECOMES (kitchen#145). Paying is not a reason to stop cooking: in Toast, Square
+// and Lightspeed the charge does not cancel what the kitchen still has in hand, it leaves the KDS
+// when it is served. Before kitchen#145 the rounds still cooking were cancelled here, and at the
+// bar («pide y paga») that cancelled the round the till had fired a second before charging.
 //   · `ready`                → `served`.   It was cooked and bumped; the pass just never marked it
 //                              handed over. This is the transition `kitchen.orders.mark_served`
 //                              makes, from the one state it accepts.
-//   · `pending`/`preparing`  → `cancelled`. It was never finished and now never will be. Calling
-//                              that «served» would put food that nobody made into the history as
-//                              delivered; `cancelled` is what the matrix allows from these two and
-//                              it is the honest one — the Historial keeps the round with its
-//                              reason, which is real waste data.
+//   · `pending`/`preparing`  → untouched. Still cooking: it stays on the line until the pass
+//                              serves it, and a manager can still cancel it by hand. This is also
+//                              what makes the delivery order irrelevant: a close that lands before
+//                              the round exists leaves nothing behind that should have been closed.
 //   · `served`/`cancelled`   → untouched. Terminal, and this is what makes a redelivery of the
 //                              event a clean no-op instead of a refusal that spins to dead-letter.
 
@@ -804,44 +805,28 @@ pub fn close_orders_from_order_pure(input: Value) -> Result<Output, String> {
         if ticket_id.is_empty() {
             continue;
         }
-        let current = as_str(round.get("status").unwrap_or(&Value::Null));
-        let (status, served_mode, cascade, event, log_action) = match current.as_str() {
-            "ready" => ("served", "set", false, "kitchen.order.served", "served"),
-            "pending" | "preparing" => {
-                ("cancelled", "keep", true, "kitchen.order.cancelled", "cancelled")
-            }
-            _ => continue,
-        };
+        // Only a bumped round closes; everything else keeps its state (kitchen#145).
+        if as_str(round.get("status").unwrap_or(&Value::Null)) != "ready" {
+            continue;
+        }
 
         let mut h = Map::new();
         h.insert("order_id".into(), json!(ticket_id));
-        h.insert("status".into(), json!(status));
+        h.insert("status".into(), json!("served"));
         // Pinned to the state this decision was taken against (kitchen#11): a round somebody
-        // bumped between the read and the write matches ZERO rows instead of jumping states.
-        h.insert("require_status".into(), json!(current));
+        // recalled between the read and the write matches ZERO rows instead of jumping states.
+        h.insert("require_status".into(), json!("ready"));
         h.insert("set_fired".into(), json!(0));
         h.insert("ready_mode".into(), json!("keep"));
-        h.insert("served_mode".into(), json!(served_mode));
+        h.insert("served_mode".into(), json!("set"));
         h.insert("append_note".into(), json!(""));
         h.insert("nl".into(), json!("\n"));
         ops.push(Operation::sql("kitchen._set_order_status", h));
 
-        if cascade {
-            // Same cascade `kitchen.orders.cancel` makes: a cancelled ticket must not leave its
-            // lines cooking, or the station grid keeps them and All-Day keeps counting them.
-            let mut c = Map::new();
-            c.insert("order_id".into(), json!(ticket_id));
-            c.insert("from_status".into(), json!(""));
-            c.insert("to_status".into(), json!("cancelled"));
-            c.insert("set_fired".into(), json!(0));
-            c.insert("completed_mode".into(), json!("keep"));
-            ops.push(Operation::sql("kitchen._cascade_item_status", c));
-        }
-
         events.push(order_event(
-            event,
+            "kitchen.order.served",
             &ticket_id,
-            log_action,
+            "served",
             "",
             &ctx.user_id,
         ));
@@ -1813,10 +1798,10 @@ mod tests {
     }
 
     #[test]
-    fn a_closed_check_takes_every_live_round_off_the_line() {
-        // The guest paid and left: a round already bumped was made and handed over (`served`), and
-        // one still on the line was never finished (`cancelled`). Both leave `orders.display`,
-        // which only feeds on pending/preparing/ready.
+    fn a_paid_check_serves_the_bumped_round_and_leaves_the_cooking_ones_alive() {
+        // kitchen#145: paying is not a reason to stop cooking (Toast, Square, Lightspeed). A round
+        // already bumped was made and handed over (`served`, it leaves the line); one still in the
+        // queue or on the stove keeps cooking and leaves the KDS when the pass serves it.
         let out = close_orders_from_order_pure(with_rounds(
             "o1",
             json!([
@@ -1835,33 +1820,35 @@ mod tests {
         // The SQL guard is pinned to the state the handler decided against (kitchen#11).
         assert_eq!(ready["require_status"], json!("ready"));
 
-        for (id, from) in [("k-pending", "pending"), ("k-preparing", "preparing")] {
-            let head = head_for(&out, id);
-            assert_eq!(head["status"], json!("cancelled"), "{id}");
-            assert_eq!(head["require_status"], json!(from), "{id}");
-        }
-        // A cancelled ticket drags its lines with it, exactly as `kitchen.orders.cancel` does.
+        // The rounds still cooking are not written at all: no status, no cascade to their lines.
         for id in ["k-pending", "k-preparing"] {
             assert!(
-                out.operations.iter().any(|o| o.command == "kitchen._cascade_item_status"
-                    && o.params["order_id"] == json!(id)),
-                "{id} left its lines cooking"
+                !out.operations.iter().any(|o| o.params["order_id"] == json!(id)),
+                "{id} was moved by the payment: {:?}",
+                out.operations
             );
         }
 
         let names: Vec<&str> = out.events.iter().map(|e| e.name.as_str()).collect();
-        assert_eq!(
-            names,
-            vec![
-                "kitchen.order.served",
-                "kitchen.order.cancelled",
-                "kitchen.order.cancelled"
-            ]
-        );
+        assert_eq!(names, vec!["kitchen.order.served"]);
         // Every event is the narrow twin the log listener accepts (kitchen#29).
         assert_eq!(out.events[0].payload["order_id"], json!("k-ready"));
         assert_eq!(out.events[0].payload["action"], json!("served"));
-        assert_eq!(out.events[1].payload["action"], json!("cancelled"));
+    }
+
+    #[test]
+    fn pay_and_go_keeps_the_round_the_till_just_fired() {
+        // kitchen#145, the bar: the till fires the round and charges in the same gesture, so the
+        // round is still `pending` when `order.completed` lands. It must reach the cook.
+        let out = close_orders_from_order_pure(with_rounds(
+            "o1",
+            json!([{ "id": "k-just-fired", "status": "pending", "source_order_id": "o1" }]),
+            json!({ "sender": "sales", "order_id": "o1" }),
+        ))
+        .expect("a paid check with a round in the queue is not an error");
+        assert!(out.error.is_none(), "{:?}", out.error);
+        assert!(out.operations.is_empty(), "{:?}", out.operations);
+        assert!(out.events.is_empty(), "{:?}", out.events);
     }
 
     #[test]
@@ -1890,9 +1877,9 @@ mod tests {
         let out = close_orders_from_order_pure(with_rounds(
             "o1",
             json!([
-                { "id": "k-mine",    "status": "pending", "source_order_id": "o1" },
-                { "id": "k-other",   "status": "pending", "source_order_id": "o2" },
-                { "id": "k-orphan",  "status": "pending", "source_order_id": null },
+                { "id": "k-mine",    "status": "ready", "source_order_id": "o1" },
+                { "id": "k-other",   "status": "ready", "source_order_id": "o2" },
+                { "id": "k-orphan",  "status": "ready", "source_order_id": null },
             ]),
             json!({ "order_id": "o1" }),
         ))
@@ -1902,7 +1889,7 @@ mod tests {
             .iter()
             .map(|o| o.params["order_id"].clone())
             .collect();
-        assert_eq!(touched, vec![json!("k-mine"), json!("k-mine")]);
+        assert_eq!(touched, vec![json!("k-mine")]);
     }
 
     #[test]

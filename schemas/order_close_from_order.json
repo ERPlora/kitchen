@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "kitchen.orders.close_from_order",
-  "description": "Payload del evento `order.completed` (contrato del módulo sales, ADR-0146): el PEDIDO se ha cerrado —cobrado del todo y mesa liberada— y sus comandas vivas salen de la pantalla de cocina. additionalProperties=true a propósito: el evento trae claves propias (`sender`) y el relay entrega su payload TAL CUAL; un `additionalProperties: false` aquí mandaría cada entrega al dead-letter sin decir por qué (kitchen#29). Idempotente: una re-entrega solo ve comandas ya terminales y no escribe nada.",
+  "description": "Payload of the `order.completed` event (contract of the sales module, ADR-0146): the ORDER is closed — fully charged and the table released — and its bumped rounds become served; rounds still waiting or cooking keep cooking (kitchen#145). additionalProperties=true on purpose: the event carries keys of its own (`sender`) and the relay delivers its payload AS IS; an `additionalProperties: false` here would send every delivery to the dead-letter without saying why (kitchen#29). Idempotent: a redelivery only sees terminal rounds and writes nothing.",
   "type": "object",
   "additionalProperties": true,
   "required": ["order_id"],
