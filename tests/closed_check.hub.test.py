@@ -21,7 +21,10 @@ below was a cancelled round before kitchen#145:
      stays `preparing` and the one fired in the same gesture as the charge stays `pending`. The
      round of ANOTHER table still eating is untouched — two filters stand in the way: the
      manifest's read (`f_source_order_id`) and the handler, which re-checks `source_order_id` on
-     every round it is handed.
+     every round it is handed. That neighbour's round is bumped (`ready`) before the charge on
+     purpose: `ready` is the only state the charge moves, so a round still in the queue would
+     stay put with both filters gone and the check would prove nothing. Measured on 06/10 against
+     the real kernel: dropping BOTH filters turns it red with `got {1: 'served'}`.
   2. The bar («pide y paga»): the till fires the round and charges at once. The round reaches the
      cook — and, in the other delivery order (the close lands before the round exists), it is born
      in the queue and still leaves the line once it is served.
@@ -117,7 +120,13 @@ def test_a_table_that_pays_early_keeps_what_is_cooking(hub: Hub, cash: str) -> N
 
     eating = open_order(hub, [CANA])
     fire(hub, eating, label=unique("mesa-eating"))
-    wait_for_tickets(hub, eating, 1)
+    waiting = wait_for_tickets(hub, eating, 1)[0]
+    # Bumped on purpose: the charge only moves `ready` rounds, so this is the state that would
+    # leak if one table paying reached the rounds of another.
+    hub.run(
+        "kitchen.orders.set_status",
+        {"order_id": waiting["id"], "action_name": "mark_ready"},
+    )
 
     hub.check(
         "before the charge the two rounds of the paid check are on the line (positive control)",
@@ -135,9 +144,9 @@ def test_a_table_that_pays_early_keeps_what_is_cooking(hub: Hub, cash: str) -> N
         {1: "served", 2: "preparing", 3: "pending"},
     )
     hub.check(
-        "the round of the table still eating is untouched",
+        "the bumped round of the table still eating is untouched",
         statuses(hub, eating),
-        {1: "pending"},
+        {1: "ready"},
     )
 
 

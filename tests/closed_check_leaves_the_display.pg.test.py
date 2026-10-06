@@ -16,6 +16,10 @@ from this module's own migrations, before and after applying what the handler em
   * A REDELIVERY (the outbox retries) matches zero rows instead of dragging an already-served round
     somewhere else: `_set_order_status` is pinned to `require_status`, the state the handler
     decided against (kitchen#11).
+  * THE WAY OUT for food that is not to be made any more (the guest left): a manager cancels the
+    round the payment left cooking (`kitchen.orders.cancel`). It leaves the feed and drags its
+    lines with it, and only its own — a cancelled ticket that left its lines cooking would keep
+    them on the station grid and in All-Day.
 
   Uses the `erplora-test-pg-5433` container (override: KITCHEN_TEST_PG_CONTAINER).
 """
@@ -36,6 +40,9 @@ CONTAINER = os.environ.get("KITCHEN_TEST_PG_CONTAINER", "erplora-test-pg-5433")
 
 SET_STATUS_SQL = (
     MODULE_DIR / MANIFEST["commands"]["kitchen._set_order_status"]["sql"][0]
+).read_text(encoding="utf-8")
+CASCADE_SQL = (
+    MODULE_DIR / MANIFEST["commands"]["kitchen._cascade_item_status"]["sql"][0]
 ).read_text(encoding="utf-8")
 DISPLAY_SQL = (
     MODULE_DIR / MANIFEST["queries"]["kitchen.orders.display"]["sql"]
@@ -207,6 +214,35 @@ def set_status(
     )
 
 
+def cascade(db: ScratchDb, ticket_id: str) -> int:
+    """`kitchen._cascade_item_status` with the parameters `kitchen.orders.cancel` binds."""
+    return db.run(
+        bind(
+            CASCADE_SQL,
+            {
+                "order_id": ticket_id,
+                "from_status": "",
+                "to_status": "cancelled",
+                "set_fired": 0,
+                "completed_mode": "keep",
+                "hub_id": HUB,
+                "current_user_id": USER,
+                "now": NOW,
+            },
+        )
+    )
+
+
+def line_statuses(db: ScratchDb) -> dict:
+    """`{ticket: status of its line}` for the hub under test."""
+    return {
+        r["order_id"]: r["status"]
+        for r in db.rows(
+            f"SELECT order_id, status FROM kitchen_order_item WHERE hub_id = {literal(HUB)}"
+        )
+    }
+
+
 def on_the_line(db: ScratchDb, hub: str) -> set:
     """The tickets `queries/orders_display.sql` paints for this hub — the KDS feed itself."""
     return {r["order_id"] for r in db.rows(bind(DISPLAY_SQL, {"hub_id": hub}))}
@@ -266,12 +302,7 @@ def main() -> int:
         if rows["k-other-order"]["status"] != "pending":
             fail(f"the table still eating lost its round: {rows['k-other-order']}")
 
-        lines = {
-            r["order_id"]: r["status"]
-            for r in db.rows(
-                f"SELECT order_id, status FROM kitchen_order_item WHERE hub_id = {literal(HUB)}"
-            )
-        }
+        lines = line_statuses(db)
         if lines.get("k-pending") != "pending":
             fail(f"the line of the round still cooking is now {lines.get('k-pending')!r}")
         if lines.get("k-other-order") != "pending":
@@ -282,6 +313,24 @@ def main() -> int:
             fail(
                 "a redelivered close moved an already-served round: the guard is not pinned"
             )
+
+        # The guest left and that food is not to be made: a manager cancels the round the payment
+        # left cooking. What `kitchen.orders.cancel` emits, with the parameters it binds.
+        if set_status(db, "k-pending", "cancelled", "pending", "keep") != 1:
+            fail("the round left cooking could not be cancelled by hand")
+        if cascade(db, "k-pending") != 1:
+            fail("the lines of the cancelled round kept cooking")
+        gone = on_the_line(db, HUB)
+        if gone != {"k-other-order"}:
+            fail(
+                "once cancelled by hand the round must leave the KDS, and the table still eating "
+                f"must stay: {sorted(gone)}"
+            )
+        lines = line_statuses(db)
+        if lines.get("k-pending") != "cancelled":
+            fail(f"the line of the cancelled round is still {lines.get('k-pending')!r}")
+        if lines.get("k-other-order") != "pending":
+            fail("the cascade reached the lines of a ticket that was not cancelled")
     finally:
         db.drop()
 
