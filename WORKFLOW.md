@@ -172,7 +172,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | KITCHEN-F24 | Borrar una comanda | parcial | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
 | KITCHEN-F25 | Consultar el historial de cocina | parcial | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
 | KITCHEN-F26 | Ajustar la pantalla de cocina | parcial | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
-| KITCHEN-F27 | Cerrar las rondas al cobrar la cuenta entera | hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
+| KITCHEN-F27 | Cerrar las rondas al cobrar la cuenta entera | parcial | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 | KITCHEN-F28 | Retirar las rondas de una cuenta eliminada o unida a otra | no hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 | KITCHEN-F29 | Anular un plato ya enviado con aviso a cocina | no hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 | KITCHEN-F30 | Pasar las comandas de un cliente unido a otro | hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
