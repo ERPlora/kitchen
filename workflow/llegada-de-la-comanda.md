@@ -23,15 +23,14 @@ Implicados: FLOWS-F13, SALES-F20, REC_RESTAURANTE-F07, REC_RESTAURANTE-F17, HUB_
 QA: R-04, R-05, BD-08, qa-hub-restaurant §7.08
 
 ### KITCHEN-F06 Un menú del día en la comanda
-Estado: parcial — desde el TPV un menú llega a cocina como una sola línea con el nombre del menú, sin los platos elegidos, y sale en «Sin estación» salvo que el propio menú esté enrutado como producto: Venta no manda los platos del menú (leído en el código de los dos módulos, sin ejecutar). Cocina ya sabe repartirlos y agruparlos si se los mandan
+Estado: parcial — un menú todavía sin nada elegido llega como una sola línea con el nombre del menú, en «Sin estación» salvo que el propio menú esté enrutado como producto, y uno a medias llega solo con lo elegido, sin aviso de lo que falta (sales#535)
 Actor: empleado
 Pantalla: Pantalla
 Pasos:
 1. El camarero añade un menú con sus elecciones en el TPV (SALES-F12) y envía la ronda.
-2. Hoy, en la pantalla de cocina sale una línea con el nombre del menú y su cantidad, en «Sin estación» (la línea del menú no lleva categoría), salvo que el propio menú esté enrutado como producto.
-3. Cuando una ronda trae los platos del menú, cada plato va a la estación de su propio producto, con la cantidad multiplicada por la de menús; en cada estación sale la cabecera del menú (su nombre de cocina, o «Menú») con «N platos» y sus platos sangrados debajo.
-4. Tocar la cabecera del menú marca listos los platos de ese menú que hay en pantalla, y nada más; el menú se tacha cuando se marcan todos.
-Entra: de Ventas, la línea del menú.
+2. Ventas manda en la ronda los platos elegidos de cada menú (SALES-F20), y cada plato va a la estación de su propio producto, con la cantidad multiplicada por la de menús; en cada estación sale la cabecera del menú (su nombre de cocina, o «Menú») con «N platos» y sus platos sangrados debajo.
+3. Tocar la cabecera del menú marca listos los platos de ese menú que hay en pantalla, y nada más; el menú se tacha cuando se marcan todos.
+Entra: de Ventas, la línea del menú con sus platos elegidos: qué producto es cada plato (congelado al añadir el menú a la cuenta), su cantidad y la nota del menú, que sale en cada plato. Un plato que es un servicio no llega.
 Sale: los platos de la comanda; cuando el menú viene desglosado, sus platos van a 0 € y el precio del menú se cuenta una sola vez en el total de la comanda. El papel imprime la cabecera del menú encima de sus platos (KITCHEN-F08).
 Si falla: un menú que llega desglosado pero sin ningún plato elegido se rechaza entero (no se abre una tarjeta en blanco).
 Implicados: COMBOS-F11, SALES-F12, SALES-F20, REC_RESTAURANTE-F07
