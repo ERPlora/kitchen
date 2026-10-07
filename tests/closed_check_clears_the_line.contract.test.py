@@ -141,6 +141,38 @@ def check_filter_exists() -> None:
         )
 
 
+SETTINGS_QUERY = "kitchen.settings.get"
+
+
+def check_paper_kitchen_inputs() -> None:
+    """kitchen#153: the charge also serves what nobody will mark on a screen, and the handler can
+    only tell from two inputs. Without the settings read it never learns the kitchen works on
+    paper (every round stays «Por preparar» for ever); without `screen_lines` in the rounds it
+    never learns a round went only to paper stations."""
+    cmd = (MANIFEST.get("commands") or {}).get(CLOSER) or {}
+    settings = next(
+        (r for r in cmd.get("reads") or [] if r.get("query") == SETTINGS_QUERY), None
+    )
+    if not settings:
+        fail(
+            f"`{CLOSER}` does not read `{SETTINGS_QUERY}`: a kitchen that works on paper would "
+            "keep every paid round on the screen and in the cash-close review (kitchen#153)"
+        )
+    elif settings.get("required"):
+        fail(
+            f"the read of `{SETTINGS_QUERY}` must NOT be `required`: a hub that cannot answer it "
+            "falls back to the screen kitchen, it does not send the check to the dead-letter"
+        )
+    query = (MANIFEST.get("queries") or {}).get(ROUNDS_QUERY) or {}
+    sql = (MODULE_DIR / query.get("sql", "")).read_text(encoding="utf-8")
+    sql = re.sub(r"--[^\n]*", "", sql)
+    if not re.search(r"\bAS\s+screen_lines\b", sql, flags=re.IGNORECASE):
+        fail(
+            f"`{query.get('sql')}` does not count `screen_lines`: a round that only went to paper "
+            "stations looks like a screen round and stays on the line for ever (kitchen#153)"
+        )
+
+
 def check_schema() -> None:
     cmd = (MANIFEST.get("commands") or {}).get(CLOSER) or {}
     rel = cmd.get("schema")
@@ -167,6 +199,7 @@ def main() -> int:
     check_route()
     check_reads()
     check_filter_exists()
+    check_paper_kitchen_inputs()
     check_schema()
 
     for e in errors:

@@ -1,0 +1,13 @@
+-- kitchen#153 · does the kitchen mark its rounds on the screen?
+--
+-- After kitchen#145 the charge only serves the rounds the pass already bumped: what is still in the
+-- queue or on the stove keeps cooking until somebody marks it on the screen. A kitchen that works
+-- only from the printed order never marks anything, so every round it charged stayed «Por preparar»
+-- for ever — on the screen and in the cash-close review. With this switch off, the charge serves
+-- every round of the check (the paper is what the cook read).
+--
+-- DEFAULT 1 on purpose: a hub that updates keeps exactly the behaviour it has today (kitchen#145,
+-- never take food that is cooking off a screen kitchen's line). The kitchen on paper turns it off
+-- in Ajustes → Cocina. Additive and reversible: `ALTER TABLE kitchen_settings DROP COLUMN
+-- works_from_screen` undoes it, and nothing else reads the column.
+ALTER TABLE kitchen_settings ADD COLUMN IF NOT EXISTS works_from_screen INTEGER NOT NULL DEFAULT 1;

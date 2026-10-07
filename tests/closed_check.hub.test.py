@@ -30,16 +30,40 @@ below was a cancelled round before kitchen#145:
      in the queue and still leaves the line once it is served.
   3. A split check: charging the original keeps the round whose dishes moved to the new check.
 
+kitchen#153 — what nobody is going to mark on a screen leaves at the charge. After kitchen#145 a
+kitchen that works only from the printed order (nobody touches the screen) kept every round it
+charged «Por preparar» for ever: on the screen and in the cash-close review (`kitchen.orders.display`
+is the list Caja reads), growing day after day.
+
+  4. A kitchen on paper (Ajustes → «The kitchen works from the screen» off): charging the check
+     serves every round still on the line — the one on the stove and the one fired with the charge
+     — strikes their dishes and takes them off `kitchen.orders.display`. The round of ANOTHER open
+     check is still in the queue, the very state the paper rule moves, so a leak between checks
+     would show (HALLAZGO of kitchen#152).
+  5. A screen kitchen with a station that only prints: a round whose every dish went to that
+     station leaves at the charge (Toast, Lightspeed K and Odoo never put it on a screen at all); a
+     round with ONE dish on a screen keeps cooking, as kitchen#145 decided.
+
 Usage: `erplora test <dir> --against-hub [dev|stable|sha256:…]` (module-toolkit#110). Never on its
 own: without a runtime it fails, it does not skip.
 """
 
+import json
+import pathlib
 import sys
 import time
 import uuid
 
 import hub_harness
-from hub_harness import ONE, Hub, fire, open_order, unique, wait_for_tickets
+from hub_harness import (
+    ONE,
+    Hub,
+    catalog_product,
+    fire,
+    open_order,
+    unique,
+    wait_for_tickets,
+)
 
 CANA = {"product_name": "Caña", "price": 250, "quantity": ONE}
 
@@ -76,7 +100,7 @@ def wait_for(hub: Hub, order_id: str, want: dict, timeout: float = 10.0) -> dict
     return seen
 
 
-def charge(hub: Hub, cash: str, order_id: str) -> None:
+def charge(hub: Hub, cash: str, order_id: str, tendered: int = 250) -> None:
     """The full charge of `order_id`, the call the till makes: it emits `order.completed`."""
     hub.run(
         "sales.complete_sale",
@@ -84,7 +108,7 @@ def charge(hub: Hub, cash: str, order_id: str) -> None:
             "idempotency_key": f"hub-battery-close-{uuid.uuid4().hex[:8]}",
             "payment_method_id": cash,
             "order_id": order_id,
-            "amount_tendered": 250,
+            "amount_tendered": tendered,
             "tax_included": True,
             "items": [dict(CANA, tax_rate=21.0)],
         },
@@ -199,18 +223,133 @@ def test_a_split_check_keeps_the_round_of_the_moved_dishes(hub: Hub, cash: str) 
     )
 
 
+def set_works_from_screen(hub: Hub, value: bool) -> None:
+    """Saves Ajustes → Cocina the way the shell's form does: the WHOLE snapshot (upsert), starting
+    from the row the hub already has or, on a hub that never saved, the schema defaults."""
+    schema = json.loads(
+        (pathlib.Path(__file__).resolve().parent.parent / "schemas" / "settings_update.json")
+        .read_text(encoding="utf-8")
+    )
+    snapshot = {k: v.get("default") for k, v in schema["properties"].items()}
+    current = hub.query("kitchen.settings.get")
+    if current:
+        snapshot.update({k: current[0][k] for k in snapshot if k in current[0]})
+    for key, spec in schema["properties"].items():
+        if spec.get("type") == "boolean" and isinstance(snapshot[key], int):
+            snapshot[key] = bool(snapshot[key])
+    snapshot["works_from_screen"] = value
+    hub.run("kitchen.settings.update", snapshot)
+
+
+def on_display(hub: Hub, ticket_ids: set) -> set:
+    """Which of `ticket_ids` the screen — and the cash-close review, the same list — still shows."""
+    return {r.get("order_id") for r in hub.query("kitchen.orders.display")} & ticket_ids
+
+
+def test_a_kitchen_on_paper_clears_what_it_charged(hub: Hub, cash: str) -> None:
+    print("\n4 · a kitchen on paper: the charge serves every round of the check (kitchen#153)")
+    set_works_from_screen(hub, False)
+    try:
+        paid = open_order(hub, [CANA])
+        fire(hub, paid, label=unique("mesa-papel"))
+        first = wait_for_tickets(hub, paid, 1)[0]
+        hub.run(
+            "kitchen.orders.set_status", {"order_id": first["id"], "action_name": "fire"}
+        )
+
+        eating = open_order(hub, [CANA])
+        fire(hub, eating, label=unique("mesa-papel-eating"))
+        neighbour = wait_for_tickets(hub, eating, 1)[0]
+
+        # The last round is fired and charged in the same gesture, as the till does.
+        fire(hub, paid, label=unique("mesa-papel"))
+        tickets = {t["id"] for t in wait_for_tickets(hub, paid, 2)}
+        hub.check(
+            "before the charge both rounds are on the screen (positive control)",
+            on_display(hub, tickets),
+            tickets,
+        )
+        charge(hub, cash, paid)
+
+        hub.check(
+            "both rounds of the paid check are served",
+            wait_for(hub, paid, {1: "served", 2: "served"}),
+            {1: "served", 2: "served"},
+        )
+        hub.check(
+            "they are off the screen and the cash-close review",
+            on_display(hub, tickets),
+            set(),
+        )
+        lines = [
+            i.get("status")
+            for t in tickets
+            for i in hub.query("kitchen.orders.items", {"order_id": t})
+        ]
+        hub.check("their dishes are struck", sorted(set(lines)), ["ready"])
+        hub.check(
+            "the round of the check still open stays in the queue",
+            statuses(hub, eating),
+            {1: "pending"},
+        )
+        hub.check(
+            "and on the screen",
+            on_display(hub, {neighbour["id"]}),
+            {neighbour["id"]},
+        )
+    finally:
+        set_works_from_screen(hub, True)
+
+
+def test_a_round_only_on_paper_leaves_at_the_charge(hub: Hub, cash: str) -> None:
+    print("\n5 · a screen kitchen: a round that only went to a paper station leaves (kitchen#153)")
+    tag = unique("paper-station")
+    grill = hub.run(
+        "kitchen.stations.create",
+        {"name": f"Plancha {tag}", "destination": "printer", "printer_role": "kitchen"},
+    )["new_ids"][0]
+    croquetas = catalog_product(hub, f"Croquetas {tag}", f"CROQ-{tag}", 250)
+    hub.run(
+        "kitchen.stations.set_routing", {"station_id": grill, "product_id": croquetas}
+    )
+    paper_line = {"product_id": croquetas, "product_name": "Croquetas", "price": 250, "quantity": ONE}
+
+    only_paper = open_order(hub, [paper_line])
+    fire(hub, only_paper, label=unique("mesa-plancha"))
+    wait_for_tickets(hub, only_paper, 1)
+    mixed = open_order(hub, [paper_line, CANA])
+    fire(hub, mixed, label=unique("mesa-mixta"))
+    wait_for_tickets(hub, mixed, 1)
+
+    charge(hub, cash, only_paper)
+    charge(hub, cash, mixed, tendered=500)
+    hub.check(
+        "the round that only went to the paper station is served",
+        wait_for(hub, only_paper, {1: "served"}),
+        {1: "served"},
+    )
+    settle(hub)
+    hub.check(
+        "the round with a dish on the screen keeps cooking (kitchen#145)",
+        statuses(hub, mixed),
+        {1: "pending"},
+    )
+
+
 def main() -> int:
     hub = Hub("closed_check.hub")
     print(
-        f"Hub battery · closed check (kitchen#79, kitchen#145) · {hub_harness.BASE} · hub {hub.hub_id} · user {hub.user}"
+        f"Hub battery · closed check (kitchen#79, kitchen#145, kitchen#153) · {hub_harness.BASE} · hub {hub.hub_id} · user {hub.user}"
     )
     cash = cash_method_id(hub)
     test_a_table_that_pays_early_keeps_what_is_cooking(hub, cash)
     test_pay_and_go_reaches_the_cook(hub, cash)
     test_a_split_check_keeps_the_round_of_the_moved_dishes(hub, cash)
+    test_a_kitchen_on_paper_clears_what_it_charged(hub, cash)
+    test_a_round_only_on_paper_leaves_at_the_charge(hub, cash)
     return hub.finish(
-        "a check charged in full serves its bumped rounds and keeps cooking the rest, and touches "
-        "only its own, against the real kernel"
+        "a check charged in full serves its bumped rounds, and also what nobody will mark on a "
+        "screen, keeps cooking the rest, and touches only its own, against the real kernel"
     )
 
 

@@ -136,7 +136,8 @@
         "since": "2.3.33"
       },
       "migrations/postgres/011_rush_count.sql",
-      "migrations/postgres/012_station_name_ignores_deleted.sql"
+      "migrations/postgres/012_station_name_ignores_deleted.sql",
+      "migrations/postgres/013_works_from_screen.sql"
     ]
   },
   "queries": {
@@ -585,6 +586,10 @@
             "f_source_order_id": "payload.order_id"
           },
           "required": true
+        },
+        {
+          "query": "kitchen.settings.get",
+          "required": false
         }
       ],
       "handler": {
@@ -593,7 +598,7 @@
         "function": "close_orders_from_order"
       },
       "ai": {
-        "description": "Closes the bumped rounds of a CLOSED ORDER (event `order.completed`, ADR-0146): a round already bumped becomes served and leaves the KDS; a round still waiting or cooking keeps cooking until the kitchen serves it, because paying does not stop the cooking (kitchen#145). Never hangs off `sale.completed`, which also fires on a partial leg of a split bill where the guests are still seated."
+        "description": "Closes the rounds of a CLOSED ORDER (event `order.completed`, ADR-0146): a round already bumped becomes served and leaves the KDS; a round still waiting or cooking keeps cooking until the kitchen serves it, because paying does not stop the cooking (kitchen#145) — unless nobody is going to mark it on a screen: every one of its lines went to a printer-only station, or the kitchen works only from the printed order (setting `works_from_screen` off). Those are served at the charge (kitchen#153). Never hangs off `sale.completed`, which also fires on a partial leg of a split bill where the guests are still seated."
       }
     },
     "kitchen.stations.create": {

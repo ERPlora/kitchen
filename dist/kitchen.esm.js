@@ -2052,6 +2052,10 @@ var es_default = {
         label: "Imprimir el pase al marcar listo",
         description: "Cada vez que se marca lista una comanda, saca en la impresora de cada estaci\xF3n los platos que salen. No es la comanda del disparo, que ya la imprime el enrutado por estaci\xF3n."
       },
+      works_from_screen: {
+        label: "La cocina trabaja con la pantalla",
+        description: "Ap\xE1galo si la cocina trabaja solo con la comanda en papel y nadie marca nada en la pantalla de cocina: al cobrar una cuenta se dan por servidas todas sus rondas, y salen de la pantalla y de la revisi\xF3n del cierre de caja. Encendido, lo que se est\xE1 cocinando sigue en la pantalla hasta que el pase lo sirve."
+      },
       default_order_type: {
         label: "Tipo de comanda por defecto"
       }
@@ -2236,6 +2240,10 @@ var en_default = {
       auto_print_tickets: {
         label: "Print the pass when marked ready",
         description: "Every time a ticket is bumped, prints the plates going out on the printer of their station. It is not the kitchen order at fire time, which station routing already prints."
+      },
+      works_from_screen: {
+        label: "The kitchen works from the screen",
+        description: "Turn it off if the kitchen works only from the printed order and nobody marks anything on the kitchen screen: charging a check then serves all its rounds, so they leave the screen and the cash-close review. On, a round still cooking stays on the screen until the pass serves it."
       },
       default_order_type: {
         label: "Default order type"

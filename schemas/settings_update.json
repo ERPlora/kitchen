@@ -59,6 +59,12 @@
       "type": "boolean",
       "default": false
     },
+    "works_from_screen": {
+      "title": "The kitchen works from the screen",
+      "description": "Turn it off if the kitchen works only from the printed order and nobody marks anything on the kitchen screen: charging a check then serves all its rounds, so they leave the screen and the cash-close review. On, a round still cooking stays on the screen until the pass serves it.",
+      "type": "boolean",
+      "default": true
+    },
     "default_order_type": {
       "title": "Default order type",
       "type": "string",
@@ -79,6 +85,7 @@
     "sound_volume",
     "sound_tone",
     "auto_print_tickets",
+    "works_from_screen",
     "default_order_type"
   ]
 }
