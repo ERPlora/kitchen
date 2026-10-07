@@ -2667,7 +2667,11 @@ var ErpKitchenDisplay = class extends i3 {
     .combo-lines .line:first-child { border-top:0; }
     .combo[data-combo-done="true"] .combo-head { opacity:.5; }
     .combo[data-combo-done="true"] .combo-name { text-decoration: line-through; }
-    .foot { display:flex; gap:.5rem; padding:.5rem .75rem; border-top:1px solid var(--ion-border-color, #e7e2d6); }
+    /* kitchen#156 · the footer WRAPS. A half-marked ticket carries three buttons (Ready, Mark rush,
+       Recall) and on a portrait tablet's ~254 px column one row could not hold them: «Recall» ran
+       past the card's overflow:hidden edge as «Recupe…». A button that does not fit drops to the
+       next row and fills it (Toast, Square, Fresh keep every action on the card the same way). */
+    .foot { display:flex; flex-wrap:wrap; gap:.5rem; padding:.5rem .75rem; border-top:1px solid var(--ion-border-color, #e7e2d6); }
     .foot ion-button { flex:1; }
     /* kitchen#42 — el fondo del bump se declara AQUÍ, dentro del shadow root, y no con
        \`color="success"\`. Ionic implementa \`color=\` con la regla GLOBAL
