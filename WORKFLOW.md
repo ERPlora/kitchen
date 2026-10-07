@@ -365,9 +365,6 @@ Se resuelven con `market-decision`; no las decide el worker.
 - `docs/screens.md` dice que la tarjeta envejece desde que la comanda se envió: cuenta desde que llega y vuelve a cero cuando cocina la toca por primera vez
   (KITCHEN-F10, leído en el código, sin ejecutar). BD-08 espera «el semáforo refleja el tiempo
   real», por eso va marcado `(discrepa)`.
-- En Ajustes, las opciones de «Tono del sonido» y de «Tipo de comanda por defecto» salen con su valor
-  interno en inglés (`chime`, `bell`, `buzzer`, `dine_in`, `takeaway`, `delivery`): `locales/es.json`
-  no les da nombre.
 - Un rechazo `kitchen.item_unavailable` en la pantalla de cocina sale con el mensaje del servidor en
   inglés: `locales/es.json` no lo traduce.
 - La hoja «Comandas de la cuenta» no enseña la hora de envío sino la de llegada a cocina o la de

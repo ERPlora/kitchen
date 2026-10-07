@@ -80,12 +80,12 @@ Implicados: ninguno
 QA: ninguno
 
 ### KITCHEN-F26 Ajustar la pantalla de cocina
-Estado: parcial — solo un administrador puede guardarlos desde la pantalla (el responsable tiene el permiso, pero el formulario del hub se lo enseña de solo lectura), aunque sí puede cambiarlos por el asistente; y las opciones de «Tono del sonido» y «Tipo de comanda por defecto» salen con su valor interno en inglés porque a la traducción del propio módulo (`locales/es.json`) le faltan sus nombres (`settings.fields.<clave>.options`), que el formulario del hub ya lee
+Estado: parcial — solo un administrador puede guardarlos desde la pantalla (el responsable tiene el permiso, pero el formulario del hub se lo enseña de solo lectura), aunque sí puede cambiarlos por el asistente
 Actor: administrador
 Pantalla: Ajustes
 Pasos:
 1. Abre **Cocina → Ajustes**.
-2. Cambia lo que haga falta: «Mostrar cronómetro», «Aviso ámbar (minutos)» (15 de fábrica), «Aviso rojo (minutos)» (30), «Semáforo de color», «Sonar al entrar una comanda», «Volumen del sonido (0-100)» (70), «Tono del sonido» (`chime` de fábrica, `bell` o `buzzer`), «Imprimir el pase al marcar listo» (apagado), «La cocina trabaja con la pantalla» (encendido; se apaga si en la cocina nadie marca nada en la pantalla y se cocina solo con la comanda en papel) y «Tipo de comanda por defecto» (`dine_in`).
+2. Cambia lo que haga falta: «Mostrar cronómetro», «Aviso ámbar (minutos)» (15 de fábrica), «Aviso rojo (minutos)» (30), «Semáforo de color», «Sonar al entrar una comanda», «Volumen del sonido (0-100)» (70), «Tono del sonido» («Campanilla» de fábrica, «Timbre» o «Zumbador»), «Imprimir el pase al marcar listo» (apagado), «La cocina trabaja con la pantalla» (encendido; se apaga si en la cocina nadie marca nada en la pantalla y se cocina solo con la comanda en papel) y «Tipo de comanda por defecto» («En sala» de fábrica, «Para llevar» o «A domicilio»). Cada opción sale con su nombre en el idioma de la persona, el mismo que usan la pantalla y la lista de Comandas (kitchen#159); lo que se guarda es su valor interno (`chime`, `dine_in`…).
 3. Pulsa «Guardar»: sale «Ajustes guardados.».
 4. Las pantallas de cocina abiertas toman los ajustes nuevos al momento.
 Entra: los valores del formulario.
