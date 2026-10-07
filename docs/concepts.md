@@ -31,6 +31,19 @@ Nothing is ever cancelled at the charge. The setting is on by default, so an upd
 before until someone switches it off; switching it off acts from the next charge, and what was
 charged before is served by hand.
 
+## Deleting or merging a check
+
+**Deleting** an open check in the till cancels its rounds still on the line — waiting, cooking or
+ready — with their dishes, as a manager cancelling them by hand would (kitchen#162; Toast voids the
+ticket on the KDS the same way). They leave the screen and the cash-close review and show up in the
+log as cancelled. Served and cancelled rounds stay as they are. The kitchen first reads the check
+from Sales and only cancels when it really is voided, so a void that reaches a check already paid
+does not stop the cooking.
+
+**Merging** two checks (two tables joined) hands the rounds of the absorbed check to the one that
+stays, after its own rounds, in the same status and with the label they were sent with. From then on
+they belong to that check: its sheet in the till lists them and charging it closes them like its own.
+
 ## Every fire is a new round
 
 Pressing send again does not resend the whole check. It sends **only the lines never fired before**,
