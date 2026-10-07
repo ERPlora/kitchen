@@ -9,19 +9,23 @@ tres avisos de fuera: ronda enviada, cuenta cerrada y fichas de cliente unidas.
 ## Flujos
 
 ### KITCHEN-F27 Cerrar las rondas al cobrar la cuenta entera
-Estado: parcial — en un local que trabaja solo con papel (nadie marca nada en la pantalla de cocina), lo cobrado que no estaba Lista no se cierra nunca: se queda en la pantalla de cocina y en «Comandas sin servir» del cierre de caja, y crece cada día (ERPlora/kitchen#153)
+Estado: hecho
 Actor: sistema
 Pantalla: ninguna
 Pasos:
 1. El cajero cobra la cuenta entera en el TPV; un cobro parcial no cuenta. Si había artículos sin enviar, el TPV los envía antes de cobrar, como una ronda más.
 2. Ventas avisa de que la cuenta se cerró.
 3. Cocina toma las rondas de esa cuenta: las Listas pasan a Servidas y salen de la pantalla de cocina. Las Por preparar y En preparación **no se tocan**: cobrar no para la cocina (como Toast, Square y Lightspeed); siguen en la pantalla y en el «Resumen» hasta que el pase las marca Servidas (KITCHEN-F13). Las Servidas y las Canceladas no se tocan.
-4. En «pide y paga» (barra, mostrador), la ronda que el TPV envía en el mismo gesto del cobro llega a cocina «Por preparar» y se cocina; da igual en qué orden lleguen los dos avisos: si el cierre llega antes que la ronda, no encuentra nada que cerrar y la ronda nace después igual que siempre.
-5. Si una mesa paga antes de terminar, lo que se está cocinando sigue en la pantalla. Si esa comida ya no se debe hacer (el cliente se fue), un responsable la cancela a mano (KITCHEN-F22).
-6. En una cuenta dividida, cobrar la original no toca lo que se cocina, tampoco las rondas de los platos que pasaron a la cuenta nueva; sus rondas Listas sí pasan a Servidas.
+4. Salvo lo que nadie va a marcar en una pantalla, que al cobrar pasa a Servida con sus platos tachados como Listos, y sale de la pantalla, del «Resumen», del «En curso» de su estación y de «Comandas sin servir» del cierre de caja (kitchen#153):
+   - en un local que cocina solo con la comanda en papel («La cocina trabaja con la pantalla» apagado en Cocina → Ajustes, KITCHEN-F26), todas las rondas Por preparar y En preparación de la cuenta;
+   - con el ajuste encendido, la ronda cuyos platos fueron todos a estaciones solo de impresora (la barra en papel). Una ronda con algún plato en una estación con pantalla sigue cocinando como en el paso 3.
+   Nunca se cancela nada al cobrar. Apagar el ajuste vale desde el siguiente cobro: lo cobrado antes se sirve a mano, comanda a comanda (KITCHEN-F13, KITCHEN-F21); vaciarlo de golpe no existe (kitchen#158).
+5. En «pide y paga» (barra, mostrador), la ronda que el TPV envía en el mismo gesto del cobro llega a cocina «Por preparar» y se cocina (si fue entera a la barra en papel, o el local cocina en papel, sale servida en cuanto llegan los dos avisos); da igual en qué orden lleguen los dos avisos: si el cierre llega antes que la ronda, no encuentra nada que cerrar y la ronda nace después igual que siempre.
+6. Si una mesa paga antes de terminar, lo que se está cocinando sigue en la pantalla. Si esa comida ya no se debe hacer (el cliente se fue), un responsable la cancela a mano (KITCHEN-F22).
+7. En una cuenta dividida, cobrar la original no toca lo que se cocina, tampoco las rondas de los platos que pasaron a la cuenta nueva; sus rondas Listas sí pasan a Servidas.
 Entra: de Ventas, la cuenta cerrada (avisa: order.completed), que sale una sola vez, con el cobro final.
-Sale: cada ronda Lista pasa a Servida (avisa: kitchen.order.served) con su entrada en el Historial. Nada vuelve al TPV. Solo se tocan las rondas de la cuenta cobrada; las comandas creadas a mano no se cierran nunca al cobrar. Lo que sigue en marcha sale en la revisión del cierre de caja (KITCHEN-F31).
-Si falla: si una ronda Lista se recupera justo entre que se lee y se escribe, el cierre se rechaza entero y el aviso se reintenta; un aviso repetido de la misma cuenta no cambia nada.
+Sale: cada ronda Lista, y cada una de las del paso 4, pasa a Servida (avisa: kitchen.order.served) con su entrada en el Historial; los platos de las del paso 4 quedan Listos. Nada vuelve al TPV. Solo se tocan las rondas de la cuenta cobrada; las comandas creadas a mano no se cierran nunca al cobrar. Lo que sigue en marcha sale en la revisión del cierre de caja (KITCHEN-F31).
+Si falla: si una ronda cambia de estado justo entre que se lee y se escribe (una Lista que se recupera, una Por preparar que se marca), el cierre se rechaza entero y el aviso se reintenta con el estado nuevo; un aviso repetido de la misma cuenta no cambia nada. Si no se pueden leer los ajustes, Cocina trabaja como con la pantalla encendida: de lo que se está cocinando solo se sirve la ronda que fue entera a estaciones solo de impresora.
 Implicados: SALES-F01, SALES-F20, SALES-F22, SALES-F23, REC_RESTAURANTE-F10, REC_RESTAURANTE-F11, REC_RESTAURANTE-F17
 QA: R-09, R-10, qa-hub-restaurant §7.10
 

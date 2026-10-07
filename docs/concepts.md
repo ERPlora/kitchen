@@ -19,6 +19,18 @@ round and charges it in the same gesture, and the round still reaches the cook. 
 split check changes nothing in the kitchen. Food that must not be made any more is cancelled by
 hand from **Kitchen → Commands**.
 
+The exception is food **nobody is going to mark on a screen** (kitchen#153), which is served at the
+charge with its plates struck, so it leaves the screen, the station's in-progress count and the
+cash-close review:
+
+- a round all of whose lines went to **printer-only** stations (the bar on paper), always;
+- every round of the check still waiting or cooking, when **«The kitchen works from the screen»** is
+  off in the settings — the kitchen that cooks from the printed order only.
+
+Nothing is ever cancelled at the charge. The setting is on by default, so an updated hub behaves as
+before until someone switches it off; switching it off acts from the next charge, and what was
+charged before is served by hand.
+
 ## Every fire is a new round
 
 Pressing send again does not resend the whole check. It sends **only the lines never fired before**,

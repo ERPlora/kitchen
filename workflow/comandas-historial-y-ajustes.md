@@ -85,11 +85,11 @@ Actor: administrador
 Pantalla: Ajustes
 Pasos:
 1. Abre **Cocina → Ajustes**.
-2. Cambia lo que haga falta: «Mostrar cronómetro», «Aviso ámbar (minutos)» (15 de fábrica), «Aviso rojo (minutos)» (30), «Semáforo de color», «Sonar al entrar una comanda», «Volumen del sonido (0-100)» (70), «Tono del sonido» (`chime` de fábrica, `bell` o `buzzer`), «Imprimir el pase al marcar listo» (apagado) y «Tipo de comanda por defecto» (`dine_in`).
+2. Cambia lo que haga falta: «Mostrar cronómetro», «Aviso ámbar (minutos)» (15 de fábrica), «Aviso rojo (minutos)» (30), «Semáforo de color», «Sonar al entrar una comanda», «Volumen del sonido (0-100)» (70), «Tono del sonido» (`chime` de fábrica, `bell` o `buzzer`), «Imprimir el pase al marcar listo» (apagado), «La cocina trabaja con la pantalla» (encendido; se apaga si en la cocina nadie marca nada en la pantalla y se cocina solo con la comanda en papel) y «Tipo de comanda por defecto» (`dine_in`).
 3. Pulsa «Guardar»: sale «Ajustes guardados.».
 4. Las pantallas de cocina abiertas toman los ajustes nuevos al momento.
 Entra: los valores del formulario.
-Sale: los ajustes del hub (el primer guardado crea la fila) (avisa: kitchen.settings.updated). Mueven el reloj y el semáforo (KITCHEN-F10), el sonido (KITCHEN-F16) y el pase (KITCHEN-F17); el tipo por defecto solo abre «Nueva comanda» (KITCHEN-F23), no cambia las rondas del TPV.
+Sale: los ajustes del hub (el primer guardado crea la fila) (avisa: kitchen.settings.updated). Mueven el reloj y el semáforo (KITCHEN-F10), el sonido (KITCHEN-F16), el pase (KITCHEN-F17) y qué rondas cierra el cobro (KITCHEN-F27, desde el siguiente cobro: lo ya cobrado no cambia); el tipo por defecto solo abre «Nueva comanda» (KITCHEN-F23), no cambia las rondas del TPV.
 Si falla: «No se pudieron guardar los ajustes.» y el motivo bajo el formulario. Minutos fuera de 1–120 o volumen fuera de 0–100 se rechazan; un aviso ámbar igual o mayor que el rojo también (texto exacto sin confirmar). Si una pantalla de cocina no puede leer los ajustes, usa los de fábrica.
 Implicados: HUB-F33, HUB_SHELL-F43, HUB_SHELL-F44
 QA: qa-hub-restaurant §7.08

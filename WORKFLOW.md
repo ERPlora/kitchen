@@ -39,6 +39,13 @@ esto, no más:
   la comanda pasa sola a la siguiente etapa cuando se tacha el último plato.
 - De Toast, Fresh KDS y MobiPOS: imprimir el pase al marcar listo, apagado de fábrica; de siete
   KDS que suenan, un solo interruptor de sonido con volumen y tono de una lista cerrada.
+- [Toast — estaciones de preparación](https://support.toasttab.com/en/article/Prep-Stations-Basics),
+  [Lightspeed K — centros de producción](https://k-series-support.lightspeedhq.com/hc/articles/1260804658689)
+  y la [pantalla de preparación de Odoo](https://www.odoo.com/documentation/19.0/applications/sales/point_of_sale/extra/preparation.html):
+  lo que va solo a impresora no espera a que nadie lo marque en el KDS. Ningún TPV grande cierra al
+  cobrar lo que se está cocinando en pantalla (LS Central y Simphony usan el pago como condición, no
+  como disparador). Se adopta así: al cobrar sale lo que nadie va a marcar — la ronda que fue entera a
+  estaciones solo de impresora y, en una cocina que trabaja en papel, todo (kitchen#153).
 
 ## Antes de empezar
 
@@ -59,7 +66,9 @@ Configuración inicial, paso a paso:
    productos sueltos que deban ir a otra (KITCHEN-F04). Lo que no tenga estación sale en la pantalla
    bajo «Sin estación» y por la impresora de cocina.
 3. En **Cocina → Ajustes**, ajusta los avisos ámbar y rojo, el sonido y, si se quiere, el pase en
-   papel (KITCHEN-F26).
+   papel (KITCHEN-F26). Si en la cocina nadie va a marcar nada en la pantalla (se cocina solo con la
+   comanda en papel), apaga «La cocina trabaja con la pantalla»: al cobrar, lo de la cuenta sale de la
+   pantalla y de «Comandas sin servir» del cierre de caja (KITCHEN-F27).
 4. En la tableta de la cocina abre **Cocina → Pantalla**, pulsa «Pantalla completa» y toca la
    pantalla una vez para que el navegador deje sonar el aviso (KITCHEN-F16).
 5. Desde el TPV, envía una ronda de prueba y comprueba que cada plato sale en su estación
@@ -121,7 +130,7 @@ Cargando: «Cargando…». Error: el de la tabla con reintento.
 Pestaña **Cocina → Ajustes**, la pone el hub con su formulario genérico:
 «Mostrar cronómetro», «Aviso ámbar (minutos)», «Aviso rojo (minutos)», «Semáforo de color», «Sonar al
 entrar una comanda», «Volumen del sonido (0-100)», «Tono del sonido», «Imprimir el pase al marcar
-listo» y «Tipo de comanda por defecto», con «Guardar». Quien no es administrador la ve de solo
+listo», «La cocina trabaja con la pantalla» y «Tipo de comanda por defecto», con «Guardar». Quien no es administrador la ve de solo
 lectura con «Solo un administrador puede cambiar estos ajustes.». Cargando: «Cargando ajustes…».
 Error: «No se pudieron cargar los ajustes.».
 
@@ -172,7 +181,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | KITCHEN-F24 | Borrar una comanda | parcial | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
 | KITCHEN-F25 | Consultar el historial de cocina | parcial | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
 | KITCHEN-F26 | Ajustar la pantalla de cocina | parcial | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
-| KITCHEN-F27 | Cerrar las rondas al cobrar la cuenta entera | parcial | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
+| KITCHEN-F27 | Cerrar las rondas al cobrar la cuenta entera | hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 | KITCHEN-F28 | Retirar las rondas de una cuenta eliminada o unida a otra | no hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 | KITCHEN-F29 | Anular un plato ya enviado con aviso a cocina | no hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 | KITCHEN-F30 | Pasar las comandas de un cliente unido a otro | hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
@@ -203,6 +212,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | Enrutado por producto y por categoría | parcial: no se ve ni se quita | F04 |
 | Estado de cada ronda visible en el TPV | parcial: la hora no es la de envío y sale en UTC | F19 |
 | Cerrar en cocina lo de una cuenta cobrada, sin parar lo que se cocina | hecho (kitchen#145) | F27 |
+| Lo que solo va a papel no se queda en la pantalla | hecho: sale al cobrar (la ronda entera a estaciones solo de impresora, o todo si la cocina trabaja en papel, kitchen#153); la tarjeta sí se pinta mientras la cuenta sigue abierta | F27, F26 |
 | Anular un plato enviado con aviso a cocina | no hecho | F29 |
 | Cuenta anulada o unida: cocina se entera | no hecho | F28 |
 | Cancelar una comanda con motivo | parcial: sin motivo ni confirmación en pantalla | F22 |
@@ -275,13 +285,16 @@ los platos y la cabecera de cada comanda para imprimirla (KITCHEN-F08); a Flujos
   nombre del menú y los suplementos se congelan en cada plato; cambiar el destino o el enrutado de
   una estación hoy no cambia a dónde fueron ni por dónde salen las rondas de ayer (el nombre que
   pinta la pantalla sí es el vivo de la estación).
-- **Cobrar una cuenta solo toca las rondas de esa cuenta, y nunca cancela lo que se cocina**: solo
-  da por servidas sus rondas Listas (kitchen#145).
+- **Cobrar una cuenta solo toca las rondas de esa cuenta, y nunca cancela nada**: da por servidas
+  sus rondas Listas (kitchen#145) y, además, lo que nadie va a marcar en una pantalla — la ronda que
+  fue entera a estaciones solo de impresora y, si «La cocina trabaja con la pantalla» está apagado,
+  todas (kitchen#153). Lo demás sigue cocinando.
 - **Estaciones**: el nombre no se repite entre las estaciones vivas del hub; no se borra una estación
   con productos o categorías enrutados ni con platos por hacer.
 - **Una comanda solo se borra si está Por preparar o Cancelada y no va ligada a una venta** (si no,
   la orden contesta bien y no borra nada, KITCHEN-F24).
-- **Ajustes**: minutos entre 1 y 120, el ámbar por debajo del rojo al guardar (las filas guardadas
+- **Ajustes**: «La cocina trabaja con la pantalla» viene encendido: un hub que se actualiza sigue
+  igual hasta que alguien lo apaga. Minutos entre 1 y 120, el ámbar por debajo del rojo al guardar (las filas guardadas
   antes de la regla no se revisan), volumen entre 0 y 100, tono de una lista de tres.
 - **Dinero**: Cocina no cobra. El total de una comanda es informativo, en céntimos; los platos de un
   menú van a 0 y el precio del menú se cuenta una vez.
@@ -298,6 +311,8 @@ los platos y la cabecera de cada comanda para imprimirla (KITCHEN-F08); a Flujos
 - No imprime la comanda del envío: la imprime el hub (KITCHEN-F08). Sí imprime el pase y el aviso de
   urgencia.
 - No crea comandas al cobrar: la orden antigua que lo hacía sigue publicada pero nada la dispara.
+- No vacía de golpe lo que quedó colgado: al apagar «La cocina trabaja con la pantalla», lo cobrado
+  antes se sirve comanda a comanda (kitchen#158).
 - No avisa ni guarda nada si se envía con Cocina desactivada: Ventas marca los platos como enviados y
   la comanda no existe nunca (`architecture/modules/kitchen.md`, «Entrega segura pendiente»).
 - No enseña precios en la pantalla de cocina.
