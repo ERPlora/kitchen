@@ -218,11 +218,14 @@ def main() -> int:
             "ELSE lpad(v::text, w, '0') END $$;",
         )
 
-        # Table 4 (stays) fired two rounds; table 5 (absorbed) fired two, one already served, and
-        # had a third one deleted. Another check of this hub, and the hub next door with the SAME
-        # check ids, sit beside them.
+        # Table 4 (stays) fired two rounds and had a ninth one deleted; table 5 (absorbed) fired
+        # two, one already served, and had a third one deleted. Another check of this hub, and the
+        # hub next door with the SAME check ids, sit beside them. The deleted round 9 and the
+        # neighbour's round 7 on table 4 are there to be IGNORED when the absorbed rounds are
+        # numbered: only the live rounds of this hub count, as when a round is fired.
         round_(db, "s1", HUB, STAYS, 1, label="Mesa 4")
         round_(db, "s2", HUB, STAYS, 2, status="ready", label="Mesa 4")
+        round_(db, "s-del", HUB, STAYS, 9, status="cancelled", label="Mesa 4", deleted=1)
         round_(db, "a1", HUB, ABSORBED, 1, status="served", label="Mesa 5")
         round_(db, "a2", HUB, ABSORBED, 2, status="preparing", label="Mesa 5")
         round_(
@@ -230,7 +233,7 @@ def main() -> int:
         )
         round_(db, "x1", HUB, "sales-o-7", 1, label="Mesa 7")
         round_(db, "n1", OTHER_HUB, ABSORBED, 1, label="Mesa 5")
-        round_(db, "n2", OTHER_HUB, STAYS, 1, label="Mesa 4")
+        round_(db, "n2", OTHER_HUB, STAYS, 7, label="Mesa 4")
         neighbour_before = fingerprint(db, OTHER_HUB)
 
         print(
