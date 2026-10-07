@@ -218,10 +218,10 @@ without a reader.
 | Colour semaphore | Whether the ticket is coloured by how long it has been waiting |
 | Sound on a new ticket | Whether an arriving ticket rings (kitchen#48) |
 | Sound volume (0-100) | How loud it rings. Default = the volume the module has always rung at |
-| Sound tone | `chime`, `bell` or `buzzer`, all synthesised — no file to upload, like the market (kitchen#72) |
+| Sound tone | Chime, Bell or Buzzer (stored as `chime`, `bell`, `buzzer`), all synthesised — no file to upload, like the market (kitchen#72). The form shows each option by its name, in the user's language (kitchen#159) |
 | Print the pass when marked ready | Every bump prints the plates going out on their station's printer (kitchen#70). **Off by default**: it is new paper, and Toast, Fresh KDS and MobiPOS ship it off too |
 | The kitchen works from the screen | **On by default.** Off for a kitchen that cooks from the printed order only: charging a check then serves all its rounds, so they leave the screen and the cash-close review (kitchen#153). On, only the rounds that went entirely to printer-only stations leave at the charge; the rest keeps cooking until the pass serves it |
-| Default order type | `dine_in`, `takeaway` or `delivery` |
+| Default order type | Dine in, Takeaway or Delivery (stored as `dine_in`, `takeaway`, `delivery`) — the same names the board and the orders table use |
 
 The retired controls (`auto_accept_orders`, `items_per_page`, `auto_refresh_seconds`,
 `sound_on_new_order`, `sound_on_rush`, `auto_bump_enabled`, `auto_bump_delay_seconds`, `use_rounds`,

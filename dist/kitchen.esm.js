@@ -2046,7 +2046,12 @@ var es_default = {
       },
       sound_tone: {
         label: "Tono del sonido",
-        description: "Qu\xE9 sonido hace una comanda nueva: campanilla, timbre o zumbador. El zumbador es el que se oye con la campana a tope."
+        description: "Qu\xE9 sonido hace una comanda nueva: campanilla, timbre o zumbador. El zumbador es el que se oye con la campana a tope.",
+        options: {
+          chime: "Campanilla",
+          bell: "Timbre",
+          buzzer: "Zumbador"
+        }
       },
       auto_print_tickets: {
         label: "Imprimir el pase al marcar listo",
@@ -2057,7 +2062,12 @@ var es_default = {
         description: "Ap\xE1galo si la cocina trabaja solo con la comanda en papel y nadie marca nada en la pantalla de cocina: al cobrar una cuenta se dan por servidas todas sus rondas, y salen de la pantalla y de la revisi\xF3n del cierre de caja. Encendido, lo que se est\xE1 cocinando sigue en la pantalla hasta que el pase lo sirve."
       },
       default_order_type: {
-        label: "Tipo de comanda por defecto"
+        label: "Tipo de comanda por defecto",
+        options: {
+          dine_in: "En sala",
+          takeaway: "Para llevar",
+          delivery: "A domicilio"
+        }
       }
     }
   },
@@ -2235,7 +2245,12 @@ var en_default = {
       },
       sound_tone: {
         label: "Sound tone",
-        description: "Which sound a new ticket makes: chime, bell or buzzer. The buzzer is the one that carries over a hood at full blast."
+        description: "Which sound a new ticket makes: chime, bell or buzzer. The buzzer is the one that carries over a hood at full blast.",
+        options: {
+          chime: "Chime",
+          bell: "Bell",
+          buzzer: "Buzzer"
+        }
       },
       auto_print_tickets: {
         label: "Print the pass when marked ready",
@@ -2246,7 +2261,12 @@ var en_default = {
         description: "Turn it off if the kitchen works only from the printed order and nobody marks anything on the kitchen screen: charging a check then serves all its rounds, so they leave the screen and the cash-close review. On, a round still cooking stays on the screen until the pass serves it."
       },
       default_order_type: {
-        label: "Default order type"
+        label: "Default order type",
+        options: {
+          dine_in: "Dine in",
+          takeaway: "Takeaway",
+          delivery: "Delivery"
+        }
       }
     }
   },

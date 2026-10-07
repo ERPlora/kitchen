@@ -38,7 +38,12 @@
       },
       "sound_tone": {
         "label": "Sound tone",
-        "description": "Which sound a new ticket makes: chime, bell or buzzer. The buzzer is the one that carries over a hood at full blast."
+        "description": "Which sound a new ticket makes: chime, bell or buzzer. The buzzer is the one that carries over a hood at full blast.",
+        "options": {
+          "chime": "Chime",
+          "bell": "Bell",
+          "buzzer": "Buzzer"
+        }
       },
       "auto_print_tickets": {
         "label": "Print the pass when marked ready",
@@ -49,7 +54,12 @@
         "description": "Turn it off if the kitchen works only from the printed order and nobody marks anything on the kitchen screen: charging a check then serves all its rounds, so they leave the screen and the cash-close review. On, a round still cooking stays on the screen until the pass serves it."
       },
       "default_order_type": {
-        "label": "Default order type"
+        "label": "Default order type",
+        "options": {
+          "dine_in": "Dine in",
+          "takeaway": "Takeaway",
+          "delivery": "Delivery"
+        }
       }
     }
   },

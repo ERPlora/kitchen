@@ -39,7 +39,12 @@
       },
       "sound_tone": {
         "label": "Tono del sonido",
-        "description": "Qué sonido hace una comanda nueva: campanilla, timbre o zumbador. El zumbador es el que se oye con la campana a tope."
+        "description": "Qué sonido hace una comanda nueva: campanilla, timbre o zumbador. El zumbador es el que se oye con la campana a tope.",
+        "options": {
+          "chime": "Campanilla",
+          "bell": "Timbre",
+          "buzzer": "Zumbador"
+        }
       },
       "auto_print_tickets": {
         "label": "Imprimir el pase al marcar listo",
@@ -50,7 +55,12 @@
         "description": "Apágalo si la cocina trabaja solo con la comanda en papel y nadie marca nada en la pantalla de cocina: al cobrar una cuenta se dan por servidas todas sus rondas, y salen de la pantalla y de la revisión del cierre de caja. Encendido, lo que se está cocinando sigue en la pantalla hasta que el pase lo sirve."
       },
       "default_order_type": {
-        "label": "Tipo de comanda por defecto"
+        "label": "Tipo de comanda por defecto",
+        "options": {
+          "dine_in": "En sala",
+          "takeaway": "Para llevar",
+          "delivery": "A domicilio"
+        }
       }
     }
   },
