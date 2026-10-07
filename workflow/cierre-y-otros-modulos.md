@@ -2,9 +2,10 @@
 
 Prefijo: KITCHEN
 
-Lo que Cocina hace cuando otro módulo le avisa (una cuenta cobrada, dos clientes unidos) y lo que
-no hace porque nadie le avisa (una cuenta eliminada o unida, un plato anulado). Cocina solo escucha
-tres avisos de fuera: ronda enviada, cuenta cerrada y fichas de cliente unidas.
+Lo que Cocina hace cuando otro módulo le avisa (una cuenta cobrada, eliminada o unida a otra, dos
+clientes unidos) y lo que no hace porque no escucha el aviso (un plato anulado). Cocina escucha cinco
+avisos de fuera: ronda enviada, cuenta cerrada, cuenta eliminada, cuentas unidas y fichas de cliente
+unidas.
 
 ## Flujos
 
@@ -30,16 +31,18 @@ Implicados: SALES-F01, SALES-F20, SALES-F22, SALES-F23, REC_RESTAURANTE-F10, REC
 QA: R-09, R-10, qa-hub-restaurant §7.10
 
 ### KITCHEN-F28 Retirar las rondas de una cuenta eliminada o unida a otra
-Estado: no hecho — Cocina no se entera de que una cuenta se elimina ni de que se une a otra: las rondas enviadas desde ella siguen en la pantalla de cocina, y como el cobro solo cierra las rondas de la cuenta cobrada, las de la cuenta eliminada o absorbida no se cierran nunca solas
+Estado: parcial — en una estación que trabaja con la comanda impresa la ronda cancelada no se retira del papel: no sale vale de anulación, como tampoco al cancelarla a mano (kitchen#168)
 Actor: sistema
 Pantalla: ninguna
 Pasos:
 1. Un responsable elimina una cuenta abierta que ya envió rondas (SALES-F18), o se juntan dos mesas y una cuenta absorbe a la otra (SALES-F24).
-2. Hoy, las rondas de esa cuenta siguen en la pantalla de cocina con su reloj y en el TPV ya no hay cuenta desde la que verlas; al cobrar la cuenta que queda tampoco se cierran.
-3. Hoy se quitan a mano desde Cocina: «Servida» o «Cancelar» (KITCHEN-F13, KITCHEN-F22). Lo que falta es que Cocina reciba el aviso y las retire o las pase a la cuenta que queda (ver «Dudas abiertas»).
-Entra: nada. Ventas avisa de la cuenta eliminada (sales.order.voided) y Cocina no escucha ese aviso; al juntar cuentas no avisa a nadie.
-Sale: nada; las rondas quedan vivas y salen en la revisión del cierre de caja como sin servir (KITCHEN-F31).
-Si falla: nadie lo dice; se ve en la pantalla de cocina y en el cierre de caja.
+2. Cuenta eliminada: Cocina cancela las rondas de esa cuenta que siguen en marcha (Por preparar, En preparación y Listas), con sus platos, como cuando un responsable cancela una a mano (KITCHEN-F22); salen de la pantalla de cocina, del «Resumen», del «En curso» de su estación y de «Comandas sin servir» del cierre de caja, y quedan en el Historial como canceladas. Las Servidas y las Canceladas no se tocan. Es lo que hace Toast: anular la cuenta anula su comanda en la pantalla de cocina.
+3. Cocina mira antes la cuenta en Ventas y solo cancela si de verdad está anulada: un aviso que llega de una cuenta ya cobrada (Ventas avisa igual, SALES-F18) no para lo que se está cocinando (KITCHEN-F27).
+4. Cuentas unidas: las rondas enviadas desde la cuenta absorbida pasan a la que queda, como sus platos, numeradas detrás de las suyas («Comanda 3», «Comanda 4»…) y en el mismo estado, con su etiqueta y sus platos como se enviaron («Mesa 5» sigue diciendo «Mesa 5»). Desde ahí son de la cuenta que queda: salen en su hoja «Comandas de la cuenta» del TPV (KITCHEN-F19) y al cobrarla se cierran como las suyas (KITCHEN-F27); la siguiente ronda que envíe se numera detrás de todas.
+5. Cocina mira antes la cuenta absorbida en Ventas y solo mueve si está anulada (la unión se hizo).
+Entra: de Ventas, la cuenta eliminada (avisa: sales.order.voided, con la cuenta) y las cuentas unidas (avisa: sales.order.merged, con la absorbida y la que queda); y, por cada aviso, la cabecera de la cuenta (sales.order.get) para comprobar que está anulada.
+Sale: cuenta eliminada: cada ronda en marcha pasa a Cancelada (avisa: kitchen.order.cancelled) con su entrada en el Historial y sus platos cancelados. Cuentas unidas: las rondas cambian de cuenta sin avisar a nadie ni apuntar nada en el Historial. Solo se tocan las rondas de esa cuenta en este hub; las comandas creadas a mano no se tocan. Nada vuelve al TPV.
+Si falla: si una ronda cambia de estado entre que se lee y se escribe (una Lista que se sirve), la cancelación se rechaza entera y el aviso se reintenta con el estado nuevo. Un aviso repetido no cambia nada: no queda nada en marcha que cancelar, ni ninguna ronda colgada de la cuenta absorbida. Si Ventas no responde a la consulta de la cuenta, el aviso se reintenta y, agotados los intentos, queda entre los eventos caídos del hub; las rondas siguen en pantalla y se quitan a mano (KITCHEN-F13, KITCHEN-F22). Si a la cuenta que queda se le envía después una ronda sin etiqueta, hereda la de la ronda de número más alto, que puede ser una de las absorbidas («Mesa 5»); el TPV siempre la envía con la etiqueta de su mesa.
 Implicados: SALES-F18, SALES-F24, REC_RESTAURANTE-F10, REC_RESTAURANTE-F14
 QA: R-07, qa-hub-restaurant §7.09, qa-hub-restaurant §7.13
 

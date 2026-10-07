@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "kitchen._on_sales_order_merged",
+  "description": "Payload of the `sales.order.merged` event (contract of the sales module, SALES-F24): every unpaid line of `from_order_id` moved to `to_order_id` and `from_order_id` was voided, so its rounds now belong to `to_order_id` and close when that check is charged (kitchen#162). The event is also emitted on a refused merge and on every replay: the handler only re-points when the absorbed check IS voided (`reads` of `sales.order.get`). additionalProperties=true on purpose: the relay delivers the emitter's payload AS IS, `sender` included (kitchen#29). Idempotent: a redelivery finds nothing left on the absorbed check.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["from_order_id", "to_order_id"],
+  "properties": {
+    "from_order_id": { "type": "string", "minLength": 1 },
+    "to_order_id": { "type": "string", "minLength": 1 },
+    "sender": { "type": "string" }
+  }
+}

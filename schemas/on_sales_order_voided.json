@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "kitchen._on_sales_order_voided",
+  "description": "Payload of the `sales.order.voided` event (contract of the sales module, SALES-F18): an OPEN check was deleted before being charged, so its rounds still on the line are cancelled (kitchen#162). The event is also emitted on a void that changed nothing (a check already charged from another device): the handler acts on the check's header (`reads` of `sales.order.get`), never on the event alone. additionalProperties=true on purpose: the relay delivers the emitter's payload AS IS, `sender` included (kitchen#29). Idempotent: a redelivery only sees cancelled rounds and writes nothing.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["order_id"],
+  "properties": {
+    "order_id": { "type": "string", "minLength": 1 },
+    "sender": { "type": "string" }
+  }
+}
