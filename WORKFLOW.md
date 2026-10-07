@@ -130,8 +130,9 @@ Cargando: «Cargando…». Error: el de la tabla con reintento.
 Pestaña **Cocina → Ajustes**, la pone el hub con su formulario genérico:
 «Mostrar cronómetro», «Aviso ámbar (minutos)», «Aviso rojo (minutos)», «Semáforo de color», «Sonar al
 entrar una comanda», «Volumen del sonido (0-100)», «Tono del sonido», «Imprimir el pase al marcar
-listo», «La cocina trabaja con la pantalla» y «Tipo de comanda por defecto», con «Guardar». Quien no es administrador la ve de solo
-lectura con «Solo un administrador puede cambiar estos ajustes.». Cargando: «Cargando ajustes…».
+listo», «La cocina trabaja con la pantalla» y «Tipo de comanda por defecto», con «Guardar». La ven quienes tienen el
+permiso `kitchen.change_settings` (de fábrica, el administrador y el responsable); el responsable la ve de solo
+lectura con «Solo un administrador puede cambiar estos ajustes.» y a los demás el hub no les enseña la pestaña (HUB_SHELL-F43, hub#2588). Cargando: «Cargando ajustes…».
 Error: «No se pudieron cargar los ajustes.».
 
 ### Comandas de la cuenta
