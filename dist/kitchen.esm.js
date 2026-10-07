@@ -3086,7 +3086,7 @@ var ErpKitchenDisplay = class extends i3 {
   /** ONE grid of equal columns, or the empty state. Never two grids stacked down the page. */
   renderBoard(tickets, emptyKey) {
     const t_ = (k2) => erplora().t(CATALOG, k2);
-    if (!tickets.length) return b2`<ok-empty-state data-testid="kds-empty" icon="restaurant-outline" .title=${t_(emptyKey)}></ok-empty-state>`;
+    if (!tickets.length) return b2`<ok-empty-state data-testid="kds-empty" icon="restaurant-outline" .message=${t_(emptyKey)}></ok-empty-state>`;
     return b2`<div class="grid">${tickets.map((t7) => this.renderTicket(t7))}</div>`;
   }
   /** An All-Day row's station name, in the hub's language: rows group by the FROZEN name, so this
@@ -3108,7 +3108,7 @@ var ErpKitchenDisplay = class extends i3 {
       const names = selected ? /* @__PURE__ */ new Set([String(selected.name_es || ""), String(selected.name || "")]) : /* @__PURE__ */ new Set([""]);
       rows2 = this.allDay.filter((r6) => names.has(String(r6.station_name ?? "")));
     }
-    if (!rows2.length) return b2`<ok-empty-state data-testid="kds-empty" icon="restaurant-outline" .title=${t_("ui.emptyAllDay")}></ok-empty-state>`;
+    if (!rows2.length) return b2`<ok-empty-state data-testid="kds-empty" icon="restaurant-outline" .message=${t_("ui.emptyAllDay")}></ok-empty-state>`;
     return b2`<table class="allday" data-testid="kds-allday">
       <thead><tr><th>${t_("ui.colProduct")}</th><th></th><th></th></tr></thead>
       <tbody>${rows2.map(
@@ -3122,7 +3122,7 @@ var ErpKitchenDisplay = class extends i3 {
   }
   /** Chrome controls the shell says it honours here (`chrome="fullscreen …"`). */
   get chromeControls() {
-    return this.chrome.split(/\s+/).filter(Boolean);
+    return (this.chrome ?? "").split(/\s+/).filter(Boolean);
   }
   /**
    * Asks the SHELL for a chrome control (ADR-0048: the module is content, the chrome is the

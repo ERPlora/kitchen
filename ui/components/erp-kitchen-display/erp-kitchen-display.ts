@@ -544,8 +544,11 @@ export class ErpKitchenDisplay extends LitElement {
    * tabbar around it. But hiding them is the shell's job, not ours (ADR-0022): without the
    * announcement the button is not painted, because a `kitchen` that auto-updated onto an older
    * hub image would otherwise show a control nobody is listening to.
+   *
+   * On a tab that announces nothing the shell REMOVES the attribute, and Lit hands that over as
+   * `null`, not `''` (kitchen#164): read it through `chromeControls`, never as a bare string.
    */
-  @property() chrome = '';
+  @property() chrome: string | null = '';
 
   /** Whether the shell is in that mode right now. It also changes by Esc and F11, which this
    *  component never sees — so it is read from the shell, never deduced from our own clicks. */
@@ -1043,7 +1046,7 @@ export class ErpKitchenDisplay extends LitElement {
   /** ONE grid of equal columns, or the empty state. Never two grids stacked down the page. */
   private renderBoard(tickets: Ticket[], emptyKey: string) {
     const t_ = (k: string): string => erplora().t(CATALOG, k);
-    if (!tickets.length) return html`<ok-empty-state data-testid="kds-empty" icon="restaurant-outline" .title=${t_(emptyKey)}></ok-empty-state>`;
+    if (!tickets.length) return html`<ok-empty-state data-testid="kds-empty" icon="restaurant-outline" .message=${t_(emptyKey)}></ok-empty-state>`;
     return html`<div class="grid">${tickets.map((t) => this.renderTicket(t))}</div>`;
   }
 
@@ -1070,7 +1073,7 @@ export class ErpKitchenDisplay extends LitElement {
       const names = selected ? new Set([String(selected.name_es || ''), String(selected.name || '')]) : new Set(['']);
       rows = this.allDay.filter((r) => names.has(String(r.station_name ?? '')));
     }
-    if (!rows.length) return html`<ok-empty-state data-testid="kds-empty" icon="restaurant-outline" .title=${t_('ui.emptyAllDay')}></ok-empty-state>`;
+    if (!rows.length) return html`<ok-empty-state data-testid="kds-empty" icon="restaurant-outline" .message=${t_('ui.emptyAllDay')}></ok-empty-state>`;
     // Same product on two stations (expo view) → two rows, each with its station: the fryer and
     // the grill do not share a batch.
     return html`<table class="allday" data-testid="kds-allday">
@@ -1087,7 +1090,7 @@ export class ErpKitchenDisplay extends LitElement {
 
   /** Chrome controls the shell says it honours here (`chrome="fullscreen …"`). */
   private get chromeControls(): string[] {
-    return this.chrome.split(/\s+/).filter(Boolean);
+    return (this.chrome ?? '').split(/\s+/).filter(Boolean);
   }
 
   /**
