@@ -182,7 +182,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | KITCHEN-F25 | Consultar el historial de cocina | parcial | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
 | KITCHEN-F26 | Ajustar la pantalla de cocina | parcial | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
 | KITCHEN-F27 | Cerrar las rondas al cobrar la cuenta entera | hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
-| KITCHEN-F28 | Retirar las rondas de una cuenta eliminada o unida a otra | no hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
+| KITCHEN-F28 | Retirar las rondas de una cuenta eliminada o unida a otra | hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 | KITCHEN-F29 | Anular un plato ya enviado con aviso a cocina | parcial | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 | KITCHEN-F30 | Pasar las comandas de un cliente unido a otro | hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 | KITCHEN-F31 | Dar a Caja las comandas que siguen en marcha | hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
@@ -214,7 +214,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | Cerrar en cocina lo de una cuenta cobrada, sin parar lo que se cocina | hecho (kitchen#145) | F27 |
 | Lo que solo va a papel no se queda en la pantalla | hecho: sale al cobrar (la ronda entera a estaciones solo de impresora, o todo si la cocina trabaja en papel, kitchen#153); la tarjeta sí se pinta mientras la cuenta sigue abierta | F27, F26 |
 | Anular un plato enviado con aviso a cocina | parcial: el TPV lo anula, cocina no lo tacha (kitchen#161) | F29 |
-| Cuenta anulada o unida: cocina se entera | no hecho | F28 |
+| Cuenta anulada o unida: cocina se entera | hecho: eliminarla cancela sus rondas en marcha y juntarla las pasa a la cuenta que queda (kitchen#162) | F28 |
 | Cancelar una comanda con motivo | parcial: sin motivo ni confirmación en pantalla | F22 |
 | Historial con quién hizo cada cosa | parcial: no enseña quién | F25 |
 | Pantalla completa en la tableta | hecho | F10 |
@@ -233,7 +233,9 @@ quedó apartada como `_deprecated_kitchen_order_modifier`, sin filas.
 
 **Lo que lee de otros, y por qué puerta:**
 - De Ventas, el aviso de ronda enviada (`order.fired`: pedido, etiqueta, canal, camarero, prioridad y
-  los platos con su nota y suplementos) y el de cuenta cerrada (`order.completed`).
+  los platos con su nota y suplementos), el de cuenta cerrada (`order.completed`), el de cuenta
+  eliminada (`sales.order.voided`) y el de cuentas unidas (`sales.order.merged`); con los dos últimos
+  lee la cabecera de la cuenta (`sales.order.get`) para comprobar que está anulada (KITCHEN-F28).
 - De Clientes, el aviso de fichas unidas (`customer.merged`).
 - De Inventario, las listas públicas de productos y categorías, solo para el desplegable del enrutado.
 - Del hub, la lista de personas (`hub.users.list`) y, si está instalado Equipo, su lista
@@ -289,6 +291,8 @@ los platos y la cabecera de cada comanda para imprimirla (KITCHEN-F08); a Flujos
   sus rondas Listas (kitchen#145) y, además, lo que nadie va a marcar en una pantalla — la ronda que
   fue entera a estaciones solo de impresora y, si «La cocina trabaja con la pantalla» está apagado,
   todas (kitchen#153). Lo demás sigue cocinando.
+- **Eliminar una cuenta cancela sus rondas en marcha y juntarla las pasa a la que queda**, solo si
+  Ventas la tiene de verdad anulada (KITCHEN-F28, kitchen#162).
 - **Estaciones**: el nombre no se repite entre las estaciones vivas del hub; no se borra una estación
   con productos o categorías enrutados ni con platos por hacer.
 - **Una comanda solo se borra si está Por preparar o Cancelada y no va ligada a una venta** (si no,
@@ -322,8 +326,6 @@ los platos y la cabecera de cada comanda para imprimirla (KITCHEN-F08); a Flujos
 
 Se resuelven con `market-decision`; no las decide el worker.
 
-- **Las rondas de una cuenta eliminada o unida a otra** (KITCHEN-F28): ¿se cancelan, o pasan a la
-  cuenta que queda?
 - **Una estación que ya terminó su parte**: hoy su tarjeta se queda en su pantalla, tachada, hasta
   que las demás estaciones terminan. ¿Debe salir de esa estación al terminar su parte?
 - **Alérgenos**: hoy son una nota libre en cursiva. ¿Se resaltan como en Fresh KDS?
