@@ -30,7 +30,7 @@ esto, no más:
   estaciones de preparación, vista de pase (expo), marcar listo por plato y por comanda, «Rush».
   Los cursos con retener y lanzar no se adoptan (kitchen#71, fuera del MVP).
 - [Toast — anulaciones](https://doc.toasttab.com/doc/platformguide/adminVoidingOrders.html): anular
-  un plato ya enviado se ve en cocina. Adoptado como objetivo; hoy no está (KITCHEN-F29).
+  un plato ya enviado se ve en cocina. Adoptado como objetivo; el TPV ya lo anula con motivo, pero cocina aún no lo ve (KITCHEN-F29, kitchen#161).
 - [Square KDS](https://squareup.com/help/us/en/article/8171-complete-orders-with-square-kds):
   completar un plato suelto o la comanda entera, y la pestaña de completadas.
 - [Lightspeed K-Series KDS 2.0](https://k-series-support.lightspeedhq.com/hc/en-us/articles/22708154090267-Using-the-Kitchen-Display-System-2-0):
@@ -183,7 +183,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | KITCHEN-F26 | Ajustar la pantalla de cocina | parcial | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
 | KITCHEN-F27 | Cerrar las rondas al cobrar la cuenta entera | hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 | KITCHEN-F28 | Retirar las rondas de una cuenta eliminada o unida a otra | no hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
-| KITCHEN-F29 | Anular un plato ya enviado con aviso a cocina | no hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
+| KITCHEN-F29 | Anular un plato ya enviado con aviso a cocina | parcial | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 | KITCHEN-F30 | Pasar las comandas de un cliente unido a otro | hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 | KITCHEN-F31 | Dar a Caja las comandas que siguen en marcha | hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 
@@ -213,7 +213,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | Estado de cada ronda visible en el TPV | parcial: la hora no es la de envío y sale en UTC | F19 |
 | Cerrar en cocina lo de una cuenta cobrada, sin parar lo que se cocina | hecho (kitchen#145) | F27 |
 | Lo que solo va a papel no se queda en la pantalla | hecho: sale al cobrar (la ronda entera a estaciones solo de impresora, o todo si la cocina trabaja en papel, kitchen#153); la tarjeta sí se pinta mientras la cuenta sigue abierta | F27, F26 |
-| Anular un plato enviado con aviso a cocina | no hecho | F29 |
+| Anular un plato enviado con aviso a cocina | parcial: el TPV lo anula, cocina no lo tacha (kitchen#161) | F29 |
 | Cuenta anulada o unida: cocina se entera | no hecho | F28 |
 | Cancelar una comanda con motivo | parcial: sin motivo ni confirmación en pantalla | F22 |
 | Historial con quién hizo cada cosa | parcial: no enseña quién | F25 |

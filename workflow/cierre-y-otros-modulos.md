@@ -44,14 +44,14 @@ Implicados: SALES-F18, SALES-F24, REC_RESTAURANTE-F10, REC_RESTAURANTE-F14
 QA: R-07, qa-hub-restaurant §7.09, qa-hub-restaurant §7.13
 
 ### KITCHEN-F29 Anular un plato ya enviado con aviso a cocina
-Estado: no hecho — en el TPV una línea enviada no se puede quitar ni cambiar (pedir que se quite, por el asistente o la API, contesta bien sin quitar nada), y Cocina no tiene orden para anular un solo plato ni escucha la retirada de una línea: el plato se sigue cocinando y se cobra
+Estado: parcial — el TPV ya anula una línea enviada con motivo y PIN del responsable y deja de cobrarse (SALES-F20), pero Cocina no escucha ese aviso (sales.order.line_voided) ni tiene orden para anular un solo plato: el plato sigue en la pantalla y se cocina si nadie avisa de palabra (kitchen#161)
 Actor: responsable
 Pantalla: Ventas: Vender
 Pasos:
-1. En el TPV, sobre una línea ya enviada, el responsable la anula con un motivo (no existe).
-2. En la pantalla de cocina, ese plato sale tachado como anulado y su estación recibe un vale de anulación en papel (no existe).
-3. Hoy solo se puede cancelar la ronda entera desde Cocina (KITCHEN-F22), que no cambia la cuenta, o avisar de palabra.
-Entra: la línea anulada y su motivo, de Ventas.
+1. En el TPV, sobre una línea ya enviada, se pulsa ⊗ «Anular este artículo», se elige o escribe el motivo y, si quien lo pide no es responsable, este da su PIN: la línea sale de la cuenta y Ventas avisa con sales.order.line_voided (SALES-F20).
+2. En la pantalla de cocina, ese plato sale tachado como anulado y su estación recibe un vale de anulación en papel (no existe: Cocina no escucha el aviso, kitchen#161).
+3. Hasta entonces, se avisa de palabra o se cancela la ronda entera desde Cocina (KITCHEN-F22), que no cambia la cuenta.
+Entra: la línea anulada y su motivo, de Ventas (sales.order.line_voided, con la cuenta, la línea y el motivo); hoy Cocina no lo escucha.
 Sale: el plato anulado en cocina y el vale en papel por la función de su estación.
 Si falla: igual que la comanda en papel (KITCHEN-F08).
 Implicados: SALES-F20, REC_RESTAURANTE-F14
