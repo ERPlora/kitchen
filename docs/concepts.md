@@ -40,6 +40,12 @@ log as cancelled. Served and cancelled rounds stay as they are. The kitchen firs
 from Sales and only cancels when it really is voided, so a void that reaches a check already paid
 does not stop the cooking.
 
+Cancelling a round that already went to paper — by hand or because its check was deleted — prints a
+**void slip** at the same printer that got the comanda: «VOID · Table 4» where the table goes and
+every dish with a negative quantity («-2x Croquetas»). The hub prints it from the till that
+cancelled; if it does not come out, that till tells you to warn the station out loud (kitchen#168).
+Screen-only stations get no slip: the card simply leaves the screen.
+
 **Merging** two checks (two tables joined) hands the rounds of the absorbed check to the one that
 stays, after its own rounds, in the same status and with the label they were sent with. From then on
 they belong to that check: its sheet in the till lists them and charging it closes them like its own.
