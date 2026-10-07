@@ -783,6 +783,38 @@ fn preloaded_rounds(input: &Value) -> Result<Vec<Value>, String> {
     })
 }
 
+/// Whether the kitchen marks its rounds on the screen (`kitchen.settings.get` →
+/// `works_from_screen`, kitchen#153). A hub that never saved Ajustes has no row, and a read the
+/// runtime could not make says nothing: both keep the screen kitchen of kitchen#145, the one that
+/// never loses food that is still cooking.
+fn kitchen_works_from_screen(input: &Value) -> bool {
+    let rows = input
+        .get("context")
+        .and_then(|c| c.get("reads"))
+        .and_then(|r| r.get("kitchen.settings.get"));
+    let row = match rows {
+        Some(Value::Array(a)) => a.first(),
+        Some(Value::Object(o)) => o.get("rows").and_then(|v| v.as_array()).and_then(|a| a.first()),
+        _ => None,
+    };
+    match row.and_then(|r| r.get("works_from_screen")) {
+        Some(Value::Bool(b)) => *b,
+        Some(Value::Number(n)) => n.as_i64() != Some(0),
+        _ => true,
+    }
+}
+
+/// A round none of whose lines went to a screen: every line was frozen to a station that only
+/// prints (`screen_lines`, counted by `kitchen.orders.list`). A row without the count is treated
+/// as a screen round — the safe side, it keeps cooking.
+fn only_on_paper(round: &Value) -> bool {
+    round.get("screen_lines").and_then(|v| match v {
+        Value::Number(n) => n.as_i64(),
+        Value::String(s) => s.parse::<i64>().ok(),
+        _ => None,
+    }) == Some(0)
+}
+
 /// `kitchen.orders.close_from_order` — the listener of `order.completed`.
 pub fn close_orders_from_order_pure(input: Value) -> Result<Output, String> {
     let (payload, ctx) = split_input(&input);
@@ -791,6 +823,7 @@ pub fn close_orders_from_order_pure(input: Value) -> Result<Output, String> {
         return Err("missing_order_id".to_string());
     }
     let rounds = preloaded_rounds(&input)?;
+    let works_from_screen = kitchen_works_from_screen(&input);
 
     let mut ops: Vec<Operation> = Vec::new();
     let mut events: Vec<Event> = Vec::new();
@@ -805,23 +838,44 @@ pub fn close_orders_from_order_pure(input: Value) -> Result<Output, String> {
         if ticket_id.is_empty() {
             continue;
         }
-        // Only a bumped round closes; everything else keeps its state (kitchen#145).
-        if as_str(round.get("status").unwrap_or(&Value::Null)) != "ready" {
+        let status = as_str(round.get("status").unwrap_or(&Value::Null));
+        // A bumped round closes; one still in the queue or on the stove only closes when nobody
+        // is going to mark it on a screen (kitchen#153). Everything else keeps its state
+        // (kitchen#145).
+        let closes = match status.as_str() {
+            "ready" => true,
+            "pending" | "preparing" => !works_from_screen || only_on_paper(&round),
+            _ => false,
+        };
+        if !closes {
             continue;
         }
-
         let mut h = Map::new();
         h.insert("order_id".into(), json!(ticket_id));
         h.insert("status".into(), json!("served"));
         // Pinned to the state this decision was taken against (kitchen#11): a round somebody
-        // recalled between the read and the write matches ZERO rows instead of jumping states.
-        h.insert("require_status".into(), json!("ready"));
+        // recalled — or bumped — between the read and the write matches ZERO rows instead of
+        // jumping states.
+        h.insert("require_status".into(), json!(status));
         h.insert("set_fired".into(), json!(0));
         h.insert("ready_mode".into(), json!("keep"));
         h.insert("served_mode".into(), json!("set"));
         h.insert("append_note".into(), json!(""));
         h.insert("nl".into(), json!("\n"));
         ops.push(Operation::sql("kitchen._set_order_status", h));
+        if status != "ready" {
+            // Its dishes were made from the paper: they leave the station's «in progress» count
+            // (`kitchen.stations.pending_counts`) with the round, struck as the pass would.
+            for from in ["pending", "preparing"] {
+                let mut c = Map::new();
+                c.insert("order_id".into(), json!(ticket_id));
+                c.insert("from_status".into(), json!(from));
+                c.insert("to_status".into(), json!("ready"));
+                c.insert("set_fired".into(), json!(0));
+                c.insert("completed_mode".into(), json!("set"));
+                ops.push(Operation::sql("kitchen._cascade_item_status", c));
+            }
+        }
 
         events.push(order_event(
             "kitchen.order.served",
@@ -1910,6 +1964,115 @@ mod tests {
         ))
         .expect_err("an event with no order is not a business case");
         assert_eq!(missing, "missing_order_id");
+    }
+
+    // ── kitchen#153: what nobody will mark on a screen leaves at the charge ────────────
+
+    /// `with_rounds` plus the hub's kitchen settings row (`reads` of `kitchen.settings.get`).
+    fn with_rounds_and_settings(order_id: &str, rounds: Value, settings: Value) -> Value {
+        let mut input = with_rounds(order_id, rounds, json!({ "order_id": order_id }));
+        input["context"]["reads"]["kitchen.settings.get"] = settings;
+        input
+    }
+
+    fn ops_for<'a>(out: &'a Output, order_id: &str) -> Vec<&'a Operation> {
+        out.operations
+            .iter()
+            .filter(|o| o.params["order_id"] == json!(order_id))
+            .collect()
+    }
+
+    #[test]
+    fn a_kitchen_on_paper_serves_every_round_of_the_paid_check() {
+        // kitchen#153: a kitchen that works only from the printed order never marks anything on
+        // the screen, so after kitchen#145 every round it charged stayed «Por preparar» forever,
+        // on the screen and in the cash-close review. With the screen switched off, the charge
+        // serves every round of the check still on the line.
+        let out = close_orders_from_order_pure(with_rounds_and_settings(
+            "o1",
+            json!([
+                { "id": "k-pending",   "status": "pending",   "source_order_id": "o1", "screen_lines": 2 },
+                { "id": "k-preparing", "status": "preparing", "source_order_id": "o1", "screen_lines": 1 },
+                { "id": "k-ready",     "status": "ready",     "source_order_id": "o1", "screen_lines": 1 },
+                { "id": "k-done",      "status": "served",    "source_order_id": "o1", "screen_lines": 1 },
+                { "id": "k-gone",      "status": "cancelled", "source_order_id": "o1", "screen_lines": 1 },
+                { "id": "k-other",     "status": "pending",   "source_order_id": "o2", "screen_lines": 1 },
+            ]),
+            json!([{ "works_from_screen": 0 }]),
+        ))
+        .expect("the listener closes the rounds of a paper kitchen");
+        assert!(out.error.is_none(), "{:?}", out.error);
+
+        for (id, from) in [("k-pending", "pending"), ("k-preparing", "preparing"), ("k-ready", "ready")] {
+            let head = head_for(&out, id);
+            assert_eq!(head["status"], json!("served"), "{id}");
+            assert_eq!(head["served_mode"], json!("set"), "{id}");
+            // Pinned to the state the decision was taken against (kitchen#11).
+            assert_eq!(head["require_status"], json!(from), "{id}");
+        }
+        // The dishes nobody struck leave the station's «in progress» count with their round.
+        for id in ["k-pending", "k-preparing"] {
+            let cascades: Vec<&Operation> = ops_for(&out, id)
+                .into_iter()
+                .filter(|o| o.command == "kitchen._cascade_item_status")
+                .collect();
+            let froms: Vec<Value> = cascades.iter().map(|o| o.params["from_status"].clone()).collect();
+            assert_eq!(froms, vec![json!("pending"), json!("preparing")], "{id}");
+            for c in cascades {
+                assert_eq!(c.params["to_status"], json!("ready"), "{id}");
+                assert_eq!(c.params["completed_mode"], json!("set"), "{id}");
+            }
+        }
+        for id in ["k-done", "k-gone", "k-other"] {
+            assert!(ops_for(&out, id).is_empty(), "{id} was moved: {:?}", out.operations);
+        }
+        let served: Vec<Value> = out.events.iter().map(|e| e.payload["order_id"].clone()).collect();
+        assert_eq!(served, vec![json!("k-pending"), json!("k-preparing"), json!("k-ready")]);
+        assert!(out.events.iter().all(|e| e.name == "kitchen.order.served"));
+    }
+
+    #[test]
+    fn a_round_that_only_went_to_paper_leaves_at_the_charge_in_a_screen_kitchen() {
+        // kitchen#153: a station that only prints (the bar on paper, the grill reading its slip)
+        // leaves nobody to mark the round on a screen — Toast, Lightspeed K and Odoo never even
+        // put it there. Its round leaves at the charge; the one the screen cooks keeps cooking.
+        let out = close_orders_from_order_pure(with_rounds_and_settings(
+            "o1",
+            json!([
+                { "id": "k-paper",  "status": "pending", "source_order_id": "o1", "screen_lines": 0 },
+                { "id": "k-screen", "status": "pending", "source_order_id": "o1", "screen_lines": 1 },
+            ]),
+            json!([{ "works_from_screen": 1 }]),
+        ))
+        .expect("closes the paper round");
+        assert_eq!(head_for(&out, "k-paper")["require_status"], json!("pending"));
+        assert!(ops_for(&out, "k-screen").is_empty(), "{:?}", out.operations);
+        assert_eq!(out.events.len(), 1);
+    }
+
+    #[test]
+    fn without_a_settings_row_the_kitchen_works_from_the_screen() {
+        // A hub that never saved Ajustes has no row: it keeps kitchen#145 — what is cooking on the
+        // screen is not touched — and so does a round whose lines the read could not count.
+        for settings in [json!([]), json!(null), json!([{ "works_from_screen": true }])] {
+            let out = close_orders_from_order_pure(with_rounds_and_settings(
+                "o1",
+                json!([
+                    { "id": "k-screen",  "status": "pending", "source_order_id": "o1", "screen_lines": 1 },
+                    { "id": "k-unknown", "status": "pending", "source_order_id": "o1" },
+                ]),
+                settings.clone(),
+            ))
+            .expect("not an error");
+            assert!(out.operations.is_empty(), "{settings}: {:?}", out.operations);
+        }
+        let off = close_orders_from_order_pure(with_rounds_and_settings(
+            "o1",
+            json!([{ "id": "k1", "status": "pending", "source_order_id": "o1", "screen_lines": 1 }]),
+            json!({ "rows": [{ "works_from_screen": false }] }),
+        ))
+        .expect("not an error");
+        assert_eq!(head_for(&off, "k1")["status"], json!("served"));
     }
 
     // ── kitchen#11: the state machine is authoritative ─────────────────────────────────

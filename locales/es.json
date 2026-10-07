@@ -45,6 +45,10 @@
         "label": "Imprimir el pase al marcar listo",
         "description": "Cada vez que se marca lista una comanda, saca en la impresora de cada estación los platos que salen. No es la comanda del disparo, que ya la imprime el enrutado por estación."
       },
+      "works_from_screen": {
+        "label": "La cocina trabaja con la pantalla",
+        "description": "Apágalo si la cocina trabaja solo con la comanda en papel y nadie marca nada en la pantalla de cocina: al cobrar una cuenta se dan por servidas todas sus rondas, y salen de la pantalla y de la revisión del cierre de caja. Encendido, lo que se está cocinando sigue en la pantalla hasta que el pase lo sirve."
+      },
       "default_order_type": {
         "label": "Tipo de comanda por defecto"
       }

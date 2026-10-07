@@ -8,7 +8,7 @@
 SELECT id,
        show_timer, warning_time_minutes, critical_time_minutes,
        color_coding_enabled, sound_enabled, sound_volume, sound_tone,
-       auto_print_tickets, default_order_type
+       auto_print_tickets, default_order_type, works_from_screen
 FROM kitchen_settings
 WHERE hub_id = :hub_id AND is_deleted = 0
 LIMIT 1;
