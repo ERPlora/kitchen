@@ -209,6 +209,14 @@ def main() -> int:
     try:
         for rel, kind in migration_entries():
             psql(db, migration_sql(rel, kind))
+        # `_insert_order.sql` numbers the round with `erp_pad`, a bridge function the runtime
+        # lowers per dialect (hub crates/db): the width is a floor, never a ceiling (hub#1393).
+        psql(
+            db,
+            "CREATE FUNCTION erp_pad(v anyelement, w integer) RETURNS text LANGUAGE sql AS "
+            "$$ SELECT CASE WHEN length(v::text) >= w THEN v::text "
+            "ELSE lpad(v::text, w, '0') END $$;",
+        )
 
         # Table 4 (stays) fired two rounds; table 5 (absorbed) fired two, one already served, and
         # had a third one deleted. Another check of this hub, and the hub next door with the SAME
@@ -306,7 +314,11 @@ def main() -> int:
 
         print("\n== the next round of the check is numbered after all of them ==")
         insert = MANIFEST["commands"]["kitchen._insert_order"]["sql"]
-        run_sql(db, ["commands/_bump_counter.sql"], {"new_id": "cnt-1", "hub_id": HUB, "day": "20261007"})
+        run_sql(
+            db,
+            ["commands/_bump_counter.sql"],
+            {"new_id": "cnt-1", "hub_id": HUB, "day": "20261007"},
+        )
         run_sql(
             db,
             insert,
