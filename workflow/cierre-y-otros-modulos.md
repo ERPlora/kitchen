@@ -31,7 +31,7 @@ Implicados: SALES-F01, SALES-F20, SALES-F22, SALES-F23, REC_RESTAURANTE-F10, REC
 QA: R-09, R-10, qa-hub-restaurant §7.10
 
 ### KITCHEN-F28 Retirar las rondas de una cuenta eliminada o unida a otra
-Estado: hecho
+Estado: parcial — en una estación que trabaja con la comanda impresa la ronda cancelada no se retira del papel: no sale vale de anulación, como tampoco al cancelarla a mano (kitchen#168)
 Actor: sistema
 Pantalla: ninguna
 Pasos:

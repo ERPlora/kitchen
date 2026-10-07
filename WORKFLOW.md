@@ -182,7 +182,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | KITCHEN-F25 | Consultar el historial de cocina | parcial | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
 | KITCHEN-F26 | Ajustar la pantalla de cocina | parcial | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
 | KITCHEN-F27 | Cerrar las rondas al cobrar la cuenta entera | hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
-| KITCHEN-F28 | Retirar las rondas de una cuenta eliminada o unida a otra | hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
+| KITCHEN-F28 | Retirar las rondas de una cuenta eliminada o unida a otra | parcial | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 | KITCHEN-F29 | Anular un plato ya enviado con aviso a cocina | parcial | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 | KITCHEN-F30 | Pasar las comandas de un cliente unido a otro | hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 | KITCHEN-F31 | Dar a Caja las comandas que siguen en marcha | hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
@@ -214,7 +214,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | Cerrar en cocina lo de una cuenta cobrada, sin parar lo que se cocina | hecho (kitchen#145) | F27 |
 | Lo que solo va a papel no se queda en la pantalla | hecho: sale al cobrar (la ronda entera a estaciones solo de impresora, o todo si la cocina trabaja en papel, kitchen#153); la tarjeta sí se pinta mientras la cuenta sigue abierta | F27, F26 |
 | Anular un plato enviado con aviso a cocina | parcial: el TPV lo anula, cocina no lo tacha (kitchen#161) | F29 |
-| Cuenta anulada o unida: cocina se entera | hecho: eliminarla cancela sus rondas en marcha y juntarla las pasa a la cuenta que queda (kitchen#162) | F28 |
+| Cuenta anulada o unida: cocina se entera | parcial: eliminarla cancela sus rondas en marcha y juntarla las pasa a la cuenta que queda (kitchen#162); en papel no sale vale de anulación (kitchen#168) | F28 |
 | Cancelar una comanda con motivo | parcial: sin motivo ni confirmación en pantalla | F22 |
 | Historial con quién hizo cada cosa | parcial: no enseña quién | F25 |
 | Pantalla completa en la tableta | hecho | F10 |
