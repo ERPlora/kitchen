@@ -601,6 +601,49 @@
         "description": "Closes the rounds of a CLOSED ORDER (event `order.completed`, ADR-0146): a round already bumped becomes served and leaves the KDS; a round still waiting or cooking keeps cooking until the kitchen serves it, because paying does not stop the cooking (kitchen#145) — unless nobody is going to mark it on a screen: every one of its lines went to a printer-only station, or the kitchen works only from the printed order (setting `works_from_screen` off). Those are served at the charge (kitchen#153). Never hangs off `sale.completed`, which also fires on a partial leg of a split bill where the guests are still seated."
       }
     },
+    "kitchen._on_sales_order_voided": {
+      "permission": "kitchen.cancel_order",
+      "schema": "schemas/on_sales_order_voided.json",
+      "reads": [
+        {
+          "query": "sales.order.get",
+          "params": {
+            "order_id": "payload.order_id"
+          },
+          "required": true
+        },
+        {
+          "query": "kitchen.orders.list",
+          "params": {
+            "f_source_order_id": "payload.order_id"
+          },
+          "required": true
+        }
+      ],
+      "handler": {
+        "type": "wasm",
+        "file": "dist/handler.wasm",
+        "function": "cancel_orders_from_voided_order"
+      }
+    },
+    "kitchen._on_sales_order_merged": {
+      "permission": "kitchen.change_order",
+      "schema": "schemas/on_sales_order_merged.json",
+      "reads": [
+        {
+          "query": "sales.order.get",
+          "params": {
+            "order_id": "payload.from_order_id"
+          },
+          "required": true
+        }
+      ],
+      "handler": {
+        "type": "wasm",
+        "file": "dist/handler.wasm",
+        "function": "repoint_orders_from_merged_order"
+      }
+    },
     "kitchen.stations.create": {
       "permission": "kitchen.manage_settings",
       "transaction": true,
@@ -786,6 +829,12 @@
       "sql": [
         "commands/customer_merge_orders.sql"
       ]
+    },
+    "kitchen._repoint_source_order": {
+      "permission": "kitchen.change_order",
+      "sql": [
+        "commands/_repoint_source_order.sql"
+      ]
     }
   },
   "events": {
@@ -798,6 +847,12 @@
       },
       "order.completed": {
         "command": "kitchen.orders.close_from_order"
+      },
+      "sales.order.voided": {
+        "command": "kitchen._on_sales_order_voided"
+      },
+      "sales.order.merged": {
+        "command": "kitchen._on_sales_order_merged"
       },
       "kitchen.order.fired": {
         "command": "kitchen.logs.create"

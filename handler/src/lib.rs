@@ -95,6 +95,30 @@ pub fn close_orders_from_order(input: Json<erplora_guest_sdk::Input>) -> FnResul
     ))
 }
 
+/// kitchen#162: the check was deleted → its rounds still on the line are cancelled. See
+/// `cancel_orders_from_voided_order_pure`.
+#[cfg(feature = "guest")]
+#[plugin_fn]
+pub fn cancel_orders_from_voided_order(
+    input: Json<erplora_guest_sdk::Input>,
+) -> FnResult<Json<Output>> {
+    to_fn_result(cancel_orders_from_voided_order_pure(
+        input.into_inner().into_value(),
+    ))
+}
+
+/// kitchen#162: the check was merged into another → its rounds follow its dishes. See
+/// `repoint_orders_from_merged_order_pure`.
+#[cfg(feature = "guest")]
+#[plugin_fn]
+pub fn repoint_orders_from_merged_order(
+    input: Json<erplora_guest_sdk::Input>,
+) -> FnResult<Json<Output>> {
+    to_fn_result(repoint_orders_from_merged_order_pure(
+        input.into_inner().into_value(),
+    ))
+}
+
 #[cfg(feature = "guest")]
 #[plugin_fn]
 pub fn delete_station(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
@@ -889,6 +913,131 @@ pub fn close_orders_from_order_pure(input: Value) -> Result<Output, String> {
     Ok(Output {
         operations: ops,
         events,
+        ..Default::default()
+    })
+}
+
+// ── A deleted check takes its rounds off the line; a merged one hands them over (kitchen#162) ──
+//
+// Charging a check is the only thing that ever closed rounds on its own (KITCHEN-F27), and only
+// the rounds of the check charged. A check the till DELETES (SALES-F18) is never charged, and one
+// ABSORBED by another when two tables merge (SALES-F24) is voided while its dishes move to the
+// check that stays — so their rounds stayed on the KDS with the clock running, closed by nobody,
+// and turned up as «not served» in the cash close (KITCHEN-F31).
+//
+//   · `sales.order.voided` → every round still on the line (`pending`, `preparing`, `ready`) is
+//     CANCELLED, with its dishes: nobody is going to eat it (Toast voids the ticket on the KDS).
+//   · `sales.order.merged` → the rounds of the absorbed check now belong to the check that stays,
+//     like its dishes: charging that check closes them as its own (`kitchen._repoint_source_order`).
+//
+// BOTH EVENTS CAN SAY SOMETHING THAT DID NOT HAPPEN. `sales.order.void` answers OK and emits on a
+// check already charged from another device, and `sales.order.merge` emits on a refused merge
+// and on every replay (neither declares `expect_rows`). So the handler does not act on the event:
+// it acts on the check's header as `sales` has it NOW (`reads` of `sales.order.get`, run by the
+// relay with the listener's authority). Only a check that IS voided releases its rounds; cancelling
+// on a charged one would take food away from a table that paid and is still eating.
+
+/// The `sales.order.get` header the runtime preloaded, by status. `Err` = no read at all (a
+/// manifest/runtime mismatch); `Ok(None)` = the read ran and this hub has no such check.
+fn preloaded_sales_status(input: &Value) -> Result<Option<String>, String> {
+    let rows = input
+        .get("context")
+        .and_then(|c| c.get("reads"))
+        .and_then(|r| r.get("sales.order.get"))
+        .ok_or_else(|| "missing_read: sales.order.get (declare it in `reads`)".to_string())?;
+    let row = match rows {
+        Value::Array(a) => a.first(),
+        Value::Object(o) => o.get("rows").and_then(|v| v.as_array()).and_then(|a| a.first()),
+        _ => None,
+    };
+    Ok(row.map(|r| as_str(r.get("status").unwrap_or(&Value::Null))))
+}
+
+/// `kitchen._on_sales_order_voided` — the listener of `sales.order.voided`.
+pub fn cancel_orders_from_voided_order_pure(input: Value) -> Result<Output, String> {
+    let (payload, ctx) = split_input(&input);
+    let order_id = as_str(payload.get("order_id").unwrap_or(&Value::Null));
+    if order_id.is_empty() {
+        return Err("missing_order_id".to_string());
+    }
+    let check_status = preloaded_sales_status(&input)?;
+    let rounds = preloaded_rounds(&input)?;
+    if check_status.as_deref() != Some("voided") {
+        return Ok(Output::new());
+    }
+
+    let mut ops: Vec<Operation> = Vec::new();
+    let mut events: Vec<Event> = Vec::new();
+    for round in rounds {
+        // Same distrust of the manifest's filter as the charge: a round of another check — or one
+        // with no check at all — is never cancelled by a check deleted somewhere else.
+        if as_str(round.get("source_order_id").unwrap_or(&Value::Null)) != order_id {
+            continue;
+        }
+        let ticket_id = as_str(round.get("id").unwrap_or(&Value::Null));
+        let status = as_str(round.get("status").unwrap_or(&Value::Null));
+        if ticket_id.is_empty() || !allowed_from("cancel").contains(&status.as_str()) {
+            continue;
+        }
+        let mut h = Map::new();
+        h.insert("order_id".into(), json!(ticket_id));
+        h.insert("status".into(), json!("cancelled"));
+        // Pinned to the state decided against (kitchen#11): a round served between the read and
+        // the write matches zero rows, the delivery is refused and retried with the new state.
+        h.insert("require_status".into(), json!(status));
+        h.insert("set_fired".into(), json!(0));
+        h.insert("ready_mode".into(), json!("keep"));
+        h.insert("served_mode".into(), json!("keep"));
+        h.insert("append_note".into(), json!(""));
+        h.insert("nl".into(), json!("\n"));
+        ops.push(Operation::sql("kitchen._set_order_status", h));
+
+        // The dishes go with the round, as when a manager cancels it by hand (KITCHEN-F22): they
+        // leave the station's «in progress» count and the «Resumen».
+        let mut c = Map::new();
+        c.insert("order_id".into(), json!(ticket_id));
+        c.insert("from_status".into(), json!(""));
+        c.insert("to_status".into(), json!("cancelled"));
+        c.insert("set_fired".into(), json!(0));
+        c.insert("completed_mode".into(), json!("keep"));
+        ops.push(Operation::sql("kitchen._cascade_item_status", c));
+
+        events.push(order_event(
+            "kitchen.order.cancelled",
+            &ticket_id,
+            "cancelled",
+            "",
+            &ctx.user_id,
+        ));
+    }
+
+    Ok(Output {
+        operations: ops,
+        events,
+        ..Default::default()
+    })
+}
+
+/// `kitchen._on_sales_order_merged` — the listener of `sales.order.merged`.
+pub fn repoint_orders_from_merged_order_pure(input: Value) -> Result<Output, String> {
+    let (payload, _ctx) = split_input(&input);
+    let from = as_str(payload.get("from_order_id").unwrap_or(&Value::Null));
+    let to = as_str(payload.get("to_order_id").unwrap_or(&Value::Null));
+    if from.is_empty() || to.is_empty() {
+        return Err("missing_order_id".to_string());
+    }
+    let absorbed_status = preloaded_sales_status(&input)?;
+    // The absorbed check is voided only when the merge really happened (`sales` voids it in the
+    // same transaction that moves its dishes). Still open = the merge was refused: its rounds stay
+    // with the check that will be charged for them.
+    if from == to || absorbed_status.as_deref() != Some("voided") {
+        return Ok(Output::new());
+    }
+    let mut h = Map::new();
+    h.insert("from_order_id".into(), json!(from));
+    h.insert("to_order_id".into(), json!(to));
+    Ok(Output {
+        operations: vec![Operation::sql("kitchen._repoint_source_order", h)],
         ..Default::default()
     })
 }
@@ -2871,5 +3020,201 @@ mod tests {
     fn deleting_without_a_station_is_refused_before_any_intention() {
         let err = delete_station_pure(delete_station_input("")).expect_err("no station id");
         assert_eq!(err, "missing_station_id");
+    }
+
+    // ── kitchen#162: a deleted check takes its rounds off the line; a merged one hands them over ──
+
+    /// Input for the listener of `sales.order.voided`: the sales order header (`reads` of
+    /// `sales.order.get`) and the rounds it fired (`reads` of `kitchen.orders.list`, ADR-0069).
+    fn voided(order_id: &str, sales_order: Value, rounds: Value) -> Value {
+        json!({
+            "payload": { "sender": "sales", "order_id": order_id },
+            "context": {
+                "hub_id": "h1", "current_user_id": "u1", "now": "2026-10-07T12:00:00+00:00",
+                "new_ids": [],
+                "reads": { "sales.order.get": sales_order, "kitchen.orders.list": rounds }
+            }
+        })
+    }
+
+    #[test]
+    fn a_deleted_check_cancels_every_round_still_on_the_line() {
+        // KITCHEN-F28: the check is gone from the till, so nobody will ever charge it and nothing
+        // else will ever take its rounds off the KDS. Whatever is still in the queue, on the stove
+        // or waiting at the pass is food nobody will eat (Toast voids the ticket on the KDS).
+        let out = cancel_orders_from_voided_order_pure(voided(
+            "o1",
+            json!([{ "id": "o1", "status": "voided" }]),
+            json!([
+                { "id": "k-pending",   "status": "pending",   "source_order_id": "o1" },
+                { "id": "k-preparing", "status": "preparing", "source_order_id": "o1" },
+                { "id": "k-ready",     "status": "ready",     "source_order_id": "o1" },
+            ]),
+        ))
+        .expect("the listener cancels the rounds of the deleted check");
+
+        assert!(out.error.is_none(), "{:?}", out.error);
+        for (id, from) in [("k-pending", "pending"), ("k-preparing", "preparing"), ("k-ready", "ready")] {
+            let head = head_for(&out, id);
+            assert_eq!(head["status"], json!("cancelled"), "{id}");
+            // Pinned to the state decided against (kitchen#11): a round served between the read
+            // and the write matches zero rows instead of being cancelled after the fact.
+            assert_eq!(head["require_status"], json!(from), "{id}");
+            let cascade = out
+                .operations
+                .iter()
+                .find(|o| o.command == "kitchen._cascade_item_status" && o.params["order_id"] == json!(id))
+                .unwrap_or_else(|| panic!("the dishes of {id} are not cancelled: {:?}", out.operations));
+            assert_eq!(cascade.params["to_status"], json!("cancelled"));
+            assert_eq!(cascade.params["from_status"], json!(""), "every dish of the round");
+        }
+        let cancelled: Vec<(&str, Value)> = out
+            .events
+            .iter()
+            .map(|e| (e.name.as_str(), e.payload["order_id"].clone()))
+            .collect();
+        assert_eq!(
+            cancelled,
+            vec![
+                ("kitchen.order.cancelled", json!("k-pending")),
+                ("kitchen.order.cancelled", json!("k-preparing")),
+                ("kitchen.order.cancelled", json!("k-ready")),
+            ]
+        );
+        // The narrow twin the log listener accepts (kitchen#29): the Historial says «Cancelada».
+        assert_eq!(out.events[0].payload["action"], json!("cancelled"));
+    }
+
+    #[test]
+    fn a_deleted_check_leaves_terminal_rounds_and_other_checks_alone() {
+        // Served and cancelled are terminal (a redelivery is a clean no-op), and the handler does
+        // not take the manifest's filter on trust: a round of another check is never cancelled.
+        let out = cancel_orders_from_voided_order_pure(voided(
+            "o1",
+            json!([{ "id": "o1", "status": "voided" }]),
+            json!([
+                { "id": "k-served",    "status": "served",    "source_order_id": "o1" },
+                { "id": "k-cancelled", "status": "cancelled", "source_order_id": "o1" },
+                { "id": "k-other",     "status": "pending",   "source_order_id": "o2" },
+                { "id": "k-orphan",    "status": "pending",   "source_order_id": null },
+            ]),
+        ))
+        .expect("nothing to cancel is not an error");
+        assert!(out.error.is_none(), "{:?}", out.error);
+        assert!(out.operations.is_empty(), "{:?}", out.operations);
+        assert!(out.events.is_empty(), "{:?}", out.events);
+    }
+
+    #[test]
+    fn a_void_that_did_not_void_the_check_cancels_nothing() {
+        // `sales.order.void` answers OK and emits `sales.order.voided` even when the check had
+        // already been charged from another device (SALES-F18). Cancelling there would take food
+        // off the line of a table that paid and is still eating: only a check that IS voided
+        // releases its rounds. An order the read cannot find (another hub, deleted) neither.
+        for header in [
+            json!([{ "id": "o1", "status": "completed" }]),
+            json!([{ "id": "o1", "status": "open" }]),
+            json!([]),
+        ] {
+            let out = cancel_orders_from_voided_order_pure(voided(
+                "o1",
+                header.clone(),
+                json!([{ "id": "k1", "status": "pending", "source_order_id": "o1" }]),
+            ))
+            .expect("a check that is not voided is not an error");
+            assert!(out.operations.is_empty(), "{header}: {:?}", out.operations);
+            assert!(out.events.is_empty(), "{header}: {:?}", out.events);
+        }
+    }
+
+    #[test]
+    fn a_void_without_its_reads_is_a_contract_error() {
+        // A manifest/runtime mismatch, never a business case (appointments#100): guessing would
+        // either cancel food of a paid table or report a delivery that changed nothing.
+        let mut no_header = voided("o1", json!([]), json!([]));
+        no_header["context"]["reads"]
+            .as_object_mut()
+            .expect("reads")
+            .remove("sales.order.get");
+        let err = cancel_orders_from_voided_order_pure(no_header).expect_err("no header read");
+        assert!(err.starts_with("missing_read: sales.order.get"), "got {err}");
+
+        let mut no_rounds = voided("o1", json!([{ "id": "o1", "status": "voided" }]), json!([]));
+        no_rounds["context"]["reads"]
+            .as_object_mut()
+            .expect("reads")
+            .remove("kitchen.orders.list");
+        let err = cancel_orders_from_voided_order_pure(no_rounds).expect_err("no rounds read");
+        assert!(err.starts_with("missing_read: kitchen.orders.list"), "got {err}");
+
+        let err = cancel_orders_from_voided_order_pure(voided("", json!([]), json!([])))
+            .expect_err("an event with no order");
+        assert_eq!(err, "missing_order_id");
+    }
+
+    /// Input for the listener of `sales.order.merged`: the header of the ABSORBED check
+    /// (`reads` of `sales.order.get` by `payload.from_order_id`).
+    fn merged(from: &str, to: &str, absorbed: Value) -> Value {
+        json!({
+            "payload": { "sender": "sales", "from_order_id": from, "to_order_id": to },
+            "context": {
+                "hub_id": "h1", "current_user_id": "u1", "now": "2026-10-07T12:00:00+00:00",
+                "new_ids": [],
+                "reads": { "sales.order.get": absorbed }
+            }
+        })
+    }
+
+    #[test]
+    fn a_merged_check_hands_its_rounds_to_the_check_that_stays() {
+        // SALES-F24 moves the dishes to the surviving check; the rounds follow them, so charging
+        // the surviving check closes them like its own (KITCHEN-F27) and nothing is left behind.
+        let out = repoint_orders_from_merged_order_pure(merged(
+            "o-absorbed",
+            "o-stays",
+            json!([{ "id": "o-absorbed", "status": "voided" }]),
+        ))
+        .expect("the listener re-points the rounds");
+        assert!(out.error.is_none(), "{:?}", out.error);
+        let ops: Vec<(&str, Value, Value)> = out
+            .operations
+            .iter()
+            .map(|o| (o.command.as_str(), o.params["from_order_id"].clone(), o.params["to_order_id"].clone()))
+            .collect();
+        assert_eq!(
+            ops,
+            vec![("kitchen._repoint_source_order", json!("o-absorbed"), json!("o-stays"))]
+        );
+    }
+
+    #[test]
+    fn a_merge_that_did_not_happen_moves_nothing() {
+        // `sales.order.merge` answers OK and emits on a refused merge too (the surviving check was
+        // no longer open, a replay): the absorbed check is then still open — or was never there —
+        // and its rounds stay with it. Merging a check into itself is a degenerate no-op.
+        for (from, to, header) in [
+            ("o-a", "o-b", json!([{ "id": "o-a", "status": "open" }])),
+            ("o-a", "o-b", json!([{ "id": "o-a", "status": "completed" }])),
+            ("o-a", "o-b", json!([])),
+            ("o-a", "o-a", json!([{ "id": "o-a", "status": "voided" }])),
+        ] {
+            let out = repoint_orders_from_merged_order_pure(merged(from, to, header.clone()))
+                .expect("a merge that did not happen is not an error");
+            assert!(out.operations.is_empty(), "{from}->{to} {header}: {:?}", out.operations);
+        }
+    }
+
+    #[test]
+    fn a_merge_without_its_read_or_ids_is_a_contract_error() {
+        let mut no_header = merged("o-a", "o-b", json!([]));
+        no_header["context"]["reads"] = json!({});
+        let err = repoint_orders_from_merged_order_pure(no_header).expect_err("no header read");
+        assert!(err.starts_with("missing_read: sales.order.get"), "got {err}");
+
+        for (from, to) in [("", "o-b"), ("o-a", "")] {
+            let err = repoint_orders_from_merged_order_pure(merged(from, to, json!([])))
+                .expect_err("an event without both checks");
+            assert_eq!(err, "missing_order_id");
+        }
     }
 }
