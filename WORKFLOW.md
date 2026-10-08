@@ -56,8 +56,8 @@ esto, no más:
 - Para que salga papel hace falta una impresora con la función «Cocina» dada de alta en un
   dispositivo (Impresión, PRINTING-F04). Toda estación imprime por la función «Cocina» salvo que se
   cambie por el asistente o la API (KITCHEN-F01).
-- Los ajustes de la pantalla (tiempos, colores, sonido, pase en papel) solo los guarda un
-  administrador (KITCHEN-F26).
+- Los ajustes de la pantalla (tiempos, colores, sonido, pase en papel) los guardan el responsable
+  y el administrador (KITCHEN-F26).
 
 Configuración inicial, paso a paso:
 
@@ -131,8 +131,8 @@ Pestaña **Cocina → Ajustes**, la pone el hub con su formulario genérico:
 «Mostrar cronómetro», «Aviso ámbar (minutos)», «Aviso rojo (minutos)», «Semáforo de color», «Sonar al
 entrar una comanda», «Volumen del sonido (0-100)», «Tono del sonido», «Imprimir el pase al marcar
 listo», «La cocina trabaja con la pantalla» y «Tipo de comanda por defecto», con «Guardar». La ven quienes tienen el
-permiso `kitchen.change_settings` (de fábrica, el administrador y el responsable); el responsable la ve de solo
-lectura con «Solo un administrador puede cambiar estos ajustes.» y a los demás el hub no les enseña la pestaña (HUB_SHELL-F43, hub#2588). Cargando: «Cargando ajustes…».
+permiso `kitchen.change_settings` (de fábrica, el administrador y el responsable), y esos mismos guardan
+(HUB_SHELL-F44, hub#2621); a los demás el hub no les enseña la pestaña (HUB_SHELL-F43, hub#2588). Cargando: «Cargando ajustes…».
 Error: «No se pudieron cargar los ajustes.».
 
 ### Comandas de la cuenta
@@ -181,7 +181,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | KITCHEN-F23 | Crear una comanda a mano | parcial | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
 | KITCHEN-F24 | Borrar una comanda | parcial | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
 | KITCHEN-F25 | Consultar el historial de cocina | parcial | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
-| KITCHEN-F26 | Ajustar la pantalla de cocina | parcial | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
+| KITCHEN-F26 | Ajustar la pantalla de cocina | hecho | [workflow/comandas-historial-y-ajustes.md](workflow/comandas-historial-y-ajustes.md) |
 | KITCHEN-F27 | Cerrar las rondas al cobrar la cuenta entera | hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 | KITCHEN-F28 | Retirar las rondas de una cuenta eliminada o unida a otra | hecho | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |
 | KITCHEN-F29 | Anular un plato ya enviado con aviso a cocina | parcial | [workflow/cierre-y-otros-modulos.md](workflow/cierre-y-otros-modulos.md) |

@@ -81,16 +81,16 @@ Implicados: ninguno
 QA: ninguno
 
 ### KITCHEN-F26 Ajustar la pantalla de cocina
-Estado: parcial — solo un administrador puede guardarlos desde la pantalla (el responsable tiene el permiso, pero el formulario del hub se lo enseña de solo lectura), aunque sí puede cambiarlos por el asistente
-Actor: administrador
+Estado: hecho
+Actor: responsable, administrador
 Pantalla: Ajustes
 Pasos:
-1. Abre **Cocina → Ajustes** (la pestaña solo sale a quien tiene el permiso de ajustes; al empleado no, HUB_SHELL-F43, hub#2588).
+1. Abre **Cocina → Ajustes** (la pestaña solo sale a quien tiene el permiso de ajustes; al empleado no, HUB_SHELL-F43, hub#2588). Quien la ve, la guarda: de fábrica, el administrador y el responsable, igual desde la pestaña que por el asistente (HUB_SHELL-F44, ERPlora/hub#2621).
 2. Cambia lo que haga falta: «Mostrar cronómetro», «Aviso ámbar (minutos)» (15 de fábrica), «Aviso rojo (minutos)» (30), «Semáforo de color», «Sonar al entrar una comanda», «Volumen del sonido (0-100)» (70), «Tono del sonido» («Campanilla» de fábrica, «Timbre» o «Zumbador»), «Imprimir el pase al marcar listo» (apagado), «La cocina trabaja con la pantalla» (encendido; se apaga si en la cocina nadie marca nada en la pantalla y se cocina solo con la comanda en papel) y «Tipo de comanda por defecto» («En sala» de fábrica, «Para llevar» o «A domicilio»). Cada opción sale con su nombre en el idioma de la persona, el mismo que usan la pantalla y la lista de Comandas (kitchen#159); lo que se guarda es su valor interno (`chime`, `dine_in`…).
 3. Pulsa «Guardar»: sale «Ajustes guardados.».
 4. Las pantallas de cocina abiertas toman los ajustes nuevos al momento.
 Entra: los valores del formulario.
 Sale: los ajustes del hub (el primer guardado crea la fila) (avisa: kitchen.settings.updated). Mueven el reloj y el semáforo (KITCHEN-F10), el sonido (KITCHEN-F16), el pase (KITCHEN-F17) y qué rondas cierra el cobro (KITCHEN-F27, desde el siguiente cobro: lo ya cobrado no cambia); el tipo por defecto solo abre «Nueva comanda» (KITCHEN-F23), no cambia las rondas del TPV.
-Si falla: «No se pudieron guardar los ajustes.» y el motivo bajo el formulario. Minutos fuera de 1–120 o volumen fuera de 0–100 se rechazan; un aviso ámbar igual o mayor que el rojo también (texto exacto sin confirmar). Si una pantalla de cocina no puede leer los ajustes, usa los de fábrica.
+Si falla: «No se pudieron guardar los ajustes.» y el motivo bajo el formulario. Si con la pestaña abierta entra otra persona sin el permiso (relevo de turno), los campos se bloquean, desaparece «Guardar» y sale «No tienes permiso para cambiar estos ajustes. Pídeselo a un administrador si lo necesitas.» (HUB_SHELL-F44). Minutos fuera de 1–120 o volumen fuera de 0–100 se rechazan; un aviso ámbar igual o mayor que el rojo también (texto exacto sin confirmar). Si una pantalla de cocina no puede leer los ajustes, usa los de fábrica.
 Implicados: HUB-F33, HUB_SHELL-F43, HUB_SHELL-F44
 QA: qa-hub-restaurant §7.08
