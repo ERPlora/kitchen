@@ -119,6 +119,16 @@ pub fn repoint_orders_from_merged_order(
     ))
 }
 
+/// kitchen#161: the till voided a dish already sent → it is struck on the line. See
+/// `void_lines_from_sales_line_pure`.
+#[cfg(feature = "guest")]
+#[plugin_fn]
+pub fn void_lines_from_sales_line(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
+    to_fn_result(void_lines_from_sales_line_pure(
+        input.into_inner().into_value(),
+    ))
+}
+
 #[cfg(feature = "guest")]
 #[plugin_fn]
 pub fn delete_station(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
@@ -1042,6 +1052,132 @@ pub fn repoint_orders_from_merged_order_pure(input: Value) -> Result<Output, Str
     })
 }
 
+// ── A dish the till voids is struck on the line (kitchen#161, KITCHEN-F29) ─────────────────────
+//
+// The till voids a line already sent (SALES-F20: `sales.order.void_line`, reason and a manager's
+// PIN): it leaves the check and stops being charged. Before kitchen#161 nobody told the kitchen, so
+// the dish stayed on the KDS as pending and was cooked anyway. Toast, TouchBistro, LS Central and
+// Odoo strike it on the ticket, with the reason, and the round carries on with what is left.
+//
+//   · every kitchen line that sales line opened (one, or one per component of a menu, kitchen#57)
+//     still on the line (`pending`, `preparing`, `ready`) becomes `voided`, with the reason; its
+//     own state, not `cancelled`: the till took it back, the kitchen did not throw it away, and a
+//     later cancel of the round keeps saying so (`_cascade_item_status.sql`);
+//   · the round follows what is left, as it follows a bump: nothing left → `cancelled` (the same
+//     `kitchen.order.cancelled` the hub prints the VOID slip from, kitchen#168); only ready dishes
+//     left → `ready`, to the pass. Otherwise it keeps its state.
+//
+// `sales.order.void_line` only announces a line it really voided (`expect_rows`), so unlike the
+// check-level events of kitchen#162 there is no header to re-read. A redelivery finds the dishes
+// already voided and writes nothing.
+
+/// A line state the round no longer waits for: struck by the till or cancelled with the round.
+fn is_struck(status: &str) -> bool {
+    matches!(status, "voided" | "cancelled")
+}
+
+/// `kitchen._on_sales_order_line_voided` — the listener of `sales.order.line_voided`.
+pub fn void_lines_from_sales_line_pure(input: Value) -> Result<Output, String> {
+    let (payload, ctx) = split_input(&input);
+    let line_id = as_str(payload.get("line_id").unwrap_or(&Value::Null));
+    if line_id.is_empty() {
+        return Err("missing_line_id".to_string());
+    }
+    let check_id = as_str(payload.get("order_id").unwrap_or(&Value::Null));
+    let reason = str_or(&payload, "reason", "");
+    let rows = input
+        .get("context")
+        .and_then(|c| c.get("reads"))
+        .and_then(|r| r.get("kitchen.items.by_sales_line"))
+        .ok_or_else(|| "missing_read: kitchen.items.by_sales_line (declare it in `reads`)".to_string())?;
+    let rows: Vec<Value> = match rows {
+        Value::Array(a) => a.clone(),
+        Value::Object(_) => rows.get("rows").and_then(|v| v.as_array()).cloned().unwrap_or_default(),
+        _ => Vec::new(),
+    };
+
+    // The rounds that carry the line, in the order the read returned them.
+    let mut rounds: Vec<String> = Vec::new();
+    for row in &rows {
+        let ticket = as_str(row.get("order_id").unwrap_or(&Value::Null));
+        if !ticket.is_empty() && !rounds.contains(&ticket) {
+            rounds.push(ticket);
+        }
+    }
+
+    let mut ops: Vec<Operation> = Vec::new();
+    let mut events: Vec<Event> = Vec::new();
+    for ticket in rounds {
+        let lines: Vec<&Value> = rows
+            .iter()
+            .filter(|r| as_str(r.get("order_id").unwrap_or(&Value::Null)) == ticket)
+            .collect();
+        let head = lines[0];
+        // Same distrust of the read's filter as the charge: a round of another check is never
+        // touched by a line voided somewhere else.
+        if as_str(head.get("source_order_id").unwrap_or(&Value::Null)) != check_id {
+            continue;
+        }
+        let round_status = as_str(head.get("order_status").unwrap_or(&Value::Null));
+        if !allowed_from("cancel").contains(&round_status.as_str()) {
+            continue; // served or cancelled: the dish is gone already
+        }
+
+        let mut after: Vec<String> = Vec::with_capacity(lines.len());
+        let mut touched = 0usize;
+        for line in &lines {
+            let status = as_str(line.get("status").unwrap_or(&Value::Null));
+            let ours = as_str(line.get("sales_order_item_id").unwrap_or(&Value::Null)) == line_id;
+            if !ours || is_struck(&status) {
+                after.push(status);
+                continue;
+            }
+            let mut p = Map::new();
+            p.insert("item_id".into(), line.get("id").cloned().unwrap_or(Value::Null));
+            p.insert("order_id".into(), json!(ticket));
+            p.insert("require_status".into(), json!(status));
+            p.insert("reason".into(), json!(reason));
+            ops.push(Operation::sql("kitchen._void_item", p));
+            let mut ev = item_event("kitchen.item.voided", &ticket, line, "item_voided", &ctx.user_id);
+            ev.payload["notes"] = json!(reason);
+            events.push(ev);
+            after.push("voided".to_string());
+            touched += 1;
+        }
+        if touched == 0 {
+            continue; // a redelivery: those dishes are voided already
+        }
+
+        let live: Vec<&String> = after.iter().filter(|s| !is_struck(s)).collect();
+        let follow = if live.is_empty() {
+            Some(("cancelled", "keep", "kitchen.order.cancelled", "cancelled"))
+        } else if live.iter().all(|s| *s == "ready") && round_status != "ready" {
+            Some(("ready", "set", "kitchen.order.ready", "bumped"))
+        } else {
+            None
+        };
+        if let Some((status, ready_mode, event, log_action)) = follow {
+            let mut h = Map::new();
+            h.insert("order_id".into(), json!(ticket));
+            h.insert("status".into(), json!(status));
+            h.insert("require_status".into(), json!(round_status));
+            h.insert("set_fired".into(), json!(0));
+            h.insert("ready_mode".into(), json!(ready_mode));
+            h.insert("served_mode".into(), json!("keep"));
+            h.insert("append_note".into(), json!(""));
+            h.insert("nl".into(), json!("\n"));
+            ops.push(Operation::sql("kitchen._set_order_status", h));
+            events.push(order_event(event, &ticket, log_action, &reason, &ctx.user_id));
+        }
+    }
+
+    Ok(Output {
+        operations: ops,
+        events,
+        ..Default::default()
+    })
+}
+
 // ── Line bump / recall (kitchen#4 — the KDS gesture) ───────────────────────
 //
 // The market (Toast, Square, Lightspeed, Fresh, TouchBistro, Odoo, LS Central, Simphony) strikes
@@ -1209,7 +1345,8 @@ fn line_transition_pure(input: &Value, verb: LineVerb) -> Result<Output, String>
     // Does the ticket follow its lines?
     //   bump:   nothing left cooking → ready; first action on a pending ticket → preparing.
     //   recall: a ready ticket has a line cooking again → preparing.
-    let all_ready = after.iter().all(|s| s == "ready");
+    // A dish the till voided is never bumped: it does not hold the round back (kitchen#161).
+    let all_ready = after.iter().filter(|s| !is_struck(s)).all(|s| s == "ready");
     let head = match verb {
         LineVerb::Bump if all_ready && order_status != "ready" => {
             Some(("ready", 1, "set", "kitchen.order.ready", "bumped"))
@@ -2565,6 +2702,11 @@ mod tests {
             run("recall", "ready"),
             bump_items_pure(lines_input("preparing", &[("i1", "pending", "bar")], &["i1"])),
             recall_items_pure(lines_input("ready", &[("i1", "ready", "bar")], &["i1"])),
+            // kitchen#161: the dish the till voided.
+            void_lines_from_sales_line_pure(line_voided(
+                "L1",
+                json!([round_line("i1", "pending", "L1", "pending"), round_line("i2", "pending", "L2", "pending")]),
+            )),
             // kitchen#43: the reception twin — a creation path, the one the TPV walks.
             create_order_from_order_pure(fired(
                 "Mesa 4",
@@ -3216,5 +3358,197 @@ mod tests {
                 .expect_err("an event without both checks");
             assert_eq!(err, "missing_order_id");
         }
+    }
+
+    // ── kitchen#161: a dish the till voids is struck on the line (KITCHEN-F29) ──────────────
+
+    /// Input for the listener of `sales.order.line_voided`: every line of the round(s) that carry
+    /// the voided sales line (`reads` of `kitchen.items.by_sales_line`, ADR-0069), each with the
+    /// round's status and the check it hangs from.
+    fn line_voided(line_id: &str, rows: Value) -> Value {
+        json!({
+            "payload": { "sender": "sales", "order_id": "o1", "line_id": line_id, "reason": "Wrong table" },
+            "context": {
+                "hub_id": "h1", "current_user_id": "u1", "now": "2026-10-08T12:00:00+00:00",
+                "new_ids": [],
+                "reads": { "kitchen.items.by_sales_line": rows }
+            }
+        })
+    }
+
+    /// One line of the read: `(item id, item status, sales line, round status)` of round `k1` of
+    /// check `o1`, at station `grill`.
+    fn round_line(id: &str, status: &str, sales_line: &str, round: &str) -> Value {
+        json!({
+            "id": id, "order_id": "k1", "status": status, "station_id": "grill",
+            "sales_order_item_id": sales_line, "order_status": round, "source_order_id": "o1"
+        })
+    }
+
+    fn void_ops(out: &Output) -> Vec<&Operation> {
+        out.operations.iter().filter(|o| o.command == "kitchen._void_item").collect()
+    }
+
+    #[test]
+    fn a_voided_sales_line_strikes_its_dish_and_leaves_the_rest_of_the_round_cooking() {
+        let out = void_lines_from_sales_line_pure(line_voided(
+            "L1",
+            json!([
+                round_line("i1", "pending", "L1", "pending"),
+                round_line("i2", "pending", "L2", "pending"),
+            ]),
+        ))
+        .expect("the listener voids the dish of that line");
+
+        assert!(out.error.is_none(), "{:?}", out.error);
+        let voids = void_ops(&out);
+        assert_eq!(voids.len(), 1, "{:?}", out.operations);
+        assert_eq!(voids[0].params["item_id"], json!("i1"));
+        assert_eq!(voids[0].params["order_id"], json!("k1"));
+        // Pinned to the state decided against (kitchen#11): a dish bumped between the read and
+        // the write matches zero rows, the delivery is refused and retried with the new state.
+        assert_eq!(voids[0].params["require_status"], json!("pending"));
+        assert_eq!(voids[0].params["reason"], json!("Wrong table"));
+        assert!(order_op(&out).is_none(), "the round keeps cooking its other dish");
+
+        assert_eq!(out.events.len(), 1, "{:?}", out.events);
+        let ev = &out.events[0];
+        assert_eq!(ev.name, "kitchen.item.voided");
+        assert_eq!(ev.payload["order_id"], json!("k1"));
+        assert_eq!(ev.payload["order_item_id"], json!("i1"));
+        assert_eq!(ev.payload["station_id"], json!("grill"));
+        assert_eq!(ev.payload["action"], json!("item_voided"));
+        assert_eq!(ev.payload["notes"], json!("Wrong table"));
+        assert_log_create_accepts(&ev.name, &ev.payload);
+    }
+
+    #[test]
+    fn a_menu_line_voids_every_component_it_sent() {
+        // One sales line, a menu, opened one kitchen line per component (kitchen#57): the whole
+        // menu leaves the check, so every component leaves the line.
+        let out = void_lines_from_sales_line_pure(line_voided(
+            "L1",
+            json!([
+                round_line("c1", "pending", "L1", "preparing"),
+                round_line("c2", "ready", "L1", "preparing"),
+                round_line("i3", "preparing", "L2", "preparing"),
+            ]),
+        ))
+        .expect("voids the menu");
+        let ids: Vec<&Value> = void_ops(&out).iter().map(|o| &o.params["item_id"]).collect();
+        assert_eq!(ids, vec![&json!("c1"), &json!("c2")]);
+        assert_eq!(void_ops(&out)[1].params["require_status"], json!("ready"));
+        assert!(order_op(&out).is_none(), "{:?}", out.operations);
+    }
+
+    #[test]
+    fn voiding_the_last_dish_still_to_serve_cancels_the_round() {
+        // Nothing left to cook or hand over: the round leaves the line as a cancelled one (the
+        // same `kitchen.order.cancelled` the hub prints the VOID slip from, kitchen#168).
+        let out = void_lines_from_sales_line_pure(line_voided(
+            "L1",
+            json!([
+                round_line("i1", "pending", "L1", "pending"),
+                round_line("i2", "voided", "L2", "pending"),
+            ]),
+        ))
+        .expect("voids and cancels");
+        assert_eq!(void_ops(&out).len(), 1);
+        let head = order_op(&out).expect("the round follows its dishes");
+        assert_eq!(head.params["order_id"], json!("k1"));
+        assert_eq!(head.params["status"], json!("cancelled"));
+        assert_eq!(head.params["require_status"], json!("pending"));
+        let names: Vec<&str> = out.events.iter().map(|e| e.name.as_str()).collect();
+        assert_eq!(names, vec!["kitchen.item.voided", "kitchen.order.cancelled"]);
+        assert_eq!(out.events[1].payload["notes"], json!("Wrong table"));
+    }
+
+    #[test]
+    fn when_what_is_left_is_ready_the_round_goes_to_the_pass() {
+        let out = void_lines_from_sales_line_pure(line_voided(
+            "L1",
+            json!([
+                round_line("i1", "preparing", "L1", "preparing"),
+                round_line("i2", "ready", "L2", "preparing"),
+            ]),
+        ))
+        .expect("voids and readies");
+        let head = order_op(&out).expect("the round follows its dishes");
+        assert_eq!(head.params["status"], json!("ready"));
+        assert_eq!(head.params["require_status"], json!("preparing"));
+        assert_eq!(head.params["ready_mode"], json!("set"));
+        let names: Vec<&str> = out.events.iter().map(|e| e.name.as_str()).collect();
+        assert_eq!(names, vec!["kitchen.item.voided", "kitchen.order.ready"]);
+    }
+
+    #[test]
+    fn a_ready_round_that_loses_a_dish_stays_ready() {
+        let out = void_lines_from_sales_line_pure(line_voided(
+            "L1",
+            json!([
+                round_line("i1", "ready", "L1", "ready"),
+                round_line("i2", "ready", "L2", "ready"),
+            ]),
+        ))
+        .expect("voids");
+        assert_eq!(void_ops(&out).len(), 1);
+        assert!(order_op(&out).is_none(), "{:?}", out.operations);
+    }
+
+    #[test]
+    fn a_redelivery_or_a_round_already_closed_writes_nothing() {
+        for (label, rows) in [
+            ("already voided", json!([round_line("i1", "voided", "L1", "pending"), round_line("i2", "pending", "L2", "pending")])),
+            ("served round", json!([round_line("i1", "ready", "L1", "served")])),
+            ("cancelled round", json!([round_line("i1", "cancelled", "L1", "cancelled")])),
+            ("nothing fired", json!([])),
+        ] {
+            let out = void_lines_from_sales_line_pure(line_voided("L1", rows))
+                .expect("not an error: there is nothing left to strike");
+            assert!(out.error.is_none(), "{label}: {:?}", out.error);
+            assert!(out.operations.is_empty(), "{label}: {:?}", out.operations);
+            assert!(out.events.is_empty(), "{label}: {:?}", out.events);
+        }
+    }
+
+    #[test]
+    fn a_round_of_another_check_is_never_touched() {
+        // The read is filtered by the sales line; the handler does not take its word for it.
+        let mut row = round_line("i1", "pending", "L1", "pending");
+        row["source_order_id"] = json!("o2");
+        let out = void_lines_from_sales_line_pure(line_voided("L1", json!([row])))
+            .expect("not an error");
+        assert!(out.operations.is_empty(), "{:?}", out.operations);
+
+        let mut other_line = round_line("i1", "pending", "L9", "pending");
+        other_line["sales_order_item_id"] = json!("L9");
+        let out = void_lines_from_sales_line_pure(line_voided("L1", json!([other_line])))
+            .expect("not an error");
+        assert!(out.operations.is_empty(), "{:?}", out.operations);
+    }
+
+    #[test]
+    fn a_line_voided_without_its_read_or_ids_is_a_contract_error() {
+        let mut no_read = line_voided("L1", json!([]));
+        no_read["context"]["reads"] = json!({});
+        let err = void_lines_from_sales_line_pure(no_read).expect_err("no read");
+        assert!(err.starts_with("missing_read: kitchen.items.by_sales_line"), "got {err}");
+
+        let err = void_lines_from_sales_line_pure(line_voided("", json!([]))).expect_err("no line");
+        assert_eq!(err, "missing_line_id");
+    }
+
+    #[test]
+    fn a_voided_dish_does_not_hold_the_round_back_from_the_pass() {
+        // Bumping the last dish still cooking sends the round to the pass even though a voided
+        // one is on the ticket: nobody is ever going to bump that one.
+        let out = bump_items_pure(lines_input(
+            "preparing",
+            &[("a", "preparing", "grill"), ("b", "voided", "grill")],
+            &["a"],
+        ))
+        .expect("bump");
+        let head = order_op(&out).expect("the round goes to the pass");
+        assert_eq!(head.params["status"], json!("ready"));
     }
 }
