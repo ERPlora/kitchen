@@ -10,6 +10,8 @@ SELECT id, order_id, station_id, station_name, destination, printer_role,
        product_id, product_name,
        unit_price, quantity, total, modifiers, notes,
        status, seat_number, fired_at, started_at, completed_at,
+       -- kitchen#161 · a dish the till voided is `voided`, with the till's reason.
+       void_reason,
        -- kitchen#57 · el MENÚ al que pertenece la línea (ADR-0381). Congelado en la fila, como la
        -- estación: dos filas con el mismo `combo_ref` son un mismo menú de una misma mesa, y quien
        -- pinta —el KDS y la comanda de papel— las agrupa bajo `combo_name` en vez de soltarlas

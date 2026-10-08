@@ -2168,6 +2168,7 @@ var es_default = {
     clearRush: "Quitar urgente",
     tapToBump: "toca para marcar listo",
     tapToRecall: "toca para recuperar",
+    lineVoided: "Anulado",
     tapHeaderToBump: "Marcar listas todas las l\xEDneas en pantalla",
     ticketAria: "Comanda {n}",
     round: "Ronda {n}",
@@ -2188,6 +2189,7 @@ var es_default = {
     colProduct: "Producto",
     actionItemBumped: "L\xEDnea lista",
     actionItemRecalled: "L\xEDnea recuperada",
+    actionItemVoided: "L\xEDnea anulada",
     tapMenuToBump: "Toca para marcar listos los platos de este men\xFA",
     comboAria: "Men\xFA {name}, {n} platos",
     comboCount: "{n} platos",
@@ -2367,6 +2369,7 @@ var en_default = {
     clearRush: "Remove rush",
     tapToBump: "tap to bump",
     tapToRecall: "tap to recall",
+    lineVoided: "Voided",
     tapHeaderToBump: "Bump every line on screen",
     ticketAria: "Ticket {n}",
     round: "Round {n}",
@@ -2387,6 +2390,7 @@ var en_default = {
     colProduct: "Product",
     actionItemBumped: "Line ready",
     actionItemRecalled: "Line recalled",
+    actionItemVoided: "Line voided",
     tapMenuToBump: "Tap to mark this menu's dishes ready",
     comboAria: "Menu {name}, {n} dishes",
     comboCount: "{n} dishes",
@@ -2501,6 +2505,7 @@ function groupTickets(rows2) {
         modifiers: String(r6.modifiers ?? ""),
         notes: String(r6.item_notes ?? ""),
         status: String(r6.item_status ?? "pending"),
+        void_reason: String(r6.void_reason ?? ""),
         seat: r6.seat_number === null || r6.seat_number === void 0 || r6.seat_number === "" ? null : Number(r6.seat_number),
         combo_ref: r6.combo_ref === null || r6.combo_ref === void 0 || r6.combo_ref === "" ? null : String(r6.combo_ref),
         combo_name: String(r6.combo_name ?? "")
@@ -2647,6 +2652,11 @@ var ErpKitchenDisplay = class extends i3 {
     .line .note { font-style:italic; }
     .line .meta { font-size:1rem; opacity:.7; display:flex; gap:.5rem; }
     .line[data-status="ready"] .name, .line[data-status="ready"] .qty { text-decoration: line-through; opacity:.55; }
+    /* kitchen#161 · a dish the till took back: struck like a done one, but in the danger colour and
+       with the word, so the cook does not read it as «already cooked». */
+    .line[data-status="voided"] .name, .line[data-status="voided"] .qty { text-decoration: line-through; opacity:.6; }
+    .line .void { font-size:1rem; font-weight:700; color: var(--ion-color-danger, #c5000f); display:flex; flex-wrap:wrap; gap:.25rem .5rem; }
+    .line .void .reason { font-weight:400; font-style:italic; overflow-wrap:anywhere; }
     .line .tick { font-size:1.4rem; line-height:1; color: var(--ion-color-success, #2dd36f); }
     /* kitchen#57 · A MENU: a quiet header and its components indented behind a rule. The emphasis
        stays on the DISH — the market highlights allergens and changes, never hierarchy — so the
@@ -2717,6 +2727,8 @@ var ErpKitchenDisplay = class extends i3 {
         erplora().on("kitchen.order.deleted", reload),
         erplora().on("kitchen.item.bumped", reload),
         erplora().on("kitchen.item.recalled", reload),
+        // kitchen#161 · the till voided a line already fired: it is struck on the board.
+        erplora().on("kitchen.item.voided", reload),
         erplora().on("kitchen.settings.updated", () => this.loadSettings())
       ];
       this.unsub = () => offs.forEach((off) => off());
@@ -2986,9 +2998,11 @@ var ErpKitchenDisplay = class extends i3 {
     const seat = l3.seat !== null ? b2`<span>${t_("ui.seat")} ${l3.seat}</span>` : A;
     const station = !this.station && l3.station_id ? b2`<span>${this.stationName(l3)}</span>` : A;
     const printer = l3.destination === "printer" ? b2`<ion-icon name="print-outline" aria-label=${t_("ui.printerOnly")}></ion-icon>` : A;
+    const voided = l3.status === "voided";
+    const hint = voided ? t_("ui.lineVoided") : l3.status === "ready" ? t_("ui.tapToRecall") : t_("ui.tapToBump");
     return b2`<li class="line" data-testid=${`kds-line-${l3.id}`} data-item=${l3.id} data-status=${l3.status} role="button" tabindex=${actionable ? 0 : -1}
         aria-disabled=${actionable ? "false" : "true"}
-        aria-label=${`${formatQty(l3.quantity, erplora().locale)} \xD7 ${l3.product_name} \u2014 ${l3.status === "ready" ? t_("ui.tapToRecall") : t_("ui.tapToBump")}`}
+        aria-label=${`${formatQty(l3.quantity, erplora().locale)} \xD7 ${l3.product_name} \u2014 ${hint}`}
         @click=${() => this.tapLine(t7, l3)}
         @keydown=${(e6) => {
       if (e6.key === "Enter" || e6.key === " ") {
@@ -3001,6 +3015,7 @@ var ErpKitchenDisplay = class extends i3 {
         <div class="name">${l3.product_name}</div>
         ${l3.modifiers ? b2`<div class="mods">${l3.modifiers}</div>` : A}
         ${l3.notes ? b2`<div class="note">${l3.notes}</div>` : A}
+        ${voided ? b2`<div class="void"><span data-void-label>${t_("ui.lineVoided")}</span>${l3.void_reason ? b2`<span class="reason" data-void-reason>${l3.void_reason}</span>` : A}</div>` : A}
         ${seat !== A || station !== A || printer !== A ? b2`<div class="meta">${seat}${station}${printer}</div>` : A}
       </span>
       ${l3.status === "ready" ? b2`<span class="tick" aria-hidden="true">✓</span>` : A}
@@ -3025,7 +3040,8 @@ var ErpKitchenDisplay = class extends i3 {
     const t_ = (k2, p4) => erplora().t(CATALOG, k2, p4);
     if (!g3.ref) return g3.lines.map((l3) => this.renderLine(t7, l3));
     const cooking = g3.lines.some((l3) => COOKING.includes(l3.status));
-    const done = g3.lines.every((l3) => l3.status === "ready");
+    const live = g3.lines.filter((l3) => l3.status !== "voided");
+    const done = live.length > 0 && live.every((l3) => l3.status === "ready");
     const actionable = can("kitchen.change_order") && cooking;
     return b2`<li class="combo" data-combo=${g3.ref} data-combo-done=${done ? "true" : "false"}>
       <div class="combo-head" data-testid=${`kds-ticket-${t7.id}-combo-${g3.ref}`} role=${actionable ? "button" : "presentation"} tabindex=${actionable ? 0 : -1}
@@ -6111,6 +6127,8 @@ var ACTION_LABEL_KEY = {
   bumped: "ui.actionBumped",
   item_bumped: "ui.actionItemBumped",
   item_recalled: "ui.actionItemRecalled",
+  // kitchen#161 · the till voided a line already fired (`kitchen.item.voided`).
+  item_voided: "ui.actionItemVoided",
   served: "ui.actionServed",
   recalled: "ui.actionRecalled",
   cancelled: "ui.actionCancelled"
@@ -6998,7 +7016,9 @@ var KDS_EVENTS = [
   "kitchen.order.recalled",
   "kitchen.order.cancelled",
   "kitchen.order.deleted",
-  "kitchen.order.updated"
+  "kitchen.order.updated",
+  // kitchen#161 · a single dish voided by the till: the round stays, the dish reads voided.
+  "kitchen.item.voided"
 ];
 var ErpKitchenPosComandas = class extends i3 {
   constructor() {
@@ -7064,6 +7084,9 @@ var ErpKitchenPosComandas = class extends i3 {
     .kwarn { color: var(--ion-color-warning-shade, #b26b00); font-size: .82rem; margin: 0 0 .5rem; }
     .kitem { display: flex; gap: .5rem; padding: .35rem .7rem; font-size: .9rem; }
     .kitem .q { color: #8b897f; min-width: 2.2rem; }
+    /* kitchen#161 · a dish the till voided after firing: struck, with the word. */
+    .kitem[data-status='voided'] .q, .kitem[data-status='voided'] .n { text-decoration: line-through; opacity: .6; }
+    .kitem .kvoid { margin-left: auto; font-size: .72rem; font-weight: 800; color: var(--ion-color-danger, #d9480f); white-space: nowrap; }
   `;
   }
   connectedCallback() {
@@ -7095,6 +7118,7 @@ var ErpKitchenPosComandas = class extends i3 {
     } catch {
       this.comandas = [];
     }
+    if (this.open) await this.loadItems();
   }
   async openModal() {
     this.open = true;
@@ -7107,8 +7131,14 @@ var ErpKitchenPosComandas = class extends i3 {
         d3.setAttribute("open", "");
       }
     }
+    await this.loadItems();
+  }
+  /** The dishes of each round, loaded on every opening (a few; the chip does not need them) and
+   *  never cached across openings: a dish voided since the last look must read voided (kitchen#161).
+   *  FLAT query (not queryAll): the list engine adds paging and the detail query rejects it with
+   *  422 (seen in Playwright). */
+  async loadItems() {
     for (const c5 of this.comandas) {
-      if (this.items.has(c5.id)) continue;
       try {
         const its = rows(await erplora6().query("kitchen.orders.items", { order_id: c5.id }));
         this.items = new Map(this.items).set(c5.id, its);
@@ -7202,7 +7232,7 @@ var ErpKitchenPosComandas = class extends i3 {
                 ${rush ? b2`<span class="kprio">${t5("ui.priority_rush")}</span>` : A}
               </div>
               ${(this.items.get(c5.id) ?? []).map((i7) => b2`
-                <div class="kitem"><span class="q">${this.qty(i7.quantity)}×</span><span>${i7.product_name}</span></div>`)}
+                <div class="kitem" data-item=${i7.id} data-status=${i7.status ?? "pending"}><span class="q">${this.qty(i7.quantity)}×</span><span class="n">${i7.product_name}</span>${i7.status === "voided" ? b2`<span class="kvoid">${t5("ui.lineVoided")}</span>` : A}</div>`)}
               ${can3("kitchen.change_order") && rushToggleable2(c5) ? b2`
                 <div class="krow-a">
                   <button class="krush" ?data-rush=${rush} data-testid=${`kitchen-comandas-rush-${c5.id}`}

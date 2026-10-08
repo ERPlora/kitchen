@@ -44,6 +44,8 @@ const ACTION_LABEL_KEY: Record<string, string> = {
   bumped: 'ui.actionBumped',
   item_bumped: 'ui.actionItemBumped',
   item_recalled: 'ui.actionItemRecalled',
+  // kitchen#161 · the till voided a line already fired (`kitchen.item.voided`).
+  item_voided: 'ui.actionItemVoided',
   served: 'ui.actionServed',
   recalled: 'ui.actionRecalled',
   cancelled: 'ui.actionCancelled',

@@ -10,7 +10,8 @@
       "type": "string",
       "enum": [
         "received", "accepted", "started", "bumped", "completed",
-        "served", "recalled", "cancelled", "priority_changed", "item_bumped", "item_recalled"
+        "served", "recalled", "cancelled", "priority_changed", "item_bumped", "item_recalled",
+        "item_voided"
       ]
     },
     "order_item_id": { "type": ["string", "null"] },

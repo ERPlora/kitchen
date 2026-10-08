@@ -2,10 +2,9 @@
 
 Prefijo: KITCHEN
 
-Lo que Cocina hace cuando otro módulo le avisa (una cuenta cobrada, eliminada o unida a otra, dos
-clientes unidos) y lo que no hace porque no escucha el aviso (un plato anulado). Cocina escucha cinco
-avisos de fuera: ronda enviada, cuenta cerrada, cuenta eliminada, cuentas unidas y fichas de cliente
-unidas.
+Lo que Cocina hace cuando otro módulo le avisa (una cuenta cobrada, eliminada o unida a otra, un
+plato anulado en el TPV, dos clientes unidos). Cocina escucha seis avisos de fuera: ronda enviada,
+cuenta cerrada, cuenta eliminada, cuentas unidas, plato anulado y fichas de cliente unidas.
 
 ## Flujos
 
@@ -48,17 +47,20 @@ Implicados: SALES-F18, SALES-F24, REC_RESTAURANTE-F10, REC_RESTAURANTE-F14, HUB_
 QA: R-07, qa-hub-restaurant §7.09, qa-hub-restaurant §7.13
 
 ### KITCHEN-F29 Anular un plato ya enviado con aviso a cocina
-Estado: parcial — el TPV ya anula una línea enviada con motivo y PIN del responsable y deja de cobrarse (SALES-F20), pero Cocina no escucha ese aviso (sales.order.line_voided) ni tiene orden para anular un solo plato: el plato sigue en la pantalla y se cocina si nadie avisa de palabra (kitchen#161)
+Estado: parcial — en la pantalla de cocina y en la hoja del TPV el plato sale tachado como anulado con su motivo (kitchen#161), pero en papel solo sale vale cuando la anulación deja la ronda vacía (la ronda se cancela, HUB_SHELL-F78): el vale de UN plato no existe y una cocina que trabaja solo con papel no se entera (hub#2640)
 Actor: responsable
 Pantalla: Ventas: Vender
 Pasos:
 1. En el TPV, sobre una línea ya enviada, se pulsa ⊗ «Anular este artículo», se elige o escribe el motivo y, si quien lo pide no es responsable, este da su PIN: la línea sale de la cuenta y Ventas avisa con sales.order.line_voided (SALES-F20).
-2. En la pantalla de cocina, ese plato sale tachado como anulado y su estación recibe un vale de anulación en papel (no existe: Cocina no escucha el aviso, kitchen#161).
-3. Hasta entonces, se avisa de palabra o se cancela la ronda entera desde Cocina (KITCHEN-F22), que no cambia la cuenta.
-Entra: la línea anulada y su motivo, de Ventas (sales.order.line_voided, con la cuenta, la línea y el motivo); hoy Cocina no lo escucha.
-Sale: el plato anulado en cocina y el vale en papel por la función de su estación.
-Si falla: igual que la comanda en papel (KITCHEN-F08).
+2. En la pantalla de cocina, sin recargar, ese plato sale tachado con «Anulado» y el motivo, en todas las estaciones que lo tienen. No se puede tocar (ni marcar listo ni recuperar), «Listo» de la tarjeta ya no lo incluye, deja de contar en el «Resumen» y en el «En curso» de su estación, y un menú se da por terminado con el resto de sus platos listos. Vale para un plato por preparar, en preparación o ya listo; los platos de un menú anulado se tachan todos.
+3. La ronda sigue con lo que queda: si no queda nada vivo, pasa a Cancelada (sale de la pantalla, el hub imprime el vale de anulación de la ronda como en KITCHEN-F22, HUB_SHELL-F78); si lo que queda ya está todo listo, pasa a Lista y va al pase («Listas»); si no, sigue como estaba.
+4. En el TPV, la hoja «Comandas de la cuenta» enseña el plato tachado con «Anulado» (KITCHEN-F19), y en el Historial queda «Línea anulada» con el motivo en Notas.
+5. En papel, el vale de un solo plato no sale (hub#2640): en una cocina que trabaja con la comanda impresa se avisa de palabra.
+Entra: la línea anulada y su motivo, de Ventas (sales.order.line_voided, con la cuenta, la línea y el motivo).
+Sale: cada plato de cocina de esa línea pasa a Anulado con el motivo (avisa: kitchen.item.voided, con el motivo; Historial «Línea anulada»); la ronda, si se queda sin nada vivo, a Cancelada (kitchen.order.cancelled, Historial «Canceladas») o, si solo quedan platos listos, a Lista (kitchen.order.ready, Historial «Listas (bump)»). Solo se tocan las rondas de esa cuenta en este hub. Nada vuelve al TPV. Cancelar después la ronda (KITCHEN-F22, KITCHEN-F28) deja el plato anulado como Anulado, no como Cancelado.
+Si falla: una ronda Servida o Cancelada no se toca (el plato ya no está en la cocina). Si el plato cambia de estado entre que se lee y se escribe (alguien lo marca listo justo entonces), la anulación se rechaza entera y el aviso se reintenta con el estado nuevo. Un aviso repetido no cambia nada. Si Cocina estaba desactivada al anular, el aviso no llega y el plato sigue en la pantalla: se avisa de palabra o se cancela la ronda (KITCHEN-F22).
 Implicados: SALES-F20, REC_RESTAURANTE-F14
+Pendiente de enlazar: hub — HUB_SHELL-F78, el vale de anulación de UN plato al recibir kitchen.item.voided (hub#2640)
 QA: R-11, qa-hub-restaurant §7.08, qa-hub-restaurant §7.13
 
 ### KITCHEN-F30 Pasar las comandas de un cliente unido a otro

@@ -48,6 +48,7 @@ ACTION_WRITERS = {
     "bumped": "kitchen.order.ready",
     "item_bumped": "kitchen.item.bumped",
     "item_recalled": "kitchen.item.recalled",
+    "item_voided": "kitchen.item.voided",  # kitchen#161 — the till voided a fired line
     "served": "kitchen.order.served",
     "recalled": "kitchen.order.recalled",
     "cancelled": "kitchen.order.cancelled",

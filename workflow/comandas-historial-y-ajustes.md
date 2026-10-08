@@ -27,7 +27,7 @@ Actor: responsable
 Pantalla: Comandas
 Pasos:
 1. En la fila de la comanda, pulsa «Cancelar» (en rojo).
-2. Sin pregunta previa, la comanda y todos sus platos pasan a «Cancelada».
+2. Sin pregunta previa, la comanda y todos sus platos pasan a «Cancelada» (un plato que el TPV ya anuló sigue diciendo «Anulado», KITCHEN-F29).
 3. Desaparece de la pantalla de cocina y del «Resumen»; en el TPV la ronda sale «Cancelada».
 4. Si la ronda salió en papel, la pantalla que la canceló saca en la misma impresora de cada estación un vale de anulación («ANULADA · Mesa 4», los platos en negativo); si no sale, avisa de que hay que decirlo de viva voz (HUB_SHELL-F78, kitchen#168).
 Entra: la comanda Por preparar, En preparación o Lista.
@@ -74,7 +74,7 @@ Pasos:
 2. Cada fila dice qué pasó (Acción), en qué comanda (su número), sus Notas y Cuándo, lo último primero.
 3. Busca por número de comanda o por notas; filtra por acción o por fechas.
 4. La lista se recarga sola con cada cambio de cocina; como la entrada la apunta Cocina justo después, la última acción puede no salir hasta la siguiente recarga (sin confirmar).
-Entra: las entradas que Cocina apunta sola tras cada cambio: llegada, empezar, plato listo o recuperado, lista, recuperada, servida y cancelada (también las «Servidas» que apunta el cobro, KITCHEN-F27).
+Entra: las entradas que Cocina apunta sola tras cada cambio: llegada, empezar, plato listo, recuperado o anulado en el TPV (KITCHEN-F29, con el motivo en Notas), lista, recuperada, servida y cancelada (también las «Servidas» que apunta el cobro, KITCHEN-F27).
 Sale: nada; solo enseña. Apuntar algo a mano solo se puede por la API, con el permiso del responsable.
 Si falla: el error de la tabla con reintento; sin entradas, «Sin actividad reciente en cocina.».
 Implicados: ninguno

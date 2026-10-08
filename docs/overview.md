@@ -40,6 +40,8 @@ produces without a dining room.
 | `kitchen.order.received` | `kitchen.logs.create` | Writes the FIRST audit row of a ticket: it reached the kitchen (kitchen#43). `kitchen.order.created` cannot be routed to the log itself — its payload carries keys of its own (`total`, `items_count`…) that `schemas/log_create.json` refuses, so every creation path also emits this narrow twin whose payload is exactly the log's schema |
 | `sales.order.voided` (from `sales`) | `kitchen._on_sales_order_voided` | An open check was deleted: once `sales.order.get` confirms it is voided, every round of it still waiting, cooking or ready is cancelled with its dishes (kitchen#162) |
 | `sales.order.merged` (from `sales`) | `kitchen._on_sales_order_merged` | Two checks were merged: once `sales.order.get` confirms the absorbed one is voided, its live rounds move to the check that stays, numbered after its own (kitchen#162) |
+| `sales.order.line_voided` (from `sales`) | `kitchen._on_sales_order_line_voided` | The till voided a line it had already fired: every kitchen dish of that line still on the line is struck as **voided** with the till's reason, and the round follows what is left — nothing left → cancelled, only ready dishes left → ready (kitchen#161) |
+| `kitchen.item.voided` | `kitchen.logs.create` | Writes «Line voided» in the audit trail, with the reason in its notes (kitchen#161) |
 | `customer.merged` (from `customers`) | `kitchen._on_customer_merged` | When two customer sheets are merged, every kitchen order of the absorbed sheet (live or deleted, any status) moves to the surviving one, in this hub only; kitchen still does not depend on `customers` (customers#86) |
 
 **Events it emits**
@@ -51,6 +53,7 @@ produces without a dining room.
 | `kitchen.order.updated` | a ticket is edited |
 | `kitchen.order.fired` / `.ready` / `.served` / `.recalled` / `.cancelled` | the status changes |
 | `kitchen.order.deleted` | a ticket is deleted |
+| `kitchen.item.voided` | a dish is struck because the till voided its line, with the reason (kitchen#161) |
 | `kitchen.station.created` / `.updated` / `.deleted` | stations change |
 | `kitchen.routing.changed` | product routing is reconfigured |
 | `kitchen.settings.updated` | the settings are saved |
