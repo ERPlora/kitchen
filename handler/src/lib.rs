@@ -3499,6 +3499,9 @@ mod tests {
     fn a_redelivery_or_a_round_already_closed_writes_nothing() {
         for (label, rows) in [
             ("already voided", json!([round_line("i1", "voided", "L1", "pending"), round_line("i2", "pending", "L2", "pending")])),
+            // The round follows ONCE, with the delivery that strikes the dish: a redelivery never
+            // moves it, whatever the rest of the round reads by then.
+            ("already voided, the rest ready", json!([round_line("i1", "voided", "L1", "preparing"), round_line("i2", "ready", "L2", "preparing")])),
             ("served round", json!([round_line("i1", "ready", "L1", "served")])),
             ("cancelled round", json!([round_line("i1", "cancelled", "L1", "cancelled")])),
             ("nothing fired", json!([])),
