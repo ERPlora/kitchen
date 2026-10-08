@@ -10,6 +10,10 @@
   them.
 - **Slots do not refresh in a mounted screen.** After activating or deactivating the module, leave
   the till and come back.
+- **Voiding one dish prints nothing.** The board strikes it with the reason, but no void slip for a
+  single dish comes out of the station's printer (hub#2640): a kitchen that works from paper has to
+  be told out loud. Only when the void leaves the round empty is the round cancelled and its void
+  slip printed.
 - **`printer_name` on a station is obsolete.** The field is kept but nothing reads it; the printer
   **role** is what matters.
 

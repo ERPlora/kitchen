@@ -50,6 +50,24 @@ Screen-only stations get no slip: the card simply leaves the screen.
 stays, after its own rounds, in the same status and with the label they were sent with. From then on
 they belong to that check: its sheet in the till lists them and charging it closes them like its own.
 
+## Voiding one dish the till already fired
+
+The till voids a line it already sent (wrong order, the table changed its mind, out of stock) with a
+reason and, when the waiter is not a manager, the manager's PIN. The kitchen strikes that dish on the
+board — through, with **Voided** and the reason in red — at every station that has it, the way Toast,
+Square and Lightspeed show a voided item on the KDS (kitchen#161). The struck dish cannot be tapped,
+**Bump** no longer counts it, it leaves the All-Day summary, and a menu closes when the rest of it is
+ready. It is its own state, `voided`, not `cancelled`: the till took it back, and cancelling the round
+later keeps saying so.
+
+The round carries on with what is left: nothing left → it is cancelled (and the hub prints the round's
+void slip, as for any cancelled round); only ready dishes left → it goes ready, to the pass. A served or
+cancelled round is not touched. The till's «Comandas» sheet shows the dish struck too, and the log
+writes «Line voided» with the reason.
+
+**Not yet:** a void slip on paper for ONE dish (hub#2640). A kitchen that cooks only from the printed
+comanda has to be told out loud.
+
 ## Every fire is a new round
 
 Pressing send again does not resend the whole check. It sends **only the lines never fired before**,

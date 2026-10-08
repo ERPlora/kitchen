@@ -30,7 +30,7 @@ esto, no más:
   estaciones de preparación, vista de pase (expo), marcar listo por plato y por comanda, «Rush».
   Los cursos con retener y lanzar no se adoptan (kitchen#71, fuera del MVP).
 - [Toast — anulaciones](https://doc.toasttab.com/doc/platformguide/adminVoidingOrders.html): anular
-  un plato ya enviado se ve en cocina. Adoptado como objetivo; el TPV ya lo anula con motivo, pero cocina aún no lo ve (KITCHEN-F29, kitchen#161).
+  un plato ya enviado se ve en cocina. Adoptado: el plato que el TPV anula sale tachado con su motivo en la pantalla de cocina y en la hoja del TPV; el vale en papel de ese plato aún no (KITCHEN-F29, hub#2640).
 - [Square KDS](https://squareup.com/help/us/en/article/8171-complete-orders-with-square-kds):
   completar un plato suelto o la comanda entera, y la pestaña de completadas.
 - [Lightspeed K-Series KDS 2.0](https://k-series-support.lightspeedhq.com/hc/en-us/articles/22708154090267-Using-the-Kitchen-Display-System-2-0):
@@ -85,7 +85,8 @@ rejilla de tarjetas de columnas iguales (una sola en el móvil). Cada tarjeta: l
 sin etiqueta, el tipo: «En sala», «Para llevar», «A domicilio»), «Camarero: <nombre>», las marcas
 «Urgente», «VIP», «Ronda N» (desde la segunda) y «Lista», el reloj y el número corto «#0012»; los
 platos con la cantidad grande, el nombre, los suplementos, la nota en cursiva y, en la vista
-«Todas», la estación; un icono de impresora si la estación es solo de papel. Un menú sale con su
+«Todas», la estación; un icono de impresora si la estación es solo de papel. Un plato anulado en el
+TPV sale tachado, con «Anulado» y el motivo en rojo, y no responde al toque (KITCHEN-F29). Un menú sale con su
 nombre en una cabecera discreta y sus platos sangrados debajo («N platos»). Al pie, según el
 permiso y el estado: «Listo», «Marcar urgente» / «Quitar urgente», «Recuperar» y «Servida». El
 borde superior de la tarjeta va en verde, ámbar o rojo según el tiempo. Vacía: «No hay comandas en
@@ -123,7 +124,7 @@ hacerlas al administrador.
 Menú **Cocina → Historial**, título «Historial de cocina». Tabla de lo que pasó en cocina, lo último
 primero: Acción, Comanda (el número), Notas y Cuándo (fecha y hora locales). Buscador «Buscar comanda
 o notas…»; filtro de acción con «Recibidas», «Lanzadas», «Listas (bump)», «Línea lista», «Línea
-recuperada», «Servidas», «Recuperadas» y «Canceladas». Vacía: «Sin actividad reciente en cocina.».
+recuperada», «Línea anulada», «Servidas», «Recuperadas» y «Canceladas». Vacía: «Sin actividad reciente en cocina.».
 Cargando: «Cargando…». Error: el de la tabla con reintento.
 
 ### Ajustes
@@ -141,7 +142,7 @@ En el TPV (**Ventas → Vender**), con una cuenta que ya envió algo a cocina, C
 tarjeta por ronda, la más reciente primero, con «Comanda N», una hora (la de llegada a cocina o,
 desde que cocina la empieza, la de inicio; en UTC, 1 o 2 horas por detrás en España), el estado («Por
 preparar», «En preparación», «Lista», «Servida», «Cancelada»), la marca «Urgente» si la tiene, sus
-platos («2× Croquetas») y, mientras se cocina, «Marcar urgente» / «Quitar urgente». Se cierra con ✕
+platos («2× Croquetas»; uno anulado en el TPV, tachado con «Anulado») y, mientras se cocina, «Marcar urgente» / «Quitar urgente». Se cierra con ✕
 o tocando fuera. Sin rondas enviadas, el botón no aparece. Un rechazo sale arriba de la hoja; si el
 aviso de urgencia no se imprime, «No se ha podido imprimir el aviso de urgencia. Avisa a cocina de
 viva voz y revisa su impresora.».
@@ -214,7 +215,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | Estado de cada ronda visible en el TPV | parcial: la hora no es la de envío y sale en UTC | F19 |
 | Cerrar en cocina lo de una cuenta cobrada, sin parar lo que se cocina | hecho (kitchen#145) | F27 |
 | Lo que solo va a papel no se queda en la pantalla | hecho: sale al cobrar (la ronda entera a estaciones solo de impresora, o todo si la cocina trabaja en papel, kitchen#153); la tarjeta sí se pinta mientras la cuenta sigue abierta | F27, F26 |
-| Anular un plato enviado con aviso a cocina | parcial: el TPV lo anula, cocina no lo tacha (kitchen#161) | F29 |
+| Anular un plato enviado con aviso a cocina | parcial: cocina lo tacha con el motivo y la ronda sigue con lo que queda (kitchen#161); el vale en papel de un plato no sale (hub#2640) | F29 |
 | Cuenta anulada o unida: cocina se entera | hecho: eliminarla cancela sus rondas en marcha y juntarla las pasa a la cuenta que queda (kitchen#162); en papel sale el vale de anulación (kitchen#168) | F28 |
 | Cancelar una comanda con motivo | parcial: sin motivo ni confirmación en pantalla | F22 |
 | Historial con quién hizo cada cosa | parcial: no enseña quién | F25 |
@@ -236,7 +237,9 @@ quedó apartada como `_deprecated_kitchen_order_modifier`, sin filas.
 - De Ventas, el aviso de ronda enviada (`order.fired`: pedido, etiqueta, canal, camarero, prioridad y
   los platos con su nota y suplementos), el de cuenta cerrada (`order.completed`), el de cuenta
   eliminada (`sales.order.voided`) y el de cuentas unidas (`sales.order.merged`); con los dos últimos
-  lee la cabecera de la cuenta (`sales.order.get`) para comprobar que está anulada (KITCHEN-F28).
+  lee la cabecera de la cuenta (`sales.order.get`) para comprobar que está anulada (KITCHEN-F28). Y el
+  de línea anulada (`sales.order.line_voided`: cuenta, línea y motivo), que tacha sus platos
+  (KITCHEN-F29).
 - De Clientes, el aviso de fichas unidas (`customer.merged`).
 - De Inventario, las listas públicas de productos y categorías, solo para el desplegable del enrutado.
 - Del hub, la lista de personas (`hub.users.list`) y, si está instalado Equipo, su lista
@@ -255,10 +258,12 @@ los platos y la cabecera de cada comanda para imprimirla (KITCHEN-F08); a Flujos
   `created_by` / `updated_by` de todas las tablas: identificadores de personas del hub o del equipo.
 - `kitchen_order.notes` (incluye el motivo de una cancelación, guardado con el prefijo fijo en
   inglés `Cancelled: `) y `kitchen_order_item.notes`: texto libre del camarero; puede contener
-  alergias, que son datos de salud. `kitchen_order_log.notes`: motivo de cancelación.
+  alergias, que son datos de salud. `kitchen_order_item.void_reason`: el motivo que el TPV escribió
+  al anular el plato (texto libre, KITCHEN-F29). `kitchen_order_log.notes`: motivo de cancelación o
+  de anulación de un plato.
 - Viajan en avisos: todos los avisos de cocina (`kitchen.order.*`, `kitchen.item.*`) llevan quién hizo
   la acción; `kitchen.order.created` lleva además la etiqueta y el camarero, y
-  `kitchen.order.cancelled` el motivo. El papel lleva la etiqueta y el nombre del camarero.
+  `kitchen.order.cancelled` y `kitchen.item.voided` el motivo. El papel lleva la etiqueta y el nombre del camarero.
 - Cocina no escucha el borrado ni la anonimización de un cliente (`customer.deleted`,
   `customer.anonymized`): la etiqueta y las notas de sus comandas se quedan como estaban.
 

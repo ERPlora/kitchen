@@ -16,8 +16,9 @@ Pasos:
 1. Abre **Cocina → Pantalla**. En una tableta, pulsa «Pantalla completa»: el hub esconde su menú y sus barras («Salir de pantalla completa» las devuelve).
 2. En la vista «Comandas» están las que se cocinan: primero las urgentes, después las VIP y después el resto, la más antigua primero dentro de cada grupo.
 3. Si hay platos de más de una estación, elige la tuya: «Todas» enseña todos los platos (el pase); una estación enseña solo sus platos y solo las comandas que tienen algo suyo; «Sin estación», los platos sin enrutar.
-4. Lee cada tarjeta: el borde verde pasa a ámbar al llegar a «Aviso ámbar (minutos)» y a rojo al llegar a «Aviso rojo (minutos)»; el reloj sigue contando en rojo. Sin «Semáforo de color» el borde queda gris; sin «Mostrar cronómetro» no hay reloj.
-5. La pantalla se actualiza sola con cada cambio de cocina, sin recargar; los contadores de «Comandas» y «Listas» dicen cuántas hay en cada vista.
+4. Un plato que el TPV anuló después de enviarlo sale tachado con «Anulado» y el motivo, y no se toca (KITCHEN-F29).
+5. Lee cada tarjeta: el borde verde pasa a ámbar al llegar a «Aviso ámbar (minutos)» y a rojo al llegar a «Aviso rojo (minutos)»; el reloj sigue contando en rojo. Sin «Semáforo de color» el borde queda gris; sin «Mostrar cronómetro» no hay reloj.
+6. La pantalla se actualiza sola con cada cambio de cocina, sin recargar; los contadores de «Comandas» y «Listas» dicen cuántas hay en cada vista.
 Entra: las comandas Por preparar, En preparación y Listas con sus platos; los ajustes de la pantalla; los nombres vivos de las estaciones; los nombres de las personas del hub y, si está instalado, del Equipo.
 Sale: nada; la pantalla solo enseña.
 Si falla: «No se pudo cargar la pantalla de cocina» (o el motivo) encima del tablero. Si no cargan las personas, la tarjeta no pone camarero (nunca un código). Si no cargan las estaciones, sale el nombre con que se envió cada plato. Sin el permiso de cambiar comandas (cajero) la pantalla es de solo mirar: sin botones y los platos no responden. La estación elegida no se recuerda: al volver a abrir la pantalla sale «Todas».

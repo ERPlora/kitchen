@@ -31,7 +31,8 @@ Pasos:
 1. En el TPV, con una cuenta que ya envió algo, toca «Comandas · N» en la cabecera de lo enviado.
 2. Se abre «Comandas de la cuenta»: una tarjeta por ronda, la más reciente primero, con «Comanda N», una hora (la de llegada a cocina; desde que cocina la empieza, la de inicio; en UTC), su estado y sus platos.
 3. El estado cambia solo cuando cocina mueve la ronda («Por preparar», «En preparación», «Lista», «Servida», «Cancelada»), sin tocar nada.
-4. Cierra con ✕ o tocando fuera.
+4. Un plato anulado en el TPV después de enviarlo sale tachado con «Anulado» (KITCHEN-F29); con la hoja abierta cambia sin cerrarla, y cada vez que se abre se leen los platos de nuevo.
+5. Cierra con ✕ o tocando fuera.
 Entra: las comandas de Cocina de esa cuenta y sus platos.
 Sale: nada; solo enseña.
 Si falla: si la lista no carga, el botón no aparece; si los platos de una ronda no cargan, la tarjeta sale sin platos. La hora se corta del texto guardado, que está en UTC, sin pasarla a la hora local: en España sale 1 o 2 horas por detrás.

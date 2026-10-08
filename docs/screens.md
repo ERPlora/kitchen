@@ -27,6 +27,9 @@ to read the team, that header stays blank, never a raw id. The pass on paper use
   is left cooking, the ticket goes **ready** by itself and **leaves the active board** for the
   **Ready** view, where **Recall** brings it back and **Served** hands it over. There is never a
   confirmation dialog: recall is the undo.
+- **A dish the till voided** after firing it stays on the card struck through, with **Voided** and
+  the reason in red (kitchen#161). It does not answer to a tap, **Bump** skips it, and a menu reads
+  done when the rest of it is ready.
 - **Rush after the fact.** A ticket still cooking has **Mark rush** on its card (and **Remove
   rush** once it is rush), for the table that says it is in a hurry after the round already went
   out. A rush ticket jumps to the **front** of every station's board, carries the **Rush** badge,
@@ -75,7 +78,7 @@ to read the team, that header stays blank, never a raw id. The pass on paper use
 ## History — the audit trail
 
 Every action the kitchen recorded (`kitchen.logs.list`): received, fired, line ready, line
-recalled, ready, served, recalled, cancelled. Requires `kitchen.view_log`.
+recalled, line voided (by the till, with its reason in the notes), ready, served, recalled, cancelled. Requires `kitchen.view_log`.
 
 ## Commands — the tickets
 
