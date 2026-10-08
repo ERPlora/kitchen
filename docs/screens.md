@@ -103,7 +103,8 @@ or **cancel**. The change cascades from the ticket header down to its lines and 
 corresponding timestamp, then emits the matching event, which is also what writes the audit log.
 
 The ticket moves **pending → preparing → ready → served**; *recall* takes a ready ticket back to
-preparing; *cancel* works on anything not yet served. *Served* and *cancelled* are final. A
+preparing; *cancel* works on anything not yet served, and prints a void slip at every printer
+station that got the comanda on paper. *Served* and *cancelled* are final. A
 transition outside that path is refused (`kitchen.invalid_transition`) — nothing is written and no
 event goes out — and the table only enables the buttons the ticket's state accepts. If your screen
 was stale, the message tells you and the row refreshes to its real state.

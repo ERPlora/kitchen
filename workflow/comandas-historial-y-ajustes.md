@@ -29,10 +29,11 @@ Pasos:
 1. En la fila de la comanda, pulsa «Cancelar» (en rojo).
 2. Sin pregunta previa, la comanda y todos sus platos pasan a «Cancelada».
 3. Desaparece de la pantalla de cocina y del «Resumen»; en el TPV la ronda sale «Cancelada».
+4. Si la ronda salió en papel, la pantalla que la canceló saca en la misma impresora de cada estación un vale de anulación («ANULADA · Mesa 4», los platos en negativo); si no sale, avisa de que hay que decirlo de viva voz (HUB_SHELL-F78, kitchen#168).
 Entra: la comanda Por preparar, En preparación o Lista.
-Sale: la comanda cancelada (avisa: kitchen.order.cancelled) y «Canceladas» en el Historial, con el motivo en Notas si se dio (en la comanda se guarda con el prefijo fijo en inglés `Cancelled: `). Ventas no se entera: la cuenta sigue con esos platos enviados y se cobran.
+Sale: la comanda cancelada (avisa: kitchen.order.cancelled) y «Canceladas» en el Historial, con el motivo en Notas si se dio (en la comanda se guarda con el prefijo fijo en inglés `Cancelled: `). Con ese aviso el hub imprime el vale de anulación (HUB_SHELL-F78). Ventas no se entera: la cuenta sigue con esos platos enviados y se cobran.
 Si falla: una comanda Servida o ya Cancelada no se cancela (botón apagado; si la fila estaba vieja, el mensaje de estado y la recarga). Empleado y cajero no tienen el botón.
-Implicados: REC_RESTAURANTE-F14
+Implicados: REC_RESTAURANTE-F14, HUB_SHELL-F78
 QA: qa-hub-restaurant §7.13
 
 ### KITCHEN-F23 Crear una comanda a mano
