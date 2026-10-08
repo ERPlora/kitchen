@@ -30,7 +30,7 @@ esto, no más:
   estaciones de preparación, vista de pase (expo), marcar listo por plato y por comanda, «Rush».
   Los cursos con retener y lanzar no se adoptan (kitchen#71, fuera del MVP).
 - [Toast — anulaciones](https://doc.toasttab.com/doc/platformguide/adminVoidingOrders.html): anular
-  un plato ya enviado se ve en cocina. Adoptado: el plato que el TPV anula sale tachado con su motivo en la pantalla de cocina y en la hoja del TPV; el vale en papel de ese plato aún no (KITCHEN-F29, hub#2640).
+  un plato ya enviado se ve en cocina. Adoptado: el plato que el TPV anula sale tachado con su motivo en la pantalla de cocina y en la hoja del TPV, y en papel sale su vale de anulación (KITCHEN-F29, hub#2640).
 - [Square KDS](https://squareup.com/help/us/en/article/8171-complete-orders-with-square-kds):
   completar un plato suelto o la comanda entera, y la pestaña de completadas.
 - [Lightspeed K-Series KDS 2.0](https://k-series-support.lightspeedhq.com/hc/en-us/articles/22708154090267-Using-the-Kitchen-Display-System-2-0):
@@ -215,7 +215,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | Estado de cada ronda visible en el TPV | parcial: la hora no es la de envío y sale en UTC | F19 |
 | Cerrar en cocina lo de una cuenta cobrada, sin parar lo que se cocina | hecho (kitchen#145) | F27 |
 | Lo que solo va a papel no se queda en la pantalla | hecho: sale al cobrar (la ronda entera a estaciones solo de impresora, o todo si la cocina trabaja en papel, kitchen#153); la tarjeta sí se pinta mientras la cuenta sigue abierta | F27, F26 |
-| Anular un plato enviado con aviso a cocina | parcial: cocina lo tacha con el motivo y la ronda sigue con lo que queda (kitchen#161); el vale en papel de un plato no sale (hub#2640) | F29 |
+| Anular un plato enviado con aviso a cocina | hecho: cocina lo tacha con el motivo y la ronda sigue con lo que queda (kitchen#161); en papel sale el vale de ese plato (hub#2640) | F29 |
 | Cuenta anulada o unida: cocina se entera | hecho: eliminarla cancela sus rondas en marcha y juntarla las pasa a la cuenta que queda (kitchen#162); en papel sale el vale de anulación (kitchen#168) | F28 |
 | Cancelar una comanda con motivo | parcial: sin motivo ni confirmación en pantalla | F22 |
 | Historial con quién hizo cada cosa | parcial: no enseña quién | F25 |

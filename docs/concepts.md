@@ -60,13 +60,15 @@ Square and Lightspeed show a voided item on the KDS (kitchen#161). The struck di
 ready. It is its own state, `voided`, not `cancelled`: the till took it back, and cancelling the round
 later keeps saying so.
 
-The round carries on with what is left: nothing left → it is cancelled (and the hub prints the round's
-void slip, as for any cancelled round); only ready dishes left → it goes ready, to the pass. A served or
+The round carries on with what is left: nothing left → it is cancelled (on paper only the last dish's
+slip comes out, no round slip on top); only ready dishes left → it goes ready, to the pass. A served or
 cancelled round is not touched. The till's «Comandas» sheet shows the dish struck too, and the log
 writes «Line voided» with the reason.
 
-**Not yet:** a void slip on paper for ONE dish (hub#2640). A kitchen that cooks only from the printed
-comanda has to be told out loud.
+On paper, the till that voided the dish prints a slip with only that dish at its station's printer —
+«VOID ITEM · Table 4» and the dish with a negative quantity (hub#2640); a menu voided whole prints one
+slip per station, without what was already served. A round cancelled later leaves out the dishes
+voided before.
 
 ## Every fire is a new round
 
