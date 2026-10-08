@@ -65,7 +65,7 @@ Implicados: PRINTING-F04, PRINTING-F10, REC_RESTAURANTE-F02, REC_RESTAURANTE-F07
 QA: R-05, qa-hub-restaurant §7.08, qa-hub-restaurant §7.16
 
 ### KITCHEN-F09 Reimprimir una comanda
-Estado: no hecho — no hay botón ni orden para volver a sacar una comanda que no salió o se estropeó; el aviso de fallo solo dice que la comanda está en la pantalla de cocina, y repetir el mismo trabajo de impresión lo descarta la cola como repetido
+Estado: no hecho — no hay botón ni orden para volver a sacar una comanda que no salió o se estropeó; el aviso de fallo solo ofrece «Reintentar» en el TPV que la envió y solo cuando la impresora de red de ese dispositivo no contestó (KITCHEN-F08, hub#2494); en los demás casos dice que la comanda está en la pantalla de cocina, y repetir el mismo trabajo de impresión lo descarta la cola como repetido
 Actor: empleado, responsable
 Pantalla: Pantalla
 Pasos:
