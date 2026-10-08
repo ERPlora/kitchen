@@ -35,6 +35,7 @@
     "events": [
       "kitchen.item.bumped",
       "kitchen.item.recalled",
+      "kitchen.item.voided",
       "kitchen.order.cancelled",
       "kitchen.order.created",
       "kitchen.order.deleted",
