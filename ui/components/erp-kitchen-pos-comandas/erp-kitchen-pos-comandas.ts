@@ -36,7 +36,13 @@ interface Comanda {
   created_at?: string;
 }
 
-interface ComandaItem { id: string; product_name: string; quantity: number; }
+interface ComandaItem {
+  id: string;
+  product_name: string;
+  quantity: number;
+  /** kitchen#161 · `voided` when the till took the dish back after firing it. */
+  status?: string;
+}
 
 interface ErploraLike {
   locale: string;
@@ -105,6 +111,8 @@ const KDS_EVENTS = [
   'kitchen.order.created', 'kitchen.order.fired', 'kitchen.order.ready',
   'kitchen.order.served', 'kitchen.order.recalled', 'kitchen.order.cancelled',
   'kitchen.order.deleted', 'kitchen.order.updated',
+  // kitchen#161 · a single dish voided by the till: the round stays, the dish reads voided.
+  'kitchen.item.voided',
 ];
 
 export class ErpKitchenPosComandas extends LitElement {
@@ -154,6 +162,9 @@ export class ErpKitchenPosComandas extends LitElement {
     .kwarn { color: var(--ion-color-warning-shade, #b26b00); font-size: .82rem; margin: 0 0 .5rem; }
     .kitem { display: flex; gap: .5rem; padding: .35rem .7rem; font-size: .9rem; }
     .kitem .q { color: #8b897f; min-width: 2.2rem; }
+    /* kitchen#161 · a dish the till voided after firing: struck, with the word. */
+    .kitem[data-status='voided'] .q, .kitem[data-status='voided'] .n { text-decoration: line-through; opacity: .6; }
+    .kitem .kvoid { margin-left: auto; font-size: .72rem; font-weight: 800; color: var(--ion-color-danger, #d9480f); white-space: nowrap; }
   `;
 
   @state() private orderId?: string;
@@ -203,6 +214,8 @@ export class ErpKitchenPosComandas extends LitElement {
     } catch {
       this.comandas = [];
     }
+    // With the sheet open, a kitchen change also changes its dishes (kitchen#161: one voided).
+    if (this.open) await this.loadItems();
   }
 
   private async openModal(): Promise<void> {
@@ -215,15 +228,19 @@ export class ErpKitchenPosComandas extends LitElement {
     if (d && !d.open) {
       try { d.showModal(); } catch { d.setAttribute('open', ''); /* happy-dom: sin top layer */ }
     }
-    // Las líneas de cada comanda se cargan al abrir (pocas; el chip no las necesita).
-    // Query PLANA (no queryAll): el motor de listas mete paginación y la query de detalle la
-    // rechaza con 422 (visto en Playwright).
+    await this.loadItems();
+  }
+
+  /** The dishes of each round, loaded on every opening (a few; the chip does not need them) and
+   *  never cached across openings: a dish voided since the last look must read voided (kitchen#161).
+   *  FLAT query (not queryAll): the list engine adds paging and the detail query rejects it with
+   *  422 (seen in Playwright). */
+  private async loadItems(): Promise<void> {
     for (const c of this.comandas) {
-      if (this.items.has(c.id)) continue;
       try {
         const its = rows<ComandaItem>(await erplora().query('kitchen.orders.items', { order_id: c.id }));
         this.items = new Map(this.items).set(c.id, its);
-      } catch { /* sin líneas no se rompe el modal */ }
+      } catch { /* a round without its dishes does not break the sheet */ }
     }
   }
 
@@ -310,7 +327,7 @@ export class ErpKitchenPosComandas extends LitElement {
                 ${rush ? html`<span class="kprio">${t('ui.priority_rush')}</span>` : nothing}
               </div>
               ${(this.items.get(c.id) ?? []).map((i) => html`
-                <div class="kitem"><span class="q">${this.qty(i.quantity)}×</span><span>${i.product_name}</span></div>`)}
+                <div class="kitem" data-item=${i.id} data-status=${i.status ?? 'pending'}><span class="q">${this.qty(i.quantity)}×</span><span class="n">${i.product_name}</span>${i.status === 'voided' ? html`<span class="kvoid">${t('ui.lineVoided')}</span>` : nothing}</div>`)}
               ${can('kitchen.change_order') && rushToggleable(c) ? html`
                 <div class="krow-a">
                   <button class="krush" ?data-rush=${rush} data-testid=${`kitchen-comandas-rush-${c.id}`}

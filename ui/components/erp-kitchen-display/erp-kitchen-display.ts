@@ -87,6 +87,8 @@ interface DisplayRow {
   modifiers: string | null;
   item_notes: string | null;
   item_status: string | null;
+  /** kitchen#161 · why the till took the dish back; '' when the line was not voided. */
+  void_reason?: string | null;
   seat_number: number | string | null;
   completed_at: string | null;
   /** kitchen#57 · the MENU this line belongs to (ADR-0381); NULL on an ordinary line. */
@@ -107,6 +109,8 @@ export interface Line {
   modifiers: string;
   notes: string;
   status: string;
+  /** kitchen#161 · the reason the till voided this line (`status === 'voided'`), '' otherwise. */
+  void_reason: string;
   seat: number | null;
   /** The menu this line is a component of (`combo_group_ref`), or null when it is à la carte. */
   combo_ref: string | null;
@@ -312,6 +316,7 @@ export function groupTickets(rows: DisplayRow[]): Ticket[] {
         modifiers: String(r.modifiers ?? ''),
         notes: String(r.item_notes ?? ''),
         status: String(r.item_status ?? 'pending'),
+        void_reason: String(r.void_reason ?? ''),
         seat: r.seat_number === null || r.seat_number === undefined || r.seat_number === '' ? null : Number(r.seat_number),
         combo_ref: r.combo_ref === null || r.combo_ref === undefined || r.combo_ref === '' ? null : String(r.combo_ref),
         combo_name: String(r.combo_name ?? ''),
@@ -475,6 +480,11 @@ export class ErpKitchenDisplay extends LitElement {
     .line .note { font-style:italic; }
     .line .meta { font-size:1rem; opacity:.7; display:flex; gap:.5rem; }
     .line[data-status="ready"] .name, .line[data-status="ready"] .qty { text-decoration: line-through; opacity:.55; }
+    /* kitchen#161 · a dish the till took back: struck like a done one, but in the danger colour and
+       with the word, so the cook does not read it as «already cooked». */
+    .line[data-status="voided"] .name, .line[data-status="voided"] .qty { text-decoration: line-through; opacity:.6; }
+    .line .void { font-size:1rem; font-weight:700; color: var(--ion-color-danger, #c5000f); display:flex; flex-wrap:wrap; gap:.25rem .5rem; }
+    .line .void .reason { font-weight:400; font-style:italic; overflow-wrap:anywhere; }
     .line .tick { font-size:1.4rem; line-height:1; color: var(--ion-color-success, #2dd36f); }
     /* kitchen#57 · A MENU: a quiet header and its components indented behind a rule. The emphasis
        stays on the DISH — the market highlights allergens and changes, never hierarchy — so the
@@ -636,6 +646,8 @@ export class ErpKitchenDisplay extends LitElement {
         erplora().on('kitchen.order.deleted', reload),
         erplora().on('kitchen.item.bumped', reload),
         erplora().on('kitchen.item.recalled', reload),
+        // kitchen#161 · the till voided a line already fired: it is struck on the board.
+        erplora().on('kitchen.item.voided', reload),
         erplora().on('kitchen.settings.updated', () => this.loadSettings()),
       ];
       this.unsub = () => offs.forEach((off) => off());
@@ -951,9 +963,11 @@ export class ErpKitchenDisplay extends LitElement {
     const seat = l.seat !== null ? html`<span>${t_('ui.seat')} ${l.seat}</span>` : nothing;
     const station = !this.station && l.station_id ? html`<span>${this.stationName(l)}</span>` : nothing;
     const printer = l.destination === 'printer' ? html`<ion-icon name="print-outline" aria-label=${t_('ui.printerOnly')}></ion-icon>` : nothing;
+    const voided = l.status === 'voided';
+    const hint = voided ? t_('ui.lineVoided') : l.status === 'ready' ? t_('ui.tapToRecall') : t_('ui.tapToBump');
     return html`<li class="line" data-testid=${`kds-line-${l.id}`} data-item=${l.id} data-status=${l.status} role="button" tabindex=${actionable ? 0 : -1}
         aria-disabled=${actionable ? 'false' : 'true'}
-        aria-label=${`${formatQty(l.quantity, erplora().locale)} × ${l.product_name} — ${l.status === 'ready' ? t_('ui.tapToRecall') : t_('ui.tapToBump')}`}
+        aria-label=${`${formatQty(l.quantity, erplora().locale)} × ${l.product_name} — ${hint}`}
         @click=${() => this.tapLine(t, l)}
         @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.tapLine(t, l); } }}>
       <span class="qty">${formatQty(l.quantity, erplora().locale)}</span>
@@ -961,6 +975,9 @@ export class ErpKitchenDisplay extends LitElement {
         <div class="name">${l.product_name}</div>
         ${l.modifiers ? html`<div class="mods">${l.modifiers}</div>` : nothing}
         ${l.notes ? html`<div class="note">${l.notes}</div>` : nothing}
+        ${voided
+          ? html`<div class="void"><span data-void-label>${t_('ui.lineVoided')}</span>${l.void_reason ? html`<span class="reason" data-void-reason>${l.void_reason}</span>` : nothing}</div>`
+          : nothing}
         ${seat !== nothing || station !== nothing || printer !== nothing ? html`<div class="meta">${seat}${station}${printer}</div>` : nothing}
       </span>
       ${l.status === 'ready' ? html`<span class="tick" aria-hidden="true">✓</span>` : nothing}
@@ -989,7 +1006,10 @@ export class ErpKitchenDisplay extends LitElement {
     // Odoo's closing rule: «The card automatically moves to the next stage once every item is
     // crossed off». Nobody marks a menu ready by hand, and no product reviewed has an «a
     // component is missing» alert either — the expo sees the whole thing and that is the answer.
-    const done = g.lines.every((l) => l.status === 'ready');
+    // kitchen#161 · a component the till voided is not waiting for anybody: the menu closes when
+    // the rest is ready. A menu with every component voided is not «done» — nothing was cooked.
+    const live = g.lines.filter((l) => l.status !== 'voided');
+    const done = live.length > 0 && live.every((l) => l.status === 'ready');
     const actionable = can('kitchen.change_order') && cooking;
     return html`<li class="combo" data-combo=${g.ref} data-combo-done=${done ? 'true' : 'false'}>
       <div class="combo-head" data-testid=${`kds-ticket-${t.id}-combo-${g.ref}`} role=${actionable ? 'button' : 'presentation'} tabindex=${actionable ? 0 : -1}

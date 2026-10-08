@@ -52,6 +52,7 @@ function label(code: string): string {
     bumped: ui.actionBumped,
     item_bumped: ui.actionItemBumped,
     item_recalled: ui.actionItemRecalled,
+    item_voided: ui.actionItemVoided,
     served: ui.actionServed,
     recalled: ui.actionRecalled,
     cancelled: ui.actionCancelled,
@@ -125,6 +126,15 @@ describe('ACCIÓN — the cell speaks the hub language, like the dropdown alread
     for (const opt of action?.options ?? []) {
       expect(action!.format!({ action: opt.value })).toBe(opt.label);
     }
+  });
+
+  it('kitchen#161 · a line the till voided reads «Línea anulada» and the filter offers it', async () => {
+    const el = await mount();
+    const cols = (el as unknown as { columns: Column[] }).columns;
+    const action = cols.find((c) => c.key === 'action')!;
+    expect(label('item_voided'), 'the es catalog has no actionItemVoided').toBe('Línea anulada');
+    expect(action.format!({ action: 'item_voided' })).toBe('Línea anulada');
+    expect(action.options?.map((o) => o.value)).toContain('item_voided');
   });
 
   it('an API-only code (accepted) keeps its raw text: a visible hole, not a blank cell', async () => {
