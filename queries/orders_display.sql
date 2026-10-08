@@ -32,6 +32,8 @@ SELECT o.id            AS order_id,
        i.modifiers,
        i.notes         AS item_notes,
        i.status        AS item_status,
+       -- kitchen#161 · why the till took the dish back: the KDS paints it struck, with the reason.
+       i.void_reason,
        i.seat_number,
        i.completed_at,
        -- kitchen#57 · the MENU this line belongs to (ADR-0381). The WC groups by `combo_ref` and

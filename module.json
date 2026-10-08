@@ -137,7 +137,8 @@
       },
       "migrations/postgres/011_rush_count.sql",
       "migrations/postgres/012_station_name_ignores_deleted.sql",
-      "migrations/postgres/013_works_from_screen.sql"
+      "migrations/postgres/013_works_from_screen.sql",
+      "migrations/postgres/014_item_void_reason.sql"
     ]
   },
   "queries": {
@@ -255,6 +256,14 @@
       "schema": "schemas/order_items.json",
       "ai": {
         "description": "Lists the line items of a specific kitchen order"
+      }
+    },
+    "kitchen.items.by_sales_line": {
+      "permission": "kitchen.view_order",
+      "sql": "queries/items_by_sales_line.sql",
+      "schema": "schemas/items_by_sales_line.json",
+      "ai": {
+        "description": "Every line of the kitchen round(s) that carry one sales line (by its id), with the round's status and its check: what the kitchen reads to strike a dish the till voided"
       }
     },
     "kitchen.orders.display": {
@@ -644,6 +653,27 @@
         "function": "repoint_orders_from_merged_order"
       }
     },
+    "kitchen._on_sales_order_line_voided": {
+      "permission": "kitchen.cancel_order",
+      "schema": "schemas/on_sales_order_line_voided.json",
+      "reads": [
+        {
+          "query": "kitchen.items.by_sales_line",
+          "params": {
+            "sales_order_item_id": "payload.line_id"
+          },
+          "required": true
+        }
+      ],
+      "handler": {
+        "type": "wasm",
+        "file": "dist/handler.wasm",
+        "function": "void_lines_from_sales_line"
+      },
+      "ai": {
+        "description": "Strikes on the KDS the dish of a sales line the till VOIDED after sending it (event `sales.order.line_voided`, SALES-F20, kitchen#161): every kitchen line that sales line opened and still on the line becomes `voided` with the till's reason and emits kitchen.item.voided; the round follows what is left (nothing left → cancelled, with kitchen.order.cancelled; only ready dishes left → ready). A served or cancelled round is not touched; a redelivery writes nothing."
+      }
+    },
     "kitchen.stations.create": {
       "permission": "kitchen.manage_settings",
       "transaction": true,
@@ -775,6 +805,18 @@
         "message": "That kitchen line is no longer in the state this action requires. Refresh and try again."
       }
     },
+    "kitchen._void_item": {
+      "permission": "kitchen.cancel_order",
+      "sql": [
+        "commands/_void_item.sql"
+      ],
+      "expect_rows": {
+        "op": "min",
+        "n": 1,
+        "error": "kitchen.invalid_transition",
+        "message": "That kitchen line is no longer in the state this action requires. Refresh and try again."
+      }
+    },
     "kitchen._cascade_item_status": {
       "permission": "kitchen.change_order",
       "sql": [
@@ -854,6 +896,9 @@
       "sales.order.merged": {
         "command": "kitchen._on_sales_order_merged"
       },
+      "sales.order.line_voided": {
+        "command": "kitchen._on_sales_order_line_voided"
+      },
       "kitchen.order.fired": {
         "command": "kitchen.logs.create"
       },
@@ -877,11 +922,15 @@
       },
       "kitchen.item.recalled": {
         "command": "kitchen.logs.create"
+      },
+      "kitchen.item.voided": {
+        "command": "kitchen.logs.create"
       }
     },
     "emits": [
       "kitchen.item.bumped",
       "kitchen.item.recalled",
+      "kitchen.item.voided",
       "kitchen.order.cancelled",
       "kitchen.order.created",
       "kitchen.order.deleted",

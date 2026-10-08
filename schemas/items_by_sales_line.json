@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "kitchen.items.by_sales_line",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sales_order_item_id"],
+  "properties": {
+    "sales_order_item_id": { "type": "string", "minLength": 1 }
+  }
+}
