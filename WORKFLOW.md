@@ -205,7 +205,7 @@ gramática y el mismo prefijo. Huecos (`parcial`, `no hecho`): el porqué está 
 | Resumen de lo que queda por cocinar | hecho | F15 |
 | Sonido al entrar, con volumen y tono | hecho | F16, F26 |
 | Pase en papel al marcar listo | hecho | F17 |
-| Comanda en papel por estación al enviar | parcial: la imprime el hub; con la impresora de red apagada se pierde sin aviso | F08 |
+| Comanda en papel por estación al enviar | parcial: la imprime el hub; con la impresora de red apagada el TPV avisa y deja reintentar (por la cola del hub, sin aviso) | F08 |
 | Reimprimir una comanda | no hecho | F09 |
 | Menú agrupado, cada plato a su estación | parcial: hecho con los platos elegidos; un menú sin nada elegido llega como una línea (sales#535) | F06 |
 | Suplementos y notas en pantalla y en papel | hecho | F07 |
